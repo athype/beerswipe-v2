@@ -1,85 +1,77 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import { onMounted } from 'vue'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { useAuthStore } from './stores/auth.js'
+import NotificationContainer from './components/NotificationContainer.vue'
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+onMounted(() => {
+  authStore.initializeAuth()
+})
+
+const logout = async () => {
+  await authStore.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
+  <div id="app">
+    <header v-if="authStore.isAuthenticated">
+      <nav class="navbar">
+        <div class="container">
+          <div class="navbar-content">
+            <RouterLink to="/dashboard" class="navbar-brand">
+              Beer Machine
+            </RouterLink>
+            
+            <div class="navbar-nav">
+              <RouterLink to="/dashboard" class="navbar-link">Dashboard</RouterLink>
+              <RouterLink to="/sales" class="navbar-link">Sales</RouterLink>
+              <RouterLink to="/users" class="navbar-link">Users</RouterLink>
+              <RouterLink to="/drinks" class="navbar-link">Drinks</RouterLink>
+              <RouterLink to="/history" class="navbar-link">History</RouterLink>
+              
+              <div class="navbar-user">
+                <span class="text-sm">{{ authStore.user?.username }}</span>
+                <button @click="logout" class="btn btn-danger btn-sm">
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </nav>
-    </div>
-  </header>
+    </header>
 
-  <RouterView />
+    <main>
+      <div class="container">
+        <RouterView />
+      </div>
+    </main>
+    
+    <!-- Global notification system -->
+    <NotificationContainer />
+  </div>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+main {
+  flex: 1;
+  padding: var(--spacing-xl) 0;
 }
 
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+/* Make navbar links work with router-link-active */
+.navbar-link.router-link-active {
+  color: var(--color-white);
+  background: var(--color-teal);
 }
 </style>

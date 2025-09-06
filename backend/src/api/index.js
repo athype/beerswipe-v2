@@ -1,15 +1,21 @@
 import express from "express";
 
-import emojis from "./emojis.js";
+import auth from "./auth.js";
+import users from "./users.js";
+import drinks from "./drinks.js";
+import sales from "./sales.js";
 
 const router = express.Router();
 
 router.get("/", (req, res) => {
   res.json({
-    message: "API - 👋🌎🌍🌏",
+    message: "Beer Machine API",
   });
 });
 
-router.use("/emojis", emojis);
+router.use("/auth", auth);
+router.use("/users", users);
+router.use("/drinks", drinks);
+router.use("/sales", sales);
 
 export default router;

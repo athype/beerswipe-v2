@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (Development)
+  postgres:
+    image: postgres:15
+    container_name: beermachine_dev_db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - beermachine-network
+    restart: unless-stopped
+
+  # Backend API (Development with PostgreSQL)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: ${BEPORT}
+      JWT_SECRET: dev-secret-key
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: beermachine
+      DB_USER: postgres
+      DB_PASSWORD: password
+    ports:
+      - "${BEPORT}:${BEPORT}"
+    depends_on:
+      - postgres
+    networks:
+      - beermachine-network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: ["pnpm", "dev"]
+
+  # Frontend Web App (Development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      VITE_API_URL: ${BEURL}
+      VITE_API_PORT: ${BEPORT}
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    networks:
+      - beermachine-network
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: ["pnpm", "dev", "--host"]
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  beermachine-network:
+    driver: bridge
