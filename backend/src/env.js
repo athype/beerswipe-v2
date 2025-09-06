@@ -2,7 +2,20 @@ import { z } from "zod/v4";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  PORT: z.coerce.number().default(3000),
+  PORT: z.coerce.number().default(8080),
+  JWT_SECRET: z.string().default("your-secret-key-change-in-production"),
+  
+  // Frontend URL configuration
+  FEURL: z.string().default("http://localhost"),
+  FEPORT: z.coerce.number().default(5173),
+  
+  // Database configuration for production (PostgreSQL)
+  DATABASE_URL: z.string().optional(),
+  DB_HOST: z.string().default("localhost"),
+  DB_PORT: z.coerce.number().default(5432),
+  DB_NAME: z.string().default("beermachine"),
+  DB_USER: z.string().default("postgres"),
+  DB_PASSWORD: z.string().default("hd?m6&p$KG$Sbg7T"),
 });
 
 try {

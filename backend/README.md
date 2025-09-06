@@ -1,37 +1,67 @@
-# Express API Starter
+# Beer Machine v3 API
 
-A JavaScript Express v5 starter template with sensible defaults. For a TypeScript starter see the [express-api-starter-ts](https://github.com/w3cj/express-api-starter-ts)
+A drink management system API for SV ADA, built with Express.js and PostgreSQL.
 
-How to use this template:
+## Features
 
-```sh
-pnpm dlx create-express-api@latest --directory my-api-name
-```
-
-Includes API Server utilities:
-
-- [morgan](https://www.npmjs.com/package/morgan)
-  - HTTP request logger middleware for node.js
-- [helmet](https://www.npmjs.com/package/helmet)
-  - Helmet helps you secure your Express apps by setting various HTTP headers. It's not a silver bullet, but it can help!
-- [cors](https://www.npmjs.com/package/cors)
-  - CORS is a node.js package for providing a Connect/Express middleware that can be used to enable CORS with various options.
-
-Development utilities:
-
-- [eslint](https://www.npmjs.com/package/eslint)
-  - ESLint is a tool for identifying and reporting on patterns found in ECMAScript/JavaScript code.
-- [vitest](https://www.npmjs.com/package/vitest)
-  - Next generation testing framework powered by Vite.
-- [zod](https://www.npmjs.com/package/zod)
-  - Validated env with zod schema
-- [supertest](https://www.npmjs.com/package/supertest)
-  - HTTP assertions made easy via superagent.
+- User management (members, donators, admins)
+- Credit system with transaction tracking
+- Drink inventory management
+- Sales processing
+- Authentication and authorization
+- CSV user import
+- Transaction history and reporting
 
 ## Setup
 
 ```
 pnpm install
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure your database settings:
+
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=beermachine
+DB_USER=postgres
+DB_PASSWORD=your_password
+JWT_SECRET=your_jwt_secret
+NODE_ENV=development
+```
+
+## Database
+
+The application uses PostgreSQL. Start the database with Docker:
+
+```
+docker-compose -f docker-compose.dev.yml up postgres -d
+```
+
+## Database Seeding
+
+The application automatically creates a default admin user on first startup:
+- Username: `pos`
+- Password: `ADAdeventer`
+
+To manually run database seeds:
+
+```
+pnpm run seed
+```
+
+## Development
+
+```
+pnpm run dev
+```
+
+## Production
+
+```
+pnpm start
 ```
 
 ## Lint
@@ -46,8 +76,27 @@ pnpm run lint
 pnpm test
 ```
 
-## Development
+## API Endpoints
 
-```
-pnpm run dev
-```
+### Authentication
+- `POST /api/v1/auth/login` - Admin login
+- `POST /api/v1/auth/create-admin` - Create admin user
+
+### Users
+- `GET /api/v1/users` - List all users
+- `POST /api/v1/users` - Create new user
+- `PUT /api/v1/users/:id` - Update user
+- `DELETE /api/v1/users/:id` - Delete user
+- `POST /api/v1/users/import-csv` - Import users from CSV
+
+### Drinks
+- `GET /api/v1/drinks` - List all drinks
+- `POST /api/v1/drinks` - Create new drink
+- `PUT /api/v1/drinks/:id` - Update drink
+- `DELETE /api/v1/drinks/:id` - Delete drink
+
+### Sales
+- `POST /api/v1/sales/purchase` - Process drink purchase
+- `POST /api/v1/sales/add-credits` - Add credits to user
+- `GET /api/v1/sales/transactions` - Get transaction history
+- `GET /api/v1/sales/stats` - Get sales statistics
