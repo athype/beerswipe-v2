@@ -33,13 +33,20 @@ const corsOptions = {
       }
     }
     
-    // Allow the configured frontend URL
-    const allowedOrigin = `${env.FEURL}:${env.FEPORT}`;
-    if (origin === allowedOrigin) {
+    // Production: Allow specific origins
+    const allowedOrigins = [
+      `${env.FEURL}:${env.FEPORT}`, // Development frontend
+      env.FEURL, // Production frontend (port 80, no need to specify)
+      'http://localhost', // Production frontend on port 80
+      'http://localhost:80', // Production frontend with explicit port
+      "http://localhost:5173" // Production frontend on port 5173
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    console.log(`CORS blocked origin: ${origin}, expected: ${allowedOrigin}`);
+    console.log(`CORS blocked origin: ${origin}, allowed origins: ${allowedOrigins.join(', ')}`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true
