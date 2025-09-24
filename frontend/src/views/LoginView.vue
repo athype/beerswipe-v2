@@ -168,7 +168,7 @@ const handleCreateAdmin = async () => {
 .login-card {
   width: 100%;
   max-width: 400px;
-  background: var(--color-white);
+  background: var(--color-black);
 }
 
 .login-form .btn {
