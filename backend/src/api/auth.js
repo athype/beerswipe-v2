@@ -45,6 +45,9 @@ router.post('/login', async (req, res) => {
 // (should be protected in production)
 router.post('/create-admin', async (req, res) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Admin creation not allowed in production' });
+    }
     const { username, password } = req.body;
 
     if (!username || !password) {
