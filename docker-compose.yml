@@ -25,11 +25,13 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: ${BEPORT}
-      JWT_SECRET: 43cb90af1c36ade5b9baef644f9d3de2
+      JWT_SECRET: ${JWT_SECRET}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
+      FEURL: ${FEURL}
+      FEPORT: ${FEPORT}
       DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
       - postgres
