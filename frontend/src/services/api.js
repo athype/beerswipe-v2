@@ -53,6 +53,10 @@ export const usersAPI = {
   importCSV: (formData) => api.post('/users/import-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  exportCSV: (params) => api.get('/users/export-csv', { 
+    params, 
+    responseType: 'blob' 
+  }),
 };
 
 export const drinksAPI = {

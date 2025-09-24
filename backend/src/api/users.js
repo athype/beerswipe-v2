@@ -147,6 +147,53 @@ router.post('/:id/add-credits', authenticateToken, requireAdmin, async (req, res
   }
 });
 
+// Export users to CSV
+router.get('/export-csv', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { type } = req.query;
+    
+    const whereClause = {};
+    // Only export non-admin users (members and donators)
+    if (type && ['member', 'donator'].includes(type)) {
+      whereClause.userType = type;
+    } else {
+      whereClause.userType = { [Op.in]: ['member', 'donator'] };
+    }
+
+    const users = await User.findAll({
+      where: whereClause,
+      order: [['username', 'ASC']],
+      attributes: ['username', 'credits', 'dateOfBirth', 'userType']
+    });
+
+    // Generate CSV content
+    const csvRows = users.map(user => {
+      const dateOfBirth = user.dateOfBirth 
+        ? new Date(user.dateOfBirth).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).replace(/\//g, '-')
+        : '';
+      
+      const isMember = user.userType === 'member' ? 'true' : 'false';
+      
+      return `${user.username},${user.credits},${dateOfBirth},${isMember}`;
+    });
+
+    const csvContent = csvRows.join('\n');
+    
+    // Set headers for CSV download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=users-export-${new Date().toISOString().split('T')[0]}.csv`);
+    
+    res.send(csvContent);
+  } catch (error) {
+    console.error('CSV export error:', error);
+    res.status(500).json({ error: 'Failed to export users' });
+  }
+});
+
 // Import users from CSV
 router.post('/import-csv', authenticateToken, requireAdmin, upload.single('csvFile'), async (req, res) => {
   try {

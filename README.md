@@ -1,122 +1,94 @@
 # Beer Machine v3
 
-A comprehensive drink selling and management system designed for student associations. This system provides user management, inventory tracking, sales processing, and transaction history with a modern web interface.
+A modern drink selling and management system for student associations. Features user management, credit system, inventory tracking, and sales processing with a responsive web interface.
 
 ## Features
 
-### Authentication & User Management
-- **Admin Login**: Secure JWT-based authentication for admin users
-- **User Types**: Support for admins, members, and donators
-- **Bulk Import**: CSV import functionality for bulk user creation
-- **User Search**: Quick search and filtering capabilities
-
-### Credit System
-- **Block Credit Addition**: Add credits in blocks of 10 (no payment processing)
-- **Balance Tracking**: Real-time credit balance monitoring
-- **Transaction History**: Complete audit trail of all credit operations
-
-### Inventory Management
-- **Drink Management**: Add, edit, and manage drink inventory
-- **Stock Tracking**: Real-time stock levels with low-stock alerts
-- **Category Organization**: Organize drinks by categories
-- **Price Management**: Flexible pricing in credits
-
-### Sales Terminal
-- **Quick Sales**: Intuitive point-of-sale interface
-- **Customer Search**: Fast customer lookup and selection
-- **Shopping Cart**: Multi-item sales with quantity controls
-- **Real-time Updates**: Instant inventory and balance updates
-
-### Reporting & Analytics
-- **Transaction History**: Detailed transaction logs with filtering
-- **Sales Analytics**: Revenue tracking and top-selling items
-- **Export Capabilities**: Data export for external analysis
-- **Dashboard Metrics**: Key performance indicators and statistics
-
-### Technical Features
-- **Multi-Environment**: SQLite for development, PostgreSQL for production
-- **Dockerized**: Complete containerization with Docker Compose
-- **RESTful API**: Clean API design with proper error handling
-- **Responsive UI**: Modern Vue.js frontend with mobile support
-- **Data Validation**: Comprehensive input validation and sanitization
+- 🔐 **Admin Authentication**: Secure JWT-based login system
+- 👥 **User Management**: Support for admins, members, and donators with CSV import/export
+- 💰 **Credit System**: Add credits to user accounts and track balances
+- 🍻 **Inventory Management**: Manage drinks, stock levels, and categories
+- 🛒 **Sales Terminal**: Point-of-sale interface for processing transactions
+- 📊 **Transaction History**: Complete audit trail of all operations
+- 🐳 **Dockerized**: Easy deployment with Docker Compose
 
 ## Technology Stack
 
-### Backend
-- **Runtime**: Node.js 20
-- **Framework**: Express.js 5
-- **Database**: SQLite (dev) / PostgreSQL (prod)
-- **ORM**: Sequelize
-- **Authentication**: JWT with bcryptjs
-- **Validation**: Zod schemas
-- **File Processing**: Multer for CSV uploads
-
-### Frontend
-- **Framework**: Vue.js 3
-- **State Management**: Pinia
-- **Routing**: Vue Router 4
-- **HTTP Client**: Axios
-- **Build Tool**: Vite
-- **CSS**: Scoped component styles
-
-### DevOps
-- **Containerization**: Docker & Docker Compose
-- **Web Server**: Nginx (production)
-- **Environment Management**: Multi-stage configurations
-- **Database**: PostgreSQL with persistent volumes
+**Backend**: Node.js, Express.js, PostgreSQL, Sequelize, JWT  
+**Frontend**: Vue.js 3, Pinia, Vue Router, Vite  
+**Deployment**: Docker, Docker Compose, Nginx
 
 ## Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose installed
-- Git for cloning the repository
+- Docker and Docker Compose
 
-### 1. Clone the Repository
+### 1. Clone and Setup Environment
 ```bash
 git clone <repository-url>
 cd beermachine_v3
+
+# Copy and configure environment variables
+cp .env.example .env
+# Edit .env with your settings (see Environment Variables section)
 ```
 
-### 2. Development Setup
+### 2.1 Development Setup Docker
 ```bash
-# Start development environment with SQLite
+# Start development environment
 docker-compose -f docker-compose.dev.yml up --build
-
-# Start the postgres db for development
-docker-compose -f docker-compose.dev.yml up postgres -d
-
-# The application will be available at:
+# Access the application:
 # Frontend: http://localhost:5173
-# Backend API: http://localhost:3000
+# Backend API: http://localhost:8080
+```
+
+### 2.2 Development Setup Docker DB local FE and BE
+```bash
+# Start development environment
+docker-compose -f docker-compose.dev.yml up postgres -d
+# to start backend
+cd backend
+pnpm start
+# to start frontend
+cd frontend
+npm run dev
+# Access the application:
+# Frontend: http://localhost:5173
+# Backend API: http://localhost:8080
 ```
 
 ### 3. Production Setup
 ```bash
-# Start production environment with PostgreSQL
+# Start production environment
 docker-compose up --build -d
 
-# The application will be available at:
+# Access the application:
 # Frontend: http://localhost
-# Backend API: http://localhost:3000
+# Backend API: http://localhost:8080
 ```
 
 ### 4. Initial Setup
 1. Open the application in your browser
 2. Click "Create Admin Account" on the login page
 3. Create your first admin user
-4. Log in with your admin credentials
+4. Log in and start managing users and drinks
 
-## Configuration
+## Environment Variables
 
-### Environment Variables
+Create a `.env` file in the root directory with the following variables:
 
-#### Backend (.env)
 ```env
-NODE_ENV=development|production|test
-PORT=3000
-JWT_SECRET=your-secret-key
+# Application Settings
+NODE_ENV=development
+BEPORT=8080
+BEURL=http://localhost:8080/api/v1
+JWT_SECRET=your-secret-key-here
 
-# PostgreSQL (production)
+# Frontend Settings  
+FEURL=http://localhost:5173
+FEPORT=5173
+
+# Database Settings (PostgreSQL)
 DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=beermachine
@@ -124,10 +96,11 @@ DB_USER=postgres
 DB_PASSWORD=password
 ```
 
-#### Frontend (Vite configuration)
-```env
-VITE_API_URL=http://localhost:3000/api/v1
-```
+**Required Variables:**
+- `BEPORT`: Backend server port
+- `BEURL`: Backend API URL for frontend
+- `JWT_SECRET`: Secret key for JWT token generation
+- `DB_*`: Database connection settings
 
 ## CSV Import Format
 
@@ -147,160 +120,91 @@ john_doe,0,15-03-1995,false
 
 ## API Endpoints
 
-### Authentication
+**Authentication**
 - `POST /api/v1/auth/login` - Admin login
 - `POST /api/v1/auth/create-admin` - Create admin user
 
-### Users
-- `GET /api/v1/users` - List users (with pagination and filters)
-- `POST /api/v1/users` - Create new user
-- `POST /api/v1/users/:id/add-credits` - Add credits to user
-- `POST /api/v1/users/import-csv` - Bulk import from CSV
+**Users** (Admin only)
+- `GET /api/v1/users` - List users with pagination/filters
+- `POST /api/v1/users` - Create user
 - `PUT /api/v1/users/:id` - Update user
+- `POST /api/v1/users/:id/add-credits` - Add credits
+- `POST /api/v1/users/import-csv` - CSV import
+- `GET /api/v1/users/export-csv` - CSV export
 
-### Drinks
-- `GET /api/v1/drinks` - List drinks (with pagination and filters)
-- `POST /api/v1/drinks` - Create new drink
+**Drinks** (Admin only)
+- `GET /api/v1/drinks` - List drinks
+- `POST /api/v1/drinks` - Create drink
 - `PUT /api/v1/drinks/:id` - Update drink
-- `POST /api/v1/drinks/:id/add-stock` - Add inventory stock
-- `DELETE /api/v1/drinks/:id` - Soft delete drink
+- `POST /api/v1/drinks/:id/add-stock` - Add stock
+- `DELETE /api/v1/drinks/:id` - Delete drink
 
-### Sales
-- `POST /api/v1/sales/sell` - Process sale transaction
+**Sales** (Admin only)
+- `POST /api/v1/sales/sell` - Process sale
 - `GET /api/v1/sales/history` - Transaction history
 - `GET /api/v1/sales/stats` - Sales statistics
 
-## Database Schema
+## CSV Import/Export
 
-### Users Table
-- `id` (Primary Key)
-- `username` (Unique)
-- `password` (Hashed, nullable for non-admin users)
-- `credits` (Integer, default 0)
-- `dateOfBirth` (Date, nullable)
-- `userType` (Enum: admin, member, donator)
-- `isActive` (Boolean, default true)
+Import users in bulk using CSV files with this format:
 
-### Drinks Table
-- `id` (Primary Key)
-- `name` (Unique)
-- `description` (Text, nullable)
-- `price` (Integer, credits)
-- `stock` (Integer, default 0)
-- `category` (String, default 'beverage')
-- `isActive` (Boolean, default true)
+```csv
+username,credits,dateOfBirth,isMember
+513286,10,13-05-2002,true
+john_doe,0,15-03-1995,false
+```
 
-### Transactions Table
-- `id` (Primary Key)
-- `userId` (Foreign Key to Users)
-- `drinkId` (Foreign Key to Drinks, nullable)
-- `adminId` (Foreign Key to Users - processing admin)
-- `type` (Enum: sale, credit_addition)
-- `amount` (Integer, credits involved)
-- `quantity` (Integer, for sales)
-- `description` (String)
-- `transactionDate` (DateTime, auto-generated)
+**Fields:**
+- `username`: Unique identifier (string)
+- `credits`: Initial credit amount (number)
+- `dateOfBirth`: DD-MM-YYYY format
+- `isMember`: true for members, false for donators
 
 ## Development
 
-### Backend Development
+### Local Development (without Docker)
 ```bash
+# Backend
 cd backend
 pnpm install
-pnpm dev  # Starts with file watching
-```
+pnpm dev
 
-### Frontend Development
-```bash
-cd frontend
+# Frontend (in another terminal)
+cd frontend  
 pnpm install
-pnpm dev  # Starts Vite dev server
+pnpm dev
 ```
 
-### Running Tests
+### Testing
 ```bash
-# Backend tests
-cd backend
-pnpm test
-
-# Frontend tests
-cd frontend
-pnpm test:unit
+cd backend && pnpm test  # Backend tests
+cd frontend && pnpm test:unit  # Frontend tests
 ```
-
-## Deployment
-
-### Docker Production
-1. Update environment variables in `.env.production`
-2. Build and start services:
-```bash
-docker-compose up --build -d
-```
-
-### Manual Deployment
-1. Build frontend: `cd frontend && pnpm build`
-2. Set environment variables for production
-3. Start backend: `cd backend && pnpm start`
-4. Serve frontend static files with nginx
-
-## Security Considerations
-
-- JWT tokens expire after 24 hours
-- Passwords are hashed with bcryptjs
-- Input validation on all endpoints
-- SQL injection protection via Sequelize
-- CORS configured for development/production
-- Helmet.js for security headers
 
 ## Troubleshooting
 
-### Common Issues
+**Database Connection Issues**
+- Ensure PostgreSQL container is running: `docker-compose logs postgres`
+- Check environment variables in `.env`
+- Verify database credentials
 
-**Database Connection Failed**
-- Check PostgreSQL container is running
-- Verify environment variables
-- Check network connectivity between containers
-
-**Frontend API Calls Failing**
-- Ensure backend is running on correct port
-- Check CORS configuration
-- Verify API URL in frontend environment
+**API Connection Issues**  
+- Confirm backend is running on correct port
+- Check `BEURL` in `.env` matches frontend expectations
+- Review CORS settings if accessing from different domains
 
 **CSV Import Errors**
-- Check file format matches expected structure
+- Verify CSV format matches expected structure
 - Ensure usernames are unique
-- Verify date format (DD-MM-YYYY)
+- Check date format is DD-MM-YYYY
 
-### Logs
+**View Logs**
 ```bash
-# View all container logs
-docker-compose logs
-
-# View specific service logs
-docker-compose logs backend
-docker-compose logs frontend
-docker-compose logs postgres
+docker-compose logs          # All services
+docker-compose logs backend  # Backend only
+docker-compose logs postgres # Database only
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues and questions:
-1. Check the troubleshooting section
-2. Review the logs for error messages
-3. Create an issue in the repository with:
-   - Error description
-   - Steps to reproduce
-   - Environment details
-   - Relevant log output
+MIT License

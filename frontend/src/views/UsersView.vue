@@ -9,6 +9,9 @@
         <button @click="showCSVModal = true" class="btn">
           Import CSV
         </button>
+        <button @click="showExportModal = true" class="btn">
+          Export CSV
+        </button>
       </div>
     </div>
 
@@ -263,6 +266,39 @@
         </form>
       </div>
     </div>
+
+    <!-- CSV Export Modal -->
+    <div v-if="showExportModal" class="modal-overlay" @click="closeExportModal">
+      <div class="modal" @click.stop>
+        <h2>Export Users to CSV</h2>
+        <div class="csv-info">
+          <p>Export user data in CSV format compatible with import functionality.</p>
+          <p>Format: username, credits, dateOfBirth (DD-MM-YYYY), member (true/false)</p>
+          <p><strong>Note:</strong> Only members and donators will be exported (admin users excluded).</p>
+        </div>
+        
+        <form @submit.prevent="exportCSV">
+          <div class="form-group">
+            <label for="exportType">Filter by User Type (optional):</label>
+            <select id="exportType" v-model="exportType">
+              <option value="">All Users (Members & Donators)</option>
+              <option value="member">Members Only</option>
+              <option value="donator">Donators Only</option>
+            </select>
+          </div>
+          
+          <div class="export-info">
+            <p><strong>Total Users:</strong> {{ usersStore.pagination.total }}</p>
+            <p><strong>File Name:</strong> users-{{ exportType || 'all' }}-export-{{ new Date().toISOString().split('T')[0] }}.csv</p>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeExportModal" class="btn">Cancel</button>
+            <button type="submit" class="btn primary">Export</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -280,9 +316,11 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showCreditsModal = ref(false)
 const showCSVModal = ref(false)
+const showExportModal = ref(false)
 const selectedUser = ref(null)
 const creditAmount = ref(10)
 const csvFileInput = ref(null)
+const exportType = ref('')
 
 const newUser = reactive({
   username: '',
@@ -395,6 +433,21 @@ const importCSV = async () => {
   }
 }
 
+const exportCSV = async () => {
+  const params = {}
+  if (exportType.value) {
+    params.type = exportType.value
+  }
+
+  const result = await usersStore.exportCSV(params)
+  if (result.success) {
+    closeExportModal()
+    showSuccess('Users exported successfully!')
+  } else {
+    showError(result.error)
+  }
+}
+
 const closeCreateModal = () => {
   showCreateModal.value = false
   Object.assign(newUser, {
@@ -428,6 +481,11 @@ const closeCSVModal = () => {
   if (csvFileInput.value) {
     csvFileInput.value.value = ''
   }
+}
+
+const closeExportModal = () => {
+  showExportModal.value = false
+  exportType.value = ''
 }
 
 const formatDate = (date) => {
@@ -683,6 +741,19 @@ th {
 }
 
 .csv-info p {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.export-info {
+  background: #f0f9ff;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--color-teal);
+}
+
+.export-info p {
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
 }
