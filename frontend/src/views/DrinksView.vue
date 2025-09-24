@@ -551,7 +551,7 @@ onMounted(() => {
 }
 
 .modal {
-  background: white;
+  background: var(--color-black);
   padding: 2rem;
   border-radius: 12px;
   width: 100%;

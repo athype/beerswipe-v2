@@ -19,7 +19,7 @@ const User = sequelize.define('User', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: true, // null for members/donators who cannot log in
+    allowNull: true, // null for members/non-members who cannot log in
     validate: {
       len: [6, 255]
     }
@@ -36,7 +36,7 @@ const User = sequelize.define('User', {
     allowNull: true
   },
   userType: {
-    type: DataTypes.ENUM('admin', 'member', 'donator'),
+    type: DataTypes.ENUM('admin', 'member', 'non-member'),
     allowNull: false,
     defaultValue: 'member'
   },

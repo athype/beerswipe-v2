@@ -5,7 +5,7 @@ A modern drink selling and management system for student associations. Features 
 ## Features
 
 - 🔐 **Admin Authentication**: Secure JWT-based login system
-- 👥 **User Management**: Support for admins, members, and donators with CSV import/export
+- 👥 **User Management**: Support for admins, members, and non-members with CSV import/export
 - 💰 **Credit System**: Add credits to user accounts and track balances
 - 🍻 **Inventory Management**: Manage drinks, stock levels, and categories
 - 🛒 **Sales Terminal**: Point-of-sale interface for processing transactions
@@ -116,7 +116,7 @@ john_doe,0,15-03-1995,false
 - `username`: Unique string identifier
 - `credits`: Initial credit amount (number)
 - `dateOfBirth`: DD-MM-YYYY format
-- `isMember`: true for members, false for donators
+- `isMember`: true for members, false for non-members
 
 ## API Endpoints
 
@@ -158,7 +158,7 @@ john_doe,0,15-03-1995,false
 - `username`: Unique identifier (string)
 - `credits`: Initial credit amount (number)
 - `dateOfBirth`: DD-MM-YYYY format
-- `isMember`: true for members, false for donators
+- `isMember`: true for members, false for non-members
 
 ## Development
 
