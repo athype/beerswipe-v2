@@ -69,6 +69,7 @@
                   💰
                 </button>
                 <button 
+                  v-if="user.userType !== 'admin'"
                   @click="openEditModal(user)" 
                   class="btn small"
                   title="Edit User"
@@ -154,6 +155,57 @@
       </div>
     </div>
 
+    <!-- Edit User Modal -->
+    <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+      <div class="modal" @click.stop>
+        <h2>Edit User: {{ editUser.username }}</h2>
+        <form @submit.prevent="updateUser">
+          <div class="form-group">
+            <label for="editUsername">Username:</label>
+            <input
+              id="editUsername"
+              v-model="editUser.username"
+              type="text"
+              required
+            />
+          </div>
+          
+          <div class="form-group">
+            <label for="editUserType">Type:</label>
+            <select id="editUserType" v-model="editUser.userType" required>
+              <option value="member">Member</option>
+              <option value="donator">Donator</option>
+            </select>
+            <small class="form-help">Note: Admin users cannot be edited</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="editDateOfBirth">Date of Birth:</label>
+            <input
+              id="editDateOfBirth"
+              v-model="editUser.dateOfBirth"
+              type="date"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input
+                v-model="editUser.isActive"
+                type="checkbox"
+              />
+              User is active
+            </label>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeEditModal" class="btn">Cancel</button>
+            <button type="submit" class="btn primary">Update User</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Add Credits Modal -->
     <div v-if="showCreditsModal" class="modal-overlay" @click="closeCreditsModal">
       <div class="modal" @click.stop>
@@ -217,12 +269,15 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useUsersStore } from '../stores/users.js'
+import { useNotifications } from '@/composables/useNotifications.js'
 
 const usersStore = useUsersStore()
+const { showSuccess, showError } = useNotifications()
 
 const searchQuery = ref('')
 const filterType = ref('')
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
 const showCreditsModal = ref(false)
 const showCSVModal = ref(false)
 const selectedUser = ref(null)
@@ -234,6 +289,14 @@ const newUser = reactive({
   userType: 'member',
   credits: 0,
   dateOfBirth: ''
+})
+
+const editUser = reactive({
+  id: null,
+  username: '',
+  userType: 'member',
+  dateOfBirth: '',
+  isActive: true
 })
 
 const searchUsers = async () => {
@@ -256,9 +319,9 @@ const createUser = async () => {
   const result = await usersStore.createUser(newUser)
   if (result.success) {
     closeCreateModal()
-    alert('User created successfully!')
+    showSuccess('User created successfully!')
   } else {
-    alert(result.error)
+    showError(result.error)
   }
 }
 
@@ -270,22 +333,50 @@ const openAddCreditsModal = (user) => {
 
 const addCredits = async () => {
   if (creditAmount.value % 10 !== 0) {
-    alert('Credits must be added in blocks of 10')
+    showError('Credits must be added in blocks of 10')
     return
   }
 
   const result = await usersStore.addCredits(selectedUser.value.id, creditAmount.value)
   if (result.success) {
     closeCreditsModal()
-    alert('Credits added successfully!')
+    showSuccess('Credits added successfully!')
   } else {
-    alert(result.error)
+    showError(result.error)
   }
 }
 
 const openEditModal = (user) => {
-  // TODO: Implement edit functionality
-  alert('Edit functionality will be implemented')
+  if (user.userType === 'admin') {
+    showError('Admin users cannot be edited')
+    return
+  }
+  
+  selectedUser.value = user
+  Object.assign(editUser, {
+    id: user.id,
+    username: user.username,
+    userType: user.userType,
+    dateOfBirth: user.dateOfBirth || '',
+    isActive: user.isActive
+  })
+  showEditModal.value = true
+}
+
+const updateUser = async () => {
+  const result = await usersStore.updateUser(editUser.id, {
+    username: editUser.username,
+    userType: editUser.userType,
+    dateOfBirth: editUser.dateOfBirth || null,
+    isActive: editUser.isActive
+  })
+  
+  if (result.success) {
+    closeEditModal()
+    showSuccess('User updated successfully!')
+  } else {
+    showError(result.error)
+  }
 }
 
 const importCSV = async () => {
@@ -298,9 +389,9 @@ const importCSV = async () => {
   const result = await usersStore.importCSV(formData)
   if (result.success) {
     closeCSVModal()
-    alert(`Import completed. ${result.data.imported} users imported, ${result.data.errors} errors.`)
+    showSuccess(`Import completed. ${result.data.imported} users imported, ${result.data.errors} errors.`)
   } else {
-    alert(result.error)
+    showError(result.error)
   }
 }
 
@@ -318,6 +409,18 @@ const closeCreditsModal = () => {
   showCreditsModal.value = false
   selectedUser.value = null
   creditAmount.value = 10
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  selectedUser.value = null
+  Object.assign(editUser, {
+    id: null,
+    username: '',
+    userType: 'member',
+    dateOfBirth: '',
+    isActive: true
+  })
 }
 
 const closeCSVModal = () => {
@@ -537,6 +640,25 @@ th {
   border: 2px solid #e1e1e1;
   border-radius: 6px;
   font-size: 1rem;
+}
+
+.form-help {
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto !important;
+  margin: 0;
 }
 
 .modal-actions {
