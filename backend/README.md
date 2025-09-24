@@ -4,7 +4,7 @@ A drink management system API for SV ADA, built with Express.js and PostgreSQL.
 
 ## Features
 
-- User management (members, donators, admins)
+- User management (members, non-members, admins)
 - Credit system with transaction tracking
 - Drink inventory management
 - Sales processing

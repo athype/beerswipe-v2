@@ -21,6 +21,12 @@
   --color-warning: #ffc107;
   --color-info: #17a2b8;
   
+  /* Dark Theme Component Colors */
+  --color-card-bg: #343434;
+  --color-modal-bg: #343434;
+  --color-input-bg: #222222;
+  --color-table-bg: #343434;
+  
   /* Typography */
   --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   --font-size-xs: 0.75rem;
@@ -164,7 +170,8 @@ a:hover {
    ============================================ */
 
 .card {
-  background: var(--color-white);
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-teal);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   padding: var(--spacing-xl);
@@ -181,7 +188,7 @@ a:hover {
   font-size: var(--font-size-xl);
   font-weight: 600;
   margin-bottom: 0;
-  color: var(--color-black);
+  color: var(--color-light-grey);
 }
 
 /* ============================================
@@ -271,7 +278,7 @@ a:hover {
   display: block;
   margin-bottom: var(--spacing-sm);
   font-weight: 500;
-  color: var(--color-black);
+  color: var(--color-light-grey);
 }
 
 .form-input,
@@ -283,7 +290,8 @@ a:hover {
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   transition: border-color 0.2s ease;
-  background: var(--color-white);
+  background: var(--color-input-bg);
+  color: var(--color-light-grey);
 }
 
 .form-input:focus,
@@ -319,7 +327,7 @@ a:hover {
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--color-white);
+  background: var(--color-table-bg);
 }
 
 .table th,
@@ -327,12 +335,13 @@ a:hover {
   padding: var(--spacing-md);
   text-align: left;
   border-bottom: 1px solid var(--color-grey);
+  color: var(--color-light-grey);
 }
 
 .table th {
-  background: var(--color-light-grey);
+  background: var(--color-teal);
   font-weight: 600;
-  color: var(--color-black);
+  color: var(--color-white);
 }
 
 .table tbody tr:hover {
@@ -415,7 +424,8 @@ a:hover {
 }
 
 .popup {
-  background: var(--color-white);
+  background: var(--color-modal-bg);
+  border: 1px solid var(--color-teal);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   max-width: 500px;
@@ -436,6 +446,7 @@ a:hover {
   font-size: var(--font-size-lg);
   font-weight: 600;
   margin: 0;
+  color: var(--color-light-grey);
 }
 
 .popup-close {
@@ -551,6 +562,52 @@ a:hover {
 .block { display: block; }
 .inline { display: inline; }
 .inline-block { display: inline-block; }
+
+/* ============================================
+   DARK THEME OVERRIDES
+   ============================================ */
+
+/* Override any remaining white backgrounds */
+.modal, .modal-content, .popup-content {
+  background: var(--color-modal-bg) !important;
+  color: var(--color-light-grey) !important;
+}
+
+/* Override table styling throughout the app */
+table {
+  background: var(--color-table-bg) !important;
+  color: var(--color-light-grey) !important;
+}
+
+table th {
+  background: var(--color-teal) !important;
+  color: var(--color-white) !important;
+}
+
+table td {
+  color: var(--color-light-grey) !important;
+}
+
+/* Override form inputs throughout the app */
+input, select, textarea {
+  background: var(--color-input-bg) !important;
+  color: var(--color-light-grey) !important;
+  border-color: var(--color-grey) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-teal) !important;
+}
+
+/* Ensure card-like elements use dark theme */
+.card, .users-table, .drinks-table, .sales-container {
+  background: var(--color-card-bg) !important;
+}
+
+/* Override any hardcoded dark text colors */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-light-grey) !important;
+}
 
 /* ============================================
    RESPONSIVE DESIGN

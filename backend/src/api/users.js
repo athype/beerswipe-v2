@@ -16,7 +16,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
     const offset = (page - 1) * limit;
 
     const whereClause = {};
-    if (type && ['admin', 'member', 'donator'].includes(type)) {
+    if (type && ['admin', 'member', 'non-member'].includes(type)) {
       whereClause.userType = type;
     }
     if (search) {
@@ -64,7 +64,7 @@ router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Create new user (member/donator)
+// Create new user (member/non-member)
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { username, credits = 0, dateOfBirth, userType = 'member' } = req.body;
@@ -73,7 +73,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Username is required' });
     }
 
-    if (!['member', 'donator'].includes(userType)) {
+    if (!['member', 'non-member'].includes(userType)) {
       return res.status(400).json({ error: 'Invalid user type' });
     }
 
@@ -88,7 +88,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       credits,
       dateOfBirth,
       userType,
-      password: null // Members and donators cannot log in
+      password: null // Members and non-members cannot log in
     });
 
     res.status(201).json({
@@ -153,11 +153,11 @@ router.get('/export-csv', authenticateToken, requireAdmin, async (req, res) => {
     const { type } = req.query;
     
     const whereClause = {};
-    // Only export non-admin users (members and donators)
-    if (type && ['member', 'donator'].includes(type)) {
+    // Only export non-admin users (members and non-members)
+    if (type && ['member', 'non-member'].includes(type)) {
       whereClause.userType = type;
     } else {
-      whereClause.userType = { [Op.in]: ['member', 'donator'] };
+      whereClause.userType = { [Op.in]: ['member', 'non-member'] };
     }
 
     const users = await User.findAll({
@@ -277,7 +277,7 @@ router.post('/import-csv', authenticateToken, requireAdmin, upload.single('csvFi
             return;
           }
 
-          const userType = isMember === 'true' ? 'member' : 'donator';
+          const userType = isMember === 'true' ? 'member' : 'non-member';
           const parsedCredits = parseInt(credits) || 0;
           
           // Parse date with flexible format handling

@@ -26,7 +26,7 @@
       <select v-model="filterType" @change="searchUsers" class="filter-select">
         <option value="">All Types</option>
         <option value="member">Members</option>
-        <option value="donator">Donators</option>
+        <option value="non-member">Non-Members</option>
         <option value="admin">Admins</option>
       </select>
     </div>
@@ -126,7 +126,7 @@
             <label for="userType">Type:</label>
             <select id="userType" v-model="newUser.userType" required>
               <option value="member">Member</option>
-              <option value="donator">Donator</option>
+              <option value="non-member">Non-Member</option>
             </select>
           </div>
           
@@ -177,7 +177,7 @@
             <label for="editUserType">Type:</label>
             <select id="editUserType" v-model="editUser.userType" required>
               <option value="member">Member</option>
-              <option value="donator">Donator</option>
+              <option value="non-member">Non-Member</option>
             </select>
             <small class="form-help">Note: Admin users cannot be edited</small>
           </div>
@@ -274,16 +274,16 @@
         <div class="csv-info">
           <p>Export user data in CSV format compatible with import functionality.</p>
           <p>Format: username, credits, dateOfBirth (DD-MM-YYYY), member (true/false)</p>
-          <p><strong>Note:</strong> Only members and donators will be exported (admin users excluded).</p>
+          <p><strong>Note:</strong> Only members and non-members will be exported (admin users excluded).</p>
         </div>
         
         <form @submit.prevent="exportCSV">
           <div class="form-group">
             <label for="exportType">Filter by User Type (optional):</label>
             <select id="exportType" v-model="exportType">
-              <option value="">All Users (Members & Donators)</option>
+              <option value="">All Users (Members & Non-Members)</option>
               <option value="member">Members Only</option>
-              <option value="donator">Donators Only</option>
+              <option value="non-member">Non-Members Only</option>
             </select>
           </div>
           
@@ -582,9 +582,9 @@ td {
 }
 
 th {
-  background: #f8f9fa;
+  background: var(--color-teal);
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--color-white);
 }
 
 .user-type {
@@ -605,7 +605,7 @@ th {
   color: white;
 }
 
-.user-type.donator {
+.user-type.non-member {
   background: #f39c12;
   color: white;
 }
@@ -700,7 +700,7 @@ th {
 }
 
 .modal {
-  background: white;
+  background: var(--color-black);
   padding: 2rem;
   border-radius: 12px;
   width: 100%;
@@ -711,7 +711,7 @@ th {
 
 .modal h2 {
   margin-bottom: 1.5rem;
-  color: #2c3e50;
+  color: var(--color-light-grey);
 }
 
 .form-group {
@@ -722,7 +722,7 @@ th {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--color-light-grey);
 }
 
 .form-group input,
@@ -736,7 +736,7 @@ th {
 
 .form-help {
   font-size: 0.8rem;
-  color: #7f8c8d;
+  color: var(--color-medium-grey);
   margin-top: 0.25rem;
   display: block;
 }
@@ -795,7 +795,7 @@ th {
 .loading,
 .no-data {
   text-align: center;
-  color: #7f8c8d;
+  color: var(--color-medium-grey);
   padding: 3rem;
 }
 </style>

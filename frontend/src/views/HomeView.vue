@@ -23,7 +23,7 @@
     <div class="features">
       <div class="feature-card">
         <h3>User Management</h3>
-        <p>Manage members, donators, and admin accounts with ease</p>
+        <p>Manage members, non-members, and admin accounts with ease</p>
       </div>
       
       <div class="feature-card">
@@ -121,13 +121,14 @@ const authStore = useAuthStore()
 }
 
 .btn.primary {
-  background: white;
-  color: var(--color-teal);
-  border-color: white;
+  background: var(--color-teal);
+  color: var(--color-white);
+  border-color: var(--color-teal);
 }
 
 .btn.primary:hover {
-  background: #f8f9fa;
+  background: var(--color-green);
+  border-color: var(--color-green);
 }
 
 .btn.large {
@@ -143,7 +144,7 @@ const authStore = useAuthStore()
 }
 
 .feature-card {
-  background: white;
+  background: var(--color-black);
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
