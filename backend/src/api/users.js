@@ -194,6 +194,56 @@ router.get('/export-csv', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+function parseFlexibleDate(dateStr) {
+  if (!dateStr || dateStr.trim() === '') return null;
+  
+  const cleanDate = dateStr.trim();
+  
+  // Check for YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+    const date = new Date(cleanDate);
+    if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2020) {
+      return date;
+    }
+  }
+  
+  // Check for DD-MM-YYYY format
+  if (/^\d{2}-\d{2}-\d{4}$/.test(cleanDate)) {
+    const [day, month, year] = cleanDate.split('-');
+    const date = new Date(year, month - 1, day); // month is 0-indexed in JS
+    if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2020) {
+      return date;
+    }
+  }
+  
+  // Try to parse ambiguous formats intelligently
+  if (/^\d{2}-\d{2}-\d{4}$/.test(cleanDate) || /^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+    const parts = cleanDate.split('-');
+    
+    // If first part is 4 digits, assume YYYY-MM-DD
+    if (parts[0].length === 4) {
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
+      if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2020) {
+        return date;
+      }
+    } else {
+      // Assume DD-MM-YYYY
+      const date = new Date(parts[2], parts[1] - 1, parts[0]);
+      if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2020) {
+        return date;
+      }
+    }
+  }
+  
+  // If all else fails, try generic Date parsing
+  const fallbackDate = new Date(cleanDate);
+  if (!isNaN(fallbackDate.getTime()) && fallbackDate.getFullYear() >= 1900 && fallbackDate.getFullYear() <= 2020) {
+    return fallbackDate;
+  }
+  
+  return null;
+}
+
 // Import users from CSV
 router.post('/import-csv', authenticateToken, requireAdmin, upload.single('csvFile'), async (req, res) => {
   try {
@@ -203,6 +253,7 @@ router.post('/import-csv', authenticateToken, requireAdmin, upload.single('csvFi
 
     const results = [];
     const errors = [];
+    const dateWarnings = [];
     let lineNumber = 0;
 
     const stream = Readable.from(req.file.buffer);
@@ -229,10 +280,19 @@ router.post('/import-csv', authenticateToken, requireAdmin, upload.single('csvFi
           const userType = isMember === 'true' ? 'member' : 'donator';
           const parsedCredits = parseInt(credits) || 0;
           
+          // Parse date with flexible format handling
+          let parsedDate = null;
+          if (dateOfBirth) {
+            parsedDate = parseFlexibleDate(dateOfBirth);
+            if (!parsedDate && dateOfBirth.trim() !== '') {
+              dateWarnings.push(`Line ${lineNumber}: Could not parse date "${dateOfBirth}" for user ${username}, using null`);
+            }
+          }
+          
           const user = await User.create({
             username,
             credits: parsedCredits,
-            dateOfBirth: dateOfBirth || null,
+            dateOfBirth: parsedDate,
             userType,
             password: null
           });
@@ -240,7 +300,8 @@ router.post('/import-csv', authenticateToken, requireAdmin, upload.single('csvFi
           results.push({
             username: user.username,
             credits: user.credits,
-            userType: user.userType
+            userType: user.userType,
+            dateOfBirth: parsedDate ? parsedDate.toISOString().split('T')[0] : null
           });
         } catch (error) {
           errors.push(`Line ${lineNumber}: ${error.message}`);
@@ -251,8 +312,9 @@ router.post('/import-csv', authenticateToken, requireAdmin, upload.single('csvFi
           message: 'CSV import completed',
           imported: results.length,
           errors: errors.length,
+          warnings: dateWarnings.length,
           results,
-          errors
+          errors: [...errors, ...dateWarnings]
         });
       })
       .on('error', (error) => {

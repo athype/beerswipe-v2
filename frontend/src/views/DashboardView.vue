@@ -219,7 +219,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-white);
+  background: var(--color-black);
   border-radius: var(--border-radius);
   border: 1px solid var(--color-grey);
 }

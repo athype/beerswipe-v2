@@ -9,8 +9,8 @@
         <button @click="showCSVModal = true" class="btn">
           Import CSV
         </button>
-        <button @click="showExportModal = true" class="btn">
-          Export CSV
+        <button @click="showExportModal = true" class="btn export-btn">
+          📊 Export CSV
         </button>
       </div>
     </div>
@@ -507,18 +507,40 @@ onMounted(() => {
 .users-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .users-header h1 {
   font-size: 2.5rem;
   color: var(--color-teal);
+  flex-shrink: 0;
 }
 
 .header-actions {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Responsive header for smaller screens */
+@media (max-width: 768px) {
+  .users-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .users-header h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .header-actions {
+    justify-content: flex-start;
+  }
 }
 
 .users-filters {
@@ -541,7 +563,7 @@ onMounted(() => {
 }
 
 .users-table {
-  background: white;
+  background: var(--color-black);
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -624,6 +646,8 @@ th {
   cursor: pointer;
   font-size: 0.9rem;
   transition: background 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn:hover {
@@ -632,6 +656,16 @@ th {
 
 .btn.primary {
   background: var(--color-green);
+}
+
+.btn.export-btn {
+  background: var(--color-warning, #ffc107);
+  color: var(--color-black);
+  font-weight: 600;
+}
+
+.btn.export-btn:hover {
+  background: #e0a800;
 }
 
 .btn.small {
