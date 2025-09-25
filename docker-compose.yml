@@ -48,9 +48,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    environment:
-      VITE_API_URL: ${BEURL}
-      VITE_API_PORT: ${BEPORT}
+      args:
+        VITE_API_URL: ${BEURL}
+        VITE_API_PORT: ${BEPORT}
     depends_on:
       - backend
     ports:

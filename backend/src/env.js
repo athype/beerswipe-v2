@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  PORT: z.coerce.number().default(8080),
+  PORT: z.coerce.number().default(6969),
   JWT_SECRET: z.string().default("your-secret-key-change-in-production"),
   
   // Frontend URL configuration
