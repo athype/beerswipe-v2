@@ -18,7 +18,7 @@ COPY . .
 RUN mkdir -p uploads
 
 # Expose port (default 8080, can be overridden by environment)
-EXPOSE 8080
+EXPOSE 6969
 
 # Start the application
 CMD ["pnpm", "start"]

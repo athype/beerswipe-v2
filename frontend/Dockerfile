@@ -14,6 +14,14 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# Accept build arguments for environment variables
+ARG VITE_API_URL
+ARG VITE_API_PORT
+
+# Set environment variables for build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_API_PORT=$VITE_API_PORT
+
 # Build the application
 RUN pnpm build
 
