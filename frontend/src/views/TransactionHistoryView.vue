@@ -170,17 +170,15 @@ const filters = reactive({
 const showUserSuggestions = ref(false)
 const userSuggestions = ref([])
 
-// Debounced search for user filter
 let searchTimeout = null
 const debouncedSearch = async () => {
   clearTimeout(searchTimeout)
   
-  // Update user suggestions for autocomplete
   if (filters.userSearch.length >= 2) {
     try {
       const result = await usersStore.fetchUsers({ 
         search: filters.userSearch,
-        limit: 10 
+        limit: 10
       })
       if (result.success) {
         userSuggestions.value = usersStore.users
@@ -192,7 +190,6 @@ const debouncedSearch = async () => {
     userSuggestions.value = []
   }
   
-  // Apply filters after debounce
   searchTimeout = setTimeout(() => {
     applyFilters()
   }, 500)
@@ -208,7 +205,29 @@ const selectUser = (user) => {
 const hideUserSuggestions = () => {
   setTimeout(() => {
     showUserSuggestions.value = false
-  }, 200) // Delay to allow click events on suggestions
+  }, 200)
+}
+
+const getUserIdFromSearch = async () => {
+  if (!filters.userSearch.trim()) {
+    return null
+  }
+  
+  try {
+    const userSearchResult = await usersStore.fetchUsers({ 
+      search: filters.userSearch,
+      limit: 100
+    })
+    
+    if (userSearchResult.success && usersStore.users.length > 0) {
+      return usersStore.users[0].id
+    } else {
+      return -1
+    }
+  } catch (error) {
+    console.error('User search error:', error)
+    return null
+  }
 }
 
 const salesCount = computed(() => {
@@ -228,25 +247,9 @@ const totalRevenue = computed(() => {
 const applyFilters = async () => {
   const params = {}
   
-  // Handle user search by finding matching users first
-  if (filters.userSearch.trim()) {
-    try {
-      // Search for users matching the username
-      const userSearchResult = await usersStore.fetchUsers({ 
-        search: filters.userSearch,
-        limit: 100 // Get more users to find matches
-      })
-      
-      if (userSearchResult.success && usersStore.users.length > 0) {
-        // Use the first matching user's ID
-        params.userId = usersStore.users[0].id
-      } else {
-        // No users found, search will return empty results
-        params.userId = -1 // Non-existent user ID
-      }
-    } catch (error) {
-      console.error('User search error:', error)
-    }
+  const userId = await getUserIdFromSearch()
+  if (userId !== null) {
+    params.userId = userId
   }
   
   if (filters.type) {
@@ -267,22 +270,9 @@ const applyFilters = async () => {
 const changePage = async (page) => {
   const params = { page }
   
-  // Handle user search for pagination
-  if (filters.userSearch.trim()) {
-    try {
-      const userSearchResult = await usersStore.fetchUsers({ 
-        search: filters.userSearch,
-        limit: 100
-      })
-      
-      if (userSearchResult.success && usersStore.users.length > 0) {
-        params.userId = usersStore.users[0].id
-      } else {
-        params.userId = -1
-      }
-    } catch (error) {
-      console.error('User search error:', error)
-    }
+  const userId = await getUserIdFromSearch()
+  if (userId !== null) {
+    params.userId = userId
   }
   
   if (filters.type) params.type = filters.type
