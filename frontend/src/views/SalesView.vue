@@ -300,6 +300,9 @@ const processeSale = async () => {
   selectedUser.value.credits -= totalCost.value
 
   clearCart()
+  selectedUser.value = null
+  searchQuery.value = ''
+  
   await Promise.all([
     drinksStore.fetchDrinks(),
     salesStore.fetchTransactionHistory({ limit: 10 })
@@ -347,7 +350,7 @@ onMounted(async () => {
 }
 
 .sales-header h1 {
-  font-size: 2.5rem;
+  font-size: var(--font-size-4xl);
   color: var(--color-teal);
   margin-bottom: 0.5rem;
 }
