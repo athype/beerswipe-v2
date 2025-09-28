@@ -80,7 +80,8 @@ router.get('/export-csv', authenticateToken, requireAdmin, async (req, res) => {
       return `${user.username},${user.credits},${dateOfBirth},${isMember}`;
     });
 
-    const csvContent = csvRows.join('\n');
+    const header = 'username,credits,dateOfBirth,isMember';
+    const csvContent = [header, ...csvRows].join('\n');
     
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv');
