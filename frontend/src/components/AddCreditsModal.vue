@@ -14,6 +14,7 @@
           min="10"
           step="10"
           required
+          :disabled="isLoading"
           class="form-input"
         />
       </div>
@@ -25,8 +26,10 @@
 
     <template #footer>
       <div class="modal-actions">
-        <button type="button" @click="close" class="btn btn-secondary">Cancel</button>
-        <button type="button" @click="handleSubmit" class="btn btn-primary">Add Credits</button>
+        <button type="button" @click="close" :disabled="isLoading" class="btn btn-secondary">Cancel</button>
+        <button type="button" @click="handleSubmit" :disabled="isLoading" class="btn btn-primary">
+          {{ isLoading ? 'Adding Credits...' : 'Add Credits' }}
+        </button>
       </div>
     </template>
   </Modal>
@@ -35,6 +38,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
+import { useUsersStore } from '../stores/users.js'
 import Modal from './Modal.vue'
 
 const props = defineProps({
@@ -51,19 +55,41 @@ const props = defineProps({
 const emit = defineEmits(['close', 'success'])
 
 const { showSuccess, showError } = useNotifications()
+const usersStore = useUsersStore()
 
 const creditAmount = ref(10)
+const isLoading = ref(false)
 
 const close = () => {
   emit('close')
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (creditAmount.value % 10 !== 0) {
     showError('Credits must be added in blocks of 10')
     return
   }
-  emit('success', creditAmount.value)
+
+  if (!props.user?.id) {
+    showError('No user selected')
+    return
+  }
+
+  isLoading.value = true
+
+  try {
+    const result = await usersStore.addCredits(props.user.id, creditAmount.value)
+    if (result.success) {
+      showSuccess('Credits added successfully!')
+      emit('success')
+    } else {
+      showError(result.error || 'Failed to add credits')
+    }
+  } catch (error) {
+    showError('Failed to add credits')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 watch(() => props.show, (newVal) => {
@@ -143,5 +169,14 @@ watch(() => props.show, (newVal) => {
 
 .btn-secondary:hover {
   background: #545b62;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  background: var(--color-green) !important;
 }
 </style>

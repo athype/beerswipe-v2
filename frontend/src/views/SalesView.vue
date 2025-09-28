@@ -314,7 +314,7 @@ const openAddCreditsModal = () => {
 
 const handleCreditsSuccess = () => {
   closeCreditsModal()
-  showSuccess('Credits added successfully!')
+  // Success message is now handled by the modal component
 }
 
 const closeCreditsModal = () => {
