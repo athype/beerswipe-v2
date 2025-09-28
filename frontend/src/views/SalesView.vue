@@ -143,6 +143,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useNotifications } from '@/composables/useNotifications.js'
 import { useUsersStore } from '../stores/users.js'
 import { useDrinksStore } from '../stores/drinks.js'
 import { useSalesStore } from '../stores/sales.js'
@@ -150,6 +151,7 @@ import { useSalesStore } from '../stores/sales.js'
 const usersStore = useUsersStore()
 const drinksStore = useDrinksStore()
 const salesStore = useSalesStore()
+const { showSuccess, showError } = useNotifications()
 
 const searchQuery = ref('')
 const drinkSearchQuery = ref('')
@@ -240,22 +242,20 @@ const processeSale = async () => {
     })
 
     if (!result.success) {
-      alert(`Error processing sale: ${result.error}`)
+      showError(result.error || 'Failed to process sale')
       return
     }
   }
-
-  // Update user credits locally
+  
   selectedUser.value.credits -= totalCost.value
 
-  // Clear cart and refresh data
   clearCart()
   await Promise.all([
     drinksStore.fetchDrinks(),
     salesStore.fetchTransactionHistory({ limit: 10 })
   ])
 
-  alert('Sale processed successfully!')
+  showSuccess('Sale processed successfully!')
 }
 
 const formatTime = (date) => {
