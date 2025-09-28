@@ -7,13 +7,28 @@
     <div class="history-filters">
       <div class="filter-group">
         <label for="userFilter">User:</label>
-        <input
-          id="userFilter"
-          v-model="filters.userSearch"
-          type="text"
-          placeholder="Search by username..."
-          @input="debouncedSearch"
-        />
+        <div class="user-search-container">
+          <input
+            id="userFilter"
+            v-model="filters.userSearch"
+            type="text"
+            placeholder="Search by username..."
+            @input="debouncedSearch"
+            @focus="showUserSuggestions = true"
+            @blur="hideUserSuggestions"
+          />
+          <div v-if="showUserSuggestions && userSuggestions.length > 0" class="user-suggestions">
+            <div 
+              v-for="user in userSuggestions" 
+              :key="user.id"
+              class="user-suggestion"
+              @mousedown="selectUser(user)"
+            >
+              <span class="suggestion-username">{{ user.username }}</span>
+              <span class="suggestion-type">{{ user.userType }}</span>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div class="filter-group">
@@ -140,8 +155,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useSalesStore } from '../stores/sales.js'
+import { useUsersStore } from '../stores/users.js'
 
 const salesStore = useSalesStore()
+const usersStore = useUsersStore()
 
 const filters = reactive({
   userSearch: '',
@@ -150,13 +167,67 @@ const filters = reactive({
   endDate: ''
 })
 
-// Debounced search for user filter
+const showUserSuggestions = ref(false)
+const userSuggestions = ref([])
+
 let searchTimeout = null
-const debouncedSearch = () => {
+const debouncedSearch = async () => {
   clearTimeout(searchTimeout)
+  
+  if (filters.userSearch.length >= 2) {
+    try {
+      const result = await usersStore.fetchUsers({ 
+        search: filters.userSearch,
+        limit: 10
+      })
+      if (result.success) {
+        userSuggestions.value = usersStore.users
+      }
+    } catch (error) {
+      console.error('User suggestion error:', error)
+    }
+  } else {
+    userSuggestions.value = []
+  }
+  
   searchTimeout = setTimeout(() => {
     applyFilters()
   }, 500)
+}
+
+const selectUser = (user) => {
+  filters.userSearch = user.username
+  showUserSuggestions.value = false
+  userSuggestions.value = []
+  applyFilters()
+}
+
+const hideUserSuggestions = () => {
+  setTimeout(() => {
+    showUserSuggestions.value = false
+  }, 200)
+}
+
+const getUserIdFromSearch = async () => {
+  if (!filters.userSearch.trim()) {
+    return null
+  }
+  
+  try {
+    const userSearchResult = await usersStore.fetchUsers({ 
+      search: filters.userSearch,
+      limit: 100
+    })
+    
+    if (userSearchResult.success && usersStore.users.length > 0) {
+      return usersStore.users[0].id
+    } else {
+      return -1
+    }
+  } catch (error) {
+    console.error('User search error:', error)
+    return null
+  }
 }
 
 const salesCount = computed(() => {
@@ -176,9 +247,9 @@ const totalRevenue = computed(() => {
 const applyFilters = async () => {
   const params = {}
   
-  if (filters.userSearch) {
-    // Note: This would require backend support for user search in transactions
-    // For now, we'll filter client-side after fetching
+  const userId = await getUserIdFromSearch()
+  if (userId !== null) {
+    params.userId = userId
   }
   
   if (filters.type) {
@@ -198,6 +269,11 @@ const applyFilters = async () => {
 
 const changePage = async (page) => {
   const params = { page }
+  
+  const userId = await getUserIdFromSearch()
+  if (userId !== null) {
+    params.userId = userId
+  }
   
   if (filters.type) params.type = filters.type
   if (filters.startDate) params.startDate = filters.startDate
@@ -262,7 +338,7 @@ onMounted(() => {
 .filter-group label {
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--color-light-grey);
 }
 
 .filter-group input,
@@ -271,6 +347,58 @@ onMounted(() => {
   border: 2px solid #e1e1e1;
   border-radius: 6px;
   font-size: 1rem;
+}
+
+.user-search-container {
+  position: relative;
+}
+
+.user-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-teal);
+  border-radius: 6px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.user-suggestion {
+  padding: 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-grey);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-suggestion:hover {
+  background: var(--color-teal);
+  color: var(--color-white);
+}
+
+.user-suggestion:last-child {
+  border-bottom: none;
+}
+
+.suggestion-username {
+  font-weight: 500;
+  color: var(--color-light-grey);
+}
+
+.suggestion-type {
+  font-size: 0.8rem;
+  color: var(--color-medium-grey);
+  text-transform: uppercase;
+}
+
+.user-suggestion:hover .suggestion-username,
+.user-suggestion:hover .suggestion-type {
+  color: var(--color-white);
 }
 
 .transactions-table {
@@ -294,9 +422,9 @@ td {
 }
 
 th {
-  background: #f8f9fa;
+  background: var(--color-teal);
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--color-white);
   position: sticky;
   top: 0;
 }
@@ -330,7 +458,7 @@ th {
 
 .user-type {
   font-size: 0.8rem;
-  color: #7f8c8d;
+  color: var(--color-medium-grey);
   text-transform: uppercase;
 }
 
@@ -380,7 +508,7 @@ th {
 }
 
 .stats-summary h2 {
-  color: #2c3e50;
+  color: var(--color-light-grey);
   margin-bottom: 1.5rem;
 }
 
@@ -391,7 +519,7 @@ th {
 }
 
 .stat-card {
-  background: #f8f9fa;
+  background: var(--color-card-bg);
   padding: 1.5rem;
   border-radius: 8px;
   text-align: center;
@@ -399,7 +527,7 @@ th {
 }
 
 .stat-card h3 {
-  color: #2c3e50;
+  color: var(--color-light-grey);
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -415,7 +543,7 @@ th {
 .loading,
 .no-data {
   text-align: center;
-  color: #7f8c8d;
+  color: var(--color-medium-grey);
   padding: 3rem;
 }
 
