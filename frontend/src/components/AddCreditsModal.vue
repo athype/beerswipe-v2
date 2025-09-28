@@ -34,6 +34,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useNotifications } from '@/composables/useNotifications'
 import Modal from './Modal.vue'
 
 const props = defineProps({
@@ -47,7 +48,9 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'submit'])
+const emit = defineEmits(['close', 'success'])
+
+const { showSuccess, showError } = useNotifications()
 
 const creditAmount = ref(10)
 
@@ -57,12 +60,12 @@ const close = () => {
 
 const handleSubmit = () => {
   if (creditAmount.value % 10 !== 0) {
-    return // Let parent handle validation error
+    showError('Credits must be added in blocks of 10')
+    return
   }
-  emit('submit', creditAmount.value)
+  emit('success', creditAmount.value)
 }
 
-// Reset amount when modal opens
 watch(() => props.show, (newVal) => {
   if (newVal) {
     creditAmount.value = 10

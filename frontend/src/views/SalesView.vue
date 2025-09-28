@@ -207,29 +207,10 @@ const recentSales = computed(() => {
   return salesStore.transactions.filter(t => t.type === 'sale').slice(0, 10)
 })
 
-const canServeAlcohol = computed(() => {
-  if (!selectedUser.value?.dateOfBirth) {
-    return false
-  }
+const calculateAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null
   
-  const birthDate = new Date(selectedUser.value.dateOfBirth)
-  const today = new Date()
-  const age = today.getFullYear() - birthDate.getFullYear()
-  const monthDiff = today.getMonth() - birthDate.getMonth()
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    return age - 1 >= 18
-  }
-  
-  return age >= 18
-})
-
-const userAge = computed(() => {
-  if (!selectedUser.value?.dateOfBirth) {
-    return null
-  }
-  
-  const birthDate = new Date(selectedUser.value.dateOfBirth)
+  const birthDate = new Date(dateOfBirth)
   const today = new Date()
   const age = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
@@ -239,6 +220,15 @@ const userAge = computed(() => {
   }
   
   return age
+}
+
+const canServeAlcohol = computed(() => {
+  const age = calculateAge(selectedUser.value?.dateOfBirth)
+  return age !== null && age >= 18
+})
+
+const userAge = computed(() => {
+  return calculateAge(selectedUser.value?.dateOfBirth)
 })
 
 const searchUsers = async () => {
