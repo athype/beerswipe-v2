@@ -215,9 +215,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useNotifications } from '@/composables/useNotifications.js'
 import { useDrinksStore } from '../stores/drinks.js'
 
 const drinksStore = useDrinksStore()
+const { showSuccess, showError } = useNotifications()
 
 const searchQuery = ref('')
 const filterStatus = ref('')
@@ -265,9 +267,9 @@ const createDrink = async () => {
   const result = await drinksStore.createDrink(drinkForm)
   if (result.success) {
     closeModals()
-    alert('Drink created successfully!')
+    showSuccess('Drink created successfully!')
   } else {
-    alert(result.error)
+    showError(result.error)
   }
 }
 
@@ -288,9 +290,9 @@ const updateDrink = async () => {
   const result = await drinksStore.updateDrink(selectedDrink.value.id, drinkForm)
   if (result.success) {
     closeModals()
-    alert('Drink updated successfully!')
+    showSuccess('Drink updated successfully!')
   } else {
-    alert(result.error)
+    showError(result.error)
   }
 }
 
@@ -304,18 +306,18 @@ const addStock = async () => {
   const result = await drinksStore.addStock(selectedDrink.value.id, stockQuantity.value)
   if (result.success) {
     closeStockModal()
-    alert('Stock added successfully!')
+    showSuccess('Stock added successfully!')
   } else {
-    alert(result.error)
+    showError(result.error)
   }
 }
 
 const toggleDrinkStatus = async (drink) => {
   const result = await drinksStore.updateDrink(drink.id, { isActive: !drink.isActive })
   if (result.success) {
-    alert(`Drink ${drink.isActive ? 'deactivated' : 'activated'} successfully!`)
+    showSuccess(`Drink ${drink.isActive ? 'deactivated' : 'activated'} successfully!`)
   } else {
-    alert(result.error)
+    showError(result.error)
   }
 }
 
@@ -562,7 +564,7 @@ onMounted(() => {
 
 .modal h2 {
   margin-bottom: 1.5rem;
-  color: #2c3e50;
+  color: var(--color-white);
 }
 
 .form-group {
@@ -573,7 +575,7 @@ onMounted(() => {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--color-white);
 }
 
 .form-group input,
