@@ -318,7 +318,7 @@ onMounted(() => {
 }
 
 .history-header h1 {
-  font-size: 2.5rem;
+  font-size: var(--font-size-4xl);
   color: var(--color-teal);
 }
 

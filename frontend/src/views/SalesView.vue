@@ -41,6 +41,22 @@
               <p><strong>{{ selectedUser.username }}</strong></p>
               <p>Type: {{ selectedUser.userType }}</p>
               <p class="credits">Credits: {{ selectedUser.credits }}</p>
+              <div class="age-verification">
+                <p v-if="userAge !== null" class="age-info">
+                  Age: {{ userAge }} years old
+                </p>
+                <div class="alcohol-status" :class="{ 'can-serve': canServeAlcohol, 'cannot-serve': !canServeAlcohol }">
+                  <span class="status-icon">{{ canServeAlcohol ? '✅' : '🚫' }}</span>
+                  <span class="status-text">
+                    {{ canServeAlcohol ? 'Can serve alcohol' : 'Cannot serve alcohol (under 18)' }}
+                  </span>
+                </div>
+              </div>
+              <div class="customer-actions">
+                <button @click="openAddCreditsModal" class="add-credits-btn">
+                  💰 Add Credits
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -117,6 +133,14 @@
       </div>
     </div>
 
+    <!-- Add Credits Modal -->
+    <AddCreditsModal
+      :show="showCreditsModal"
+      :user="selectedUser"
+      @close="closeCreditsModal"
+      @success="handleCreditsSuccess"
+    />
+
     <!-- Recent Sales -->
     <div class="recent-sales">
       <h2>Recent Sales</h2>
@@ -147,6 +171,7 @@ import { useNotifications } from '@/composables/useNotifications.js'
 import { useUsersStore } from '../stores/users.js'
 import { useDrinksStore } from '../stores/drinks.js'
 import { useSalesStore } from '../stores/sales.js'
+import AddCreditsModal from '../components/AddCreditsModal.vue'
 
 const usersStore = useUsersStore()
 const drinksStore = useDrinksStore()
@@ -157,6 +182,7 @@ const searchQuery = ref('')
 const drinkSearchQuery = ref('')
 const selectedUser = ref(null)
 const cart = ref([])
+const showCreditsModal = ref(false)
 
 const filteredUsers = computed(() => {
   if (!searchQuery.value) return []
@@ -179,6 +205,30 @@ const totalCost = computed(() => {
 
 const recentSales = computed(() => {
   return salesStore.transactions.filter(t => t.type === 'sale').slice(0, 10)
+})
+
+const calculateAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null
+  
+  const birthDate = new Date(dateOfBirth)
+  const today = new Date()
+  const age = today.getFullYear() - birthDate.getFullYear()
+  const monthDiff = today.getMonth() - birthDate.getMonth()
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    return age - 1
+  }
+  
+  return age
+}
+
+const canServeAlcohol = computed(() => {
+  const age = calculateAge(selectedUser.value?.dateOfBirth)
+  return age !== null && age >= 18
+})
+
+const userAge = computed(() => {
+  return calculateAge(selectedUser.value?.dateOfBirth)
 })
 
 const searchUsers = async () => {
@@ -234,28 +284,54 @@ const clearCart = () => {
 const processeSale = async () => {
   if (!selectedUser.value || cart.value.length === 0) return
 
-  for (const item of cart.value) {
-    const result = await salesStore.makeSale({
-      userId: selectedUser.value.id,
-      drinkId: item.drink.id,
-      quantity: item.quantity
-    })
-
-    if (!result.success) {
-      showError(result.error || 'Failed to process sale')
-      return
-    }
-  }
-  
-  selectedUser.value.credits -= totalCost.value
+  const currentUser = selectedUser.value
+  const currentCart = [...cart.value]
+  const cost = totalCost.value
 
   clearCart()
-  await Promise.all([
-    drinksStore.fetchDrinks(),
-    salesStore.fetchTransactionHistory({ limit: 10 })
-  ])
+  selectedUser.value = null
+  searchQuery.value = ''
 
-  showSuccess('Sale processed successfully!')
+  try {
+    for (const item of currentCart) {
+      const result = await salesStore.makeSale({
+        userId: currentUser.id,
+        drinkId: item.drink.id,
+        quantity: item.quantity
+      })
+
+      if (!result.success) {
+        showError(result.error || 'Failed to process sale')
+        return
+      }
+    }
+    
+    const userIndex = usersStore.users.findIndex(u => u.id === currentUser.id)
+    if (userIndex !== -1) {
+      usersStore.users[userIndex].credits -= cost
+    }
+
+    await Promise.all([
+      drinksStore.fetchDrinks(),
+      salesStore.fetchTransactionHistory({ limit: 10 })
+    ])
+
+    showSuccess('Sale processed successfully!')
+  } catch (error) {
+    showError('Failed to process sale')
+  }
+}
+
+const openAddCreditsModal = () => {
+  showCreditsModal.value = true
+}
+
+const handleCreditsSuccess = () => {
+  closeCreditsModal()
+}
+
+const closeCreditsModal = () => {
+  showCreditsModal.value = false
 }
 
 const formatTime = (date) => {
@@ -284,7 +360,7 @@ onMounted(async () => {
 }
 
 .sales-header h1 {
-  font-size: 2.5rem;
+  font-size: var(--font-size-4xl);
   color: var(--color-teal);
   margin-bottom: 0.5rem;
 }
@@ -304,7 +380,7 @@ onMounted(async () => {
 }
 
 .sales-section h2 {
-  color: #2c3e50;
+  color: var(--color-light-grey);
   margin-bottom: 1.5rem;
   font-size: 1.5rem;
 }
@@ -328,7 +404,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border: 1px solid #e1e1e1;
+  border: 3px solid #e1e1e1;
   border-radius: 6px;
   margin-bottom: 0.5rem;
   cursor: pointer;
@@ -336,7 +412,7 @@ onMounted(async () => {
 }
 
 .user-item:hover {
-  background: #f8f9fa;
+  border-color: var(--color-teal);
 }
 
 .user-item.selected {
@@ -368,6 +444,7 @@ onMounted(async () => {
 }
 
 .customer-card {
+  color: var(--color-black);
   background: #f8f9fa;
   padding: 1rem;
   border-radius: 6px;
@@ -376,6 +453,171 @@ onMounted(async () => {
 .credits {
   color: var(--color-teal);
   font-weight: bold;
+}
+
+.age-verification {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e1e1e1;
+}
+
+.age-info {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.alcohol-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.alcohol-status.can-serve {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alcohol-status.cannot-serve {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-icon {
+  font-size: 1rem;
+}
+
+.status-text {
+  flex: 1;
+}
+
+.customer-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e1e1e1;
+}
+
+.add-credits-btn {
+  background: var(--color-green);
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  width: 100%;
+  transition: background 0.3s ease;
+}
+
+.add-credits-btn:hover {
+  background: #4cae4c;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--color-card-bg);
+  padding: 2rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal h2 {
+  color: var(--color-light-grey);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--color-light-grey);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e1e1e1;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: var(--color-input-bg);
+  color: var(--color-light-grey);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-teal);
+}
+
+.current-credits {
+  background: var(--color-teal);
+  color: white;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.btn {
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.btn.primary {
+  background: var(--color-green);
+  color: white;
+  flex: 1;
+}
+
+.btn.primary:hover {
+  background: #4cae4c;
+}
+
+.btn.secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn.secondary:hover {
+  background: #545b62;
 }
 
 .drinks-grid {
@@ -387,7 +629,7 @@ onMounted(async () => {
 }
 
 .drink-card {
-  border: 1px solid #e1e1e1;
+  border: 3px solid #e1e1e1;
   border-radius: 6px;
   padding: 1rem;
   cursor: pointer;
@@ -395,13 +637,12 @@ onMounted(async () => {
 }
 
 .drink-card:hover {
-  background: #f8f9fa;
   border-color: var(--color-teal);
 }
 
 .drink-info h4 {
   margin-bottom: 0.5rem;
-  color: #2c3e50;
+  color: var(--color-light-grey);
 }
 
 .drink-price {
@@ -518,7 +759,7 @@ onMounted(async () => {
 }
 
 .recent-sales h2 {
-  color: #2c3e50;
+  color: var(--color-light-grey);
   margin-bottom: 1.5rem;
 }
 

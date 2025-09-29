@@ -56,7 +56,6 @@ export const useUsersStore = defineStore('users', {
       try {
         const response = await usersAPI.addCredits(userId, amount);
         
-        // Update the user in our local state
         const userIndex = this.users.findIndex(u => u.id === userId);
         if (userIndex !== -1) {
           this.users[userIndex].credits = response.data.user.credits;
