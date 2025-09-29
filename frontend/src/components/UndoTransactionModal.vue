@@ -198,26 +198,26 @@ watch(() => props.show, (newVal) => {
 }
 
 .undo-effects {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
+  background: var(--color-light-grey);
+  border: 1px solid var(--color-grey);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
   text-align: left;
 }
 
 .undo-effects h4 {
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--spacing-sm);
   color: var(--color-black);
 }
 
 .undo-effects ul {
   margin: 0;
-  padding-left: 1.2rem;
+  padding-left: calc(var(--spacing-md) * 1.2);
 }
 
 .undo-effects li {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--spacing-sm);
   color: var(--color-black);
 }
 
@@ -225,9 +225,9 @@ watch(() => props.show, (newVal) => {
   background: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
 .modal-actions {
