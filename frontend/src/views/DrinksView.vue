@@ -243,13 +243,10 @@ const searchDrinks = async () => {
   const params = {}
   if (searchQuery.value) params.search = searchQuery.value
   
-  // Handle stock filtering
   if (filterStock.value === 'in-stock') {
     params.inStock = true
   } else if (filterStock.value === 'low-stock') {
-    // This would need backend support for low stock filtering
   } else if (filterStock.value === 'out-of-stock') {
-    // This would need backend support for out of stock filtering
   }
   
   await drinksStore.fetchDrinks(params)

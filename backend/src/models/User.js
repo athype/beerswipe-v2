@@ -86,4 +86,18 @@ User.prototype.deductCredits = function(amount) {
   return this.save();
 };
 
+// Bypass methods for undo operations - these don't enforce the 10-credit rule
+User.prototype.addCreditsUnchecked = function(amount) {
+  this.credits += amount;
+  return this.save();
+};
+
+User.prototype.deductCreditsUnchecked = function(amount) {
+  if (this.credits < amount) {
+    throw new Error('Insufficient credits');
+  }
+  this.credits -= amount;
+  return this.save();
+};
+
 export default User;

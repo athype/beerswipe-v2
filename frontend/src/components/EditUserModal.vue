@@ -100,7 +100,6 @@ const handleSubmit = () => {
   emit('submit', { ...userData })
 }
 
-// Update form when user data changes
 watch(() => props.user, (newUser) => {
   if (newUser) {
     Object.assign(userData, {
@@ -113,7 +112,6 @@ watch(() => props.user, (newUser) => {
   }
 }, { immediate: true })
 
-// Reset form when modal closes
 watch(() => props.show, (newVal) => {
   if (!newVal) {
     Object.assign(userData, {
