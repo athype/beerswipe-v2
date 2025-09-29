@@ -284,31 +284,42 @@ const clearCart = () => {
 const processeSale = async () => {
   if (!selectedUser.value || cart.value.length === 0) return
 
-  for (const item of cart.value) {
-    const result = await salesStore.makeSale({
-      userId: selectedUser.value.id,
-      drinkId: item.drink.id,
-      quantity: item.quantity
-    })
-
-    if (!result.success) {
-      showError(result.error || 'Failed to process sale')
-      return
-    }
-  }
-  
-  selectedUser.value.credits -= totalCost.value
+  const currentUser = selectedUser.value
+  const currentCart = [...cart.value]
+  const cost = totalCost.value
 
   clearCart()
   selectedUser.value = null
   searchQuery.value = ''
-  
-  await Promise.all([
-    drinksStore.fetchDrinks(),
-    salesStore.fetchTransactionHistory({ limit: 10 })
-  ])
 
-  showSuccess('Sale processed successfully!')
+  try {
+    for (const item of currentCart) {
+      const result = await salesStore.makeSale({
+        userId: currentUser.id,
+        drinkId: item.drink.id,
+        quantity: item.quantity
+      })
+
+      if (!result.success) {
+        showError(result.error || 'Failed to process sale')
+        return
+      }
+    }
+    
+    const userIndex = usersStore.users.findIndex(u => u.id === currentUser.id)
+    if (userIndex !== -1) {
+      usersStore.users[userIndex].credits -= cost
+    }
+
+    await Promise.all([
+      drinksStore.fetchDrinks(),
+      salesStore.fetchTransactionHistory({ limit: 10 })
+    ])
+
+    showSuccess('Sale processed successfully!')
+  } catch (error) {
+    showError('Failed to process sale')
+  }
 }
 
 const openAddCreditsModal = () => {
@@ -317,7 +328,6 @@ const openAddCreditsModal = () => {
 
 const handleCreditsSuccess = () => {
   closeCreditsModal()
-  // Success message is now handled by the modal component
 }
 
 const closeCreditsModal = () => {
