@@ -107,167 +107,34 @@
       </button>
     </div>
 
-    <!-- Create User Modal -->
-    <div v-if="showCreateModal" class="modal-overlay" @click="closeCreateModal">
-      <div class="modal" @click.stop>
-        <h2>Add New User</h2>
-        <form @submit.prevent="createUser">
-          <div class="form-group">
-            <label for="username">Username:</label>
-            <input
-              id="username"
-              v-model="newUser.username"
-              type="text"
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="userType">Type:</label>
-            <select id="userType" v-model="newUser.userType" required>
-              <option value="member">Member</option>
-              <option value="non-member">Non-Member</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="credits">Initial Credits:</label>
-            <input
-              id="credits"
-              v-model.number="newUser.credits"
-              type="number"
-              min="0"
-              step="10"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="dateOfBirth">Date of Birth:</label>
-            <input
-              id="dateOfBirth"
-              v-model="newUser.dateOfBirth"
-              type="date"
-            />
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeCreateModal" class="btn">Cancel</button>
-            <button type="submit" class="btn primary">Create User</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Modal Components -->
+    <CreateUserModal
+      :show="showCreateModal"
+      @close="showCreateModal = false"
+      @submit="handleCreateUser"
+    />
+    
+    <EditUserModal
+      :show="showEditModal"
+      :user="selectedUser"
+      @close="closeEditModal"
+      @submit="handleUpdateUser"
+    />
+    
+    <AddCreditsModal
+      :show="showCreditsModal"
+      :user="selectedUser"
+      @close="closeCreditsModal"
+      @success="closeCreditsModal"
+    />
+    
+    <CsvImportModal
+      :show="showCSVModal"
+      @close="showCSVModal = false"
+      @import="handleImportCSV"
+    />
 
-    <!-- Edit User Modal -->
-    <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
-      <div class="modal" @click.stop>
-        <h2>Edit User: {{ editUser.username }}</h2>
-        <form @submit.prevent="updateUser">
-          <div class="form-group">
-            <label for="editUsername">Username:</label>
-            <input
-              id="editUsername"
-              v-model="editUser.username"
-              type="text"
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="editUserType">Type:</label>
-            <select id="editUserType" v-model="editUser.userType" required>
-              <option value="member">Member</option>
-              <option value="non-member">Non-Member</option>
-            </select>
-            <small class="form-help">Note: Admin users cannot be edited</small>
-          </div>
-          
-          <div class="form-group">
-            <label for="editDateOfBirth">Date of Birth:</label>
-            <input
-              id="editDateOfBirth"
-              v-model="editUser.dateOfBirth"
-              type="date"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input
-                v-model="editUser.isActive"
-                type="checkbox"
-              />
-              User is active
-            </label>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeEditModal" class="btn">Cancel</button>
-            <button type="submit" class="btn primary">Update User</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Add Credits Modal -->
-    <div v-if="showCreditsModal" class="modal-overlay" @click="closeCreditsModal">
-      <div class="modal" @click.stop>
-        <h2>Add Credits to {{ selectedUser?.username }}</h2>
-        <form @submit.prevent="addCredits">
-          <div class="form-group">
-            <label for="creditAmount">Amount (must be multiple of 10):</label>
-            <input
-              id="creditAmount"
-              v-model.number="creditAmount"
-              type="number"
-              min="10"
-              step="10"
-              required
-            />
-          </div>
-          
-          <div class="current-credits">
-            Current Credits: {{ selectedUser?.credits }}
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeCreditsModal" class="btn">Cancel</button>
-            <button type="submit" class="btn primary">Add Credits</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- CSV Import Modal -->
-    <div v-if="showCSVModal" class="modal-overlay" @click="closeCSVModal">
-      <div class="modal" @click.stop>
-        <h2>Import Users from CSV</h2>
-        <div class="csv-info">
-          <p>CSV format: username, credits, dateOfBirth (DD-MM-YYYY), member (true/false)</p>
-          <p>Example: 513286,10,13-05-2002,true</p>
-        </div>
-        
-        <form @submit.prevent="importCSV">
-          <div class="form-group">
-            <label for="csvFile">Select CSV File:</label>
-            <input
-              id="csvFile"
-              ref="csvFileInput"
-              type="file"
-              accept=".csv"
-              required
-            />
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeCSVModal" class="btn">Cancel</button>
-            <button type="submit" class="btn primary">Import</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- CSV Export Modal -->
+    <!-- CSV Export Modal (keeping inline for now as it's unique) -->
     <div v-if="showExportModal" class="modal-overlay" @click="closeExportModal">
       <div class="modal" @click.stop>
         <h2>Export Users to CSV</h2>
@@ -303,9 +170,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useUsersStore } from '../stores/users.js'
 import { useNotifications } from '@/composables/useNotifications.js'
+import CreateUserModal from '../components/CreateUserModal.vue'
+import EditUserModal from '../components/EditUserModal.vue'
+import AddCreditsModal from '../components/AddCreditsModal.vue'
+import CsvImportModal from '../components/CsvImportModal.vue'
 
 const usersStore = useUsersStore()
 const { showSuccess, showError } = useNotifications()
@@ -318,24 +189,7 @@ const showCreditsModal = ref(false)
 const showCSVModal = ref(false)
 const showExportModal = ref(false)
 const selectedUser = ref(null)
-const creditAmount = ref(10)
-const csvFileInput = ref(null)
 const exportType = ref('')
-
-const newUser = reactive({
-  username: '',
-  userType: 'member',
-  credits: 0,
-  dateOfBirth: ''
-})
-
-const editUser = reactive({
-  id: null,
-  username: '',
-  userType: 'member',
-  dateOfBirth: '',
-  isActive: true
-})
 
 const searchUsers = async () => {
   const params = {}
@@ -353,10 +207,10 @@ const changePage = async (page) => {
   await usersStore.fetchUsers(params)
 }
 
-const createUser = async () => {
-  const result = await usersStore.createUser(newUser)
+const handleCreateUser = async (userData) => {
+  const result = await usersStore.createUser(userData)
   if (result.success) {
-    closeCreateModal()
+    showCreateModal.value = false
     showSuccess('User created successfully!')
   } else {
     showError(result.error)
@@ -365,23 +219,7 @@ const createUser = async () => {
 
 const openAddCreditsModal = (user) => {
   selectedUser.value = user
-  creditAmount.value = 10
   showCreditsModal.value = true
-}
-
-const addCredits = async () => {
-  if (creditAmount.value % 10 !== 0) {
-    showError('Credits must be added in blocks of 10')
-    return
-  }
-
-  const result = await usersStore.addCredits(selectedUser.value.id, creditAmount.value)
-  if (result.success) {
-    closeCreditsModal()
-    showSuccess('Credits added successfully!')
-  } else {
-    showError(result.error)
-  }
 }
 
 const openEditModal = (user) => {
@@ -391,22 +229,15 @@ const openEditModal = (user) => {
   }
   
   selectedUser.value = user
-  Object.assign(editUser, {
-    id: user.id,
-    username: user.username,
-    userType: user.userType,
-    dateOfBirth: user.dateOfBirth || '',
-    isActive: user.isActive
-  })
   showEditModal.value = true
 }
 
-const updateUser = async () => {
-  const result = await usersStore.updateUser(editUser.id, {
-    username: editUser.username,
-    userType: editUser.userType,
-    dateOfBirth: editUser.dateOfBirth || null,
-    isActive: editUser.isActive
+const handleUpdateUser = async (userData) => {
+  const result = await usersStore.updateUser(selectedUser.value.id, {
+    username: userData.username,
+    userType: userData.userType,
+    dateOfBirth: userData.dateOfBirth || null,
+    isActive: userData.isActive
   })
   
   if (result.success) {
@@ -417,16 +248,13 @@ const updateUser = async () => {
   }
 }
 
-const importCSV = async () => {
-  const file = csvFileInput.value.files[0]
-  if (!file) return
-
+const handleImportCSV = async (file) => {
   const formData = new FormData()
   formData.append('csvFile', file)
 
   const result = await usersStore.importCSV(formData)
   if (result.success) {
-    closeCSVModal()
+    showCSVModal.value = false
     showSuccess(`Import completed. ${result.data.imported} users imported, ${result.data.errors} errors.`)
   } else {
     showError(result.error)
@@ -448,39 +276,14 @@ const exportCSV = async () => {
   }
 }
 
-const closeCreateModal = () => {
-  showCreateModal.value = false
-  Object.assign(newUser, {
-    username: '',
-    userType: 'member',
-    credits: 0,
-    dateOfBirth: ''
-  })
-}
-
 const closeCreditsModal = () => {
   showCreditsModal.value = false
   selectedUser.value = null
-  creditAmount.value = 10
 }
 
 const closeEditModal = () => {
   showEditModal.value = false
   selectedUser.value = null
-  Object.assign(editUser, {
-    id: null,
-    username: '',
-    userType: 'member',
-    dateOfBirth: '',
-    isActive: true
-  })
-}
-
-const closeCSVModal = () => {
-  showCSVModal.value = false
-  if (csvFileInput.value) {
-    csvFileInput.value.value = ''
-  }
 }
 
 const closeExportModal = () => {
@@ -514,7 +317,7 @@ onMounted(() => {
 }
 
 .users-header h1 {
-  font-size: 2.5rem;
+  font-size: var(--font-size-4xl);
   color: var(--color-teal);
   flex-shrink: 0;
 }
@@ -686,6 +489,7 @@ th {
   margin-top: 2rem;
 }
 
+/* Export Modal Styles (keeping for the remaining inline modal) */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -732,25 +536,8 @@ th {
   border: 2px solid #e1e1e1;
   border-radius: 6px;
   font-size: 1rem;
-}
-
-.form-help {
-  font-size: 0.8rem;
-  color: var(--color-medium-grey);
-  margin-top: 0.25rem;
-  display: block;
-}
-
-.checkbox-label {
-  display: flex !important;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto !important;
-  margin: 0;
+  background: var(--color-input-bg);
+  color: var(--color-light-grey);
 }
 
 .modal-actions {
@@ -759,19 +546,12 @@ th {
   justify-content: flex-end;
 }
 
-.current-credits {
-  background: #f8f9fa;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  font-weight: 500;
-}
-
 .csv-info {
-  background: #e3f2fd;
+  background: var(--color-card-bg);
   padding: 1rem;
   border-radius: 6px;
   margin-bottom: 1.5rem;
+  border: 1px solid #333;
 }
 
 .csv-info p {

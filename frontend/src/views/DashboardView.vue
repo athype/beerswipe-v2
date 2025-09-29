@@ -2,7 +2,9 @@
   <div class="dashboard">
     <div class="page-header">
       <div class="page-title">
-        <h1>Dashboard</h1>
+        <div class="dashboard-header">
+          <h1>Dashboard</h1>
+        </div>
         <p class="">Welcome back, {{ authStore.user?.username }}!</p>
       </div>
     </div>
@@ -179,6 +181,10 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-xl);
+}
+
+.dashboard-header h1 {
+  font-size: var(--font-size-4xl);
 }
 
 .action-buttons {
