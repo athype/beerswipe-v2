@@ -63,7 +63,6 @@ const onOverlayClick = () => {
   }
 }
 
-// Prevent body scroll when modal is open
 watch(() => props.show, (newVal) => {
   if (newVal) {
     document.body.style.overflow = 'hidden'
@@ -72,14 +71,12 @@ watch(() => props.show, (newVal) => {
   }
 })
 
-// Handle escape key
 const handleEscape = (e) => {
   if (e.key === 'Escape' && props.show && props.closable) {
     close()
   }
 }
 
-// Add/remove event listeners
 watch(() => props.show, (newVal) => {
   if (newVal) {
     document.addEventListener('keydown', handleEscape)

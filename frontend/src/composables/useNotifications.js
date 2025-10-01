@@ -1,9 +1,7 @@
 import { ref, reactive } from 'vue'
 
-// Global notification state
 const notifications = ref([])
 
-// Notification types
 export const NOTIFICATION_TYPES = {
   SUCCESS: 'success',
   ERROR: 'error',
@@ -25,7 +23,6 @@ export function useNotifications() {
     
     notifications.value.push(notification)
     
-    // Auto remove after duration
     if (duration > 0) {
       setTimeout(() => {
         removeNotification(id)

@@ -73,6 +73,7 @@ export const salesAPI = {
   makeSale: (saleData) => api.post('/sales/sell', saleData),
   getHistory: (params) => api.get('/sales/history', { params }),
   getStats: (params) => api.get('/sales/stats', { params }),
+  undoTransaction: (transactionId) => api.delete(`/sales/undo/${transactionId}`),
 };
 
 export default api;

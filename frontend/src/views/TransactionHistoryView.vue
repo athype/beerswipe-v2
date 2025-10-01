@@ -78,6 +78,7 @@
             <th>Amount</th>
             <th>Quantity</th>
             <th>Admin</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -98,6 +99,15 @@
             <td class="amount">{{ transaction.amount }} credits</td>
             <td>{{ transaction.quantity || '-' }}</td>
             <td>{{ transaction.admin?.username }}</td>
+            <td>
+              <button 
+                @click="openUndoModal(transaction)" 
+                class="btn small undo-btn"
+                title="Undo Transaction"
+              >
+                ↺ Undo
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -149,6 +159,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Undo Transaction Modal -->
+    <UndoTransactionModal
+      :show="showUndoModal"
+      :transaction="selectedTransaction"
+      @close="closeUndoModal"
+      @confirm="handleUndoTransaction"
+    />
   </div>
 </template>
 
@@ -156,9 +174,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useSalesStore } from '../stores/sales.js'
 import { useUsersStore } from '../stores/users.js'
+import { useNotifications } from '@/composables/useNotifications.js'
+import UndoTransactionModal from '../components/UndoTransactionModal.vue'
 
 const salesStore = useSalesStore()
 const usersStore = useUsersStore()
+const { showSuccess, showError } = useNotifications()
 
 const filters = reactive({
   userSearch: '',
@@ -169,6 +190,8 @@ const filters = reactive({
 
 const showUserSuggestions = ref(false)
 const userSuggestions = ref([])
+const showUndoModal = ref(false)
+const selectedTransaction = ref(null)
 
 let searchTimeout = null
 const debouncedSearch = async () => {
@@ -290,6 +313,39 @@ const clearFilters = () => {
     endDate: ''
   })
   applyFilters()
+}
+
+const openUndoModal = (transaction) => {
+  selectedTransaction.value = transaction
+  showUndoModal.value = true
+}
+
+const closeUndoModal = () => {
+  showUndoModal.value = false
+  selectedTransaction.value = null
+}
+
+const handleUndoTransaction = async (transaction) => {
+  try {
+    const result = await salesStore.undoTransaction(transaction.id)
+    
+    if (result.success) {
+      closeUndoModal()
+      showSuccess(`Transaction undone successfully! ${
+        transaction.type === 'sale' 
+          ? `${transaction.amount} credits restored to ${transaction.user?.username}` 
+          : `${transaction.amount} credits deducted from ${transaction.user?.username}`
+      }`)
+      
+      await applyFilters()
+    } else {
+      showError(result.error || 'Failed to undo transaction')
+      closeUndoModal()
+    }
+  } catch (error) {
+    showError('An unexpected error occurred while undoing the transaction')
+    closeUndoModal()
+  }
 }
 
 const formatDateTime = (date) => {
@@ -490,6 +546,17 @@ th {
 .btn:disabled {
   background: #bdc3c7;
   cursor: not-allowed;
+}
+
+.undo-btn {
+  background: var(--color-warning);
+  color: var(--color-black);
+  font-weight: 600;
+}
+
+.undo-btn:hover {
+  background: #e0a800;
+  color: var(--color-black);
 }
 
 .pagination {

@@ -63,5 +63,24 @@ export const useSalesStore = defineStore('sales', {
         this.loading = false;
       }
     },
+
+    async undoTransaction(transactionId) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await salesAPI.undoTransaction(transactionId);
+        
+        this.transactions = this.transactions.filter(t => t.id !== transactionId);
+        this.pagination.total = Math.max(0, this.pagination.total - 1);
+        
+        return { success: true, data: response.data };
+      } catch (error) {
+        this.error = error.response?.data?.error || 'Failed to undo transaction';
+        return { success: false, error: this.error };
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });

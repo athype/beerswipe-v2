@@ -42,7 +42,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// (should be protected in production)
 router.post('/create-admin', async (req, res) => {
   try {
     if (process.env.NODE_ENV === 'production') {

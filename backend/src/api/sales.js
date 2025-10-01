@@ -231,4 +231,90 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+router.delete('/undo/:transactionId', authenticateToken, requireAdmin, async (req, res) => {
+  const dbTransaction = await sequelize.transaction();
+  
+  try {
+    const { transactionId } = req.params;
+
+    if (!transactionId) {
+      await dbTransaction.rollback();
+      return res.status(400).json({ error: 'Transaction ID is required' });
+    }
+
+    const transactionToUndo = await Transaction.findByPk(transactionId, {
+      include: [
+        { model: User, as: 'user' },
+        { model: Drink, as: 'drink' },
+        { model: User, as: 'admin' }
+      ],
+      transaction: dbTransaction
+    });
+
+    if (!transactionToUndo) {
+      await dbTransaction.rollback();
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    const user = transactionToUndo.user;
+    const drink = transactionToUndo.drink;
+
+    if (transactionToUndo.type === 'sale') {
+      // Use unchecked method to restore credits (bypass 10-credit rule for undo operations)
+      await user.addCreditsUnchecked(transactionToUndo.amount);
+      
+      if (drink) {
+        await drink.addStock(transactionToUndo.quantity || 1);
+      }
+    } else if (transactionToUndo.type === 'credit_addition') {
+      if (user.credits < transactionToUndo.amount) {
+        await dbTransaction.rollback();
+        return res.status(400).json({ 
+          error: 'Cannot undo credit addition: user has insufficient credits',
+          userCredits: user.credits,
+          requiredCredits: transactionToUndo.amount
+        });
+      }
+      
+      // Use unchecked method to deduct credits (bypass 10-credit rule for undo operations)
+      await user.deductCreditsUnchecked(transactionToUndo.amount);
+    } else {
+      await dbTransaction.rollback();
+      return res.status(400).json({ error: 'Cannot undo this transaction type' });
+    }
+
+    await transactionToUndo.destroy({ transaction: dbTransaction });
+
+    await dbTransaction.commit();
+
+    res.json({
+      message: 'Transaction undone successfully',
+      undoTransaction: {
+        id: transactionToUndo.id,
+        type: transactionToUndo.type,
+        amount: transactionToUndo.amount,
+        quantity: transactionToUndo.quantity,
+        user: {
+          id: user.id,
+          username: user.username,
+          newCredits: user.credits
+        },
+        drink: drink ? {
+          id: drink.id,
+          name: drink.name,
+          newStock: drink.stock
+        } : null,
+        undoneBy: {
+          id: req.user.id,
+          username: req.user.username
+        }
+      }
+    });
+  } catch (error) {
+    await dbTransaction.rollback();
+    console.error('Undo transaction error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 export default router;
