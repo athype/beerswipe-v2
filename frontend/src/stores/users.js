@@ -93,7 +93,6 @@ export const useUsersStore = defineStore('users', {
       try {
         const response = await usersAPI.exportCSV(params);
         
-        // Create blob and download file
         const blob = new Blob([response.data], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');

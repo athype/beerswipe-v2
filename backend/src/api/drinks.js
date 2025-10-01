@@ -61,6 +61,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Create new drink (admin only)
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, description, price, stock = 0, category = 'beverage' } = req.body;
@@ -73,7 +74,6 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Price must be greater than 0' });
     }
 
-    // Check if drink already exists
     const existingDrink = await Drink.findOne({ where: { name } });
     if (existingDrink) {
       return res.status(400).json({ error: 'Drink with this name already exists' });
