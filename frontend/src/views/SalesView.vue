@@ -368,15 +368,23 @@ onMounted(async () => {
 .sales-container {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 2rem;
-  margin-bottom: 3rem;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
 }
 
 .sales-section {
-  background: var(--color-black);
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-accent);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
+  transition: all 0.3s ease;
+}
+
+.sales-section:hover {
+  transform: translateY(-2px);
 }
 
 .sales-section h2 {
@@ -388,10 +396,23 @@ onMounted(async () => {
 .customer-search input,
 .drinks-search input {
   width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e1e1e1;
-  border-radius: 6px;
-  margin-bottom: 1rem;
+  padding: var(--spacing-md);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  background: rgba(34, 34, 34, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-light-grey);
+  transition: all 0.3s ease;
+}
+
+.customer-search input:focus,
+.drinks-search input:focus {
+  outline: none;
+  border-color: var(--color-teal);
+  background: rgba(34, 34, 34, 0.7);
+  box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2);
 }
 
 .user-list {
@@ -403,22 +424,30 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border: 3px solid #e1e1e1;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
+  padding: var(--spacing-lg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
   cursor: pointer;
   transition: all 0.3s ease;
+  background: rgba(34, 34, 34, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .user-item:hover {
   border-color: var(--color-teal);
+  background: rgba(34, 34, 34, 0.5);
+  transform: translateX(4px);
 }
 
 .user-item.selected {
-  background: var(--color-teal);
+  background: rgba(5, 94, 104, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--color-white);
   border-color: var(--color-teal);
+  box-shadow: 0 4px 12px rgba(5, 94, 104, 0.3);
 }
 
 .user-info {
@@ -444,10 +473,14 @@ onMounted(async () => {
 }
 
 .customer-card {
-  color: var(--color-black);
-  background: #f8f9fa;
-  padding: 1rem;
-  border-radius: 6px;
+  color: var(--color-light-grey);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .credits {
@@ -478,15 +511,19 @@ onMounted(async () => {
 }
 
 .alcohol-status.can-serve {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background: rgba(40, 167, 69, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-white);
+  border: 1px solid rgba(40, 167, 69, 0.5);
 }
 
 .alcohol-status.cannot-serve {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: rgba(220, 53, 69, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-white);
+  border: 1px solid rgba(220, 53, 69, 0.5);
 }
 
 .status-icon {
@@ -629,15 +666,21 @@ onMounted(async () => {
 }
 
 .drink-card {
-  border: 3px solid #e1e1e1;
-  border-radius: 6px;
-  padding: 1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
   cursor: pointer;
   transition: all 0.3s ease;
+  background: rgba(34, 34, 34, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .drink-card:hover {
   border-color: var(--color-teal);
+  background: rgba(34, 34, 34, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(5, 94, 104, 0.2);
 }
 
 .drink-info h4 {
@@ -659,10 +702,19 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border: 1px solid #e1e1e1;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
+  padding: var(--spacing-lg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+  background: rgba(34, 34, 34, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.cart-item:hover {
+  background: rgba(34, 34, 34, 0.5);
+  border-color: var(--color-teal);
 }
 
 .item-info {
@@ -752,10 +804,19 @@ onMounted(async () => {
 }
 
 .recent-sales {
-  background: var(--color-black);
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-accent);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
+  transition: all 0.3s ease;
+}
+
+.recent-sales:hover {
+  background: var(--glass-bg-dark);
+  border-color: var(--color-teal);
 }
 
 .recent-sales h2 {

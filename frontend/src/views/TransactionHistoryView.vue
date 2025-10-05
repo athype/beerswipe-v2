@@ -414,10 +414,12 @@ onMounted(() => {
   top: 100%;
   left: 0;
   right: 0;
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-teal);
-  border-radius: 6px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--glass-bg-dark);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-border-accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-glass);
   z-index: 1000;
   max-height: 200px;
   overflow-y: auto;
@@ -433,7 +435,9 @@ onMounted(() => {
 }
 
 .user-suggestion:hover {
-  background: var(--color-teal);
+  background: rgba(5, 94, 104, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--color-white);
 }
 
@@ -458,11 +462,19 @@ onMounted(() => {
 }
 
 .transactions-table {
-  background: var(--color-black);
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-accent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
   overflow: hidden;
-  margin-bottom: 2rem;
+  margin-bottom: var(--spacing-xl);
+  transition: all 0.3s ease;
+}
+
+.transactions-table:hover {
+  border-color: var(--color-teal);
 }
 
 table {
@@ -472,17 +484,30 @@ table {
 
 th,
 td {
-  padding: 1rem;
+  padding: var(--spacing-lg);
   text-align: left;
-  border-bottom: 1px solid #e1e1e1;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+tbody tr {
+  transition: all 0.2s ease;
+}
+
+tbody tr:hover {
+  background: rgba(5, 94, 104, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 th {
-  background: var(--color-teal);
+  background: rgba(5, 94, 104, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-weight: 600;
   color: var(--color-white);
   position: sticky;
   top: 0;
+  border-bottom: 2px solid var(--color-teal);
 }
 
 .transaction-type {
@@ -568,10 +593,19 @@ th {
 }
 
 .stats-summary {
-  background: var(--color-black);
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-accent);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
+  transition: all 0.3s ease;
+}
+
+.stats-summary:hover {
+  background: var(--glass-bg-dark);
+  border-color: var(--color-teal);
 }
 
 .stats-summary h2 {
@@ -586,11 +620,23 @@ th {
 }
 
 .stat-card {
-  background: var(--color-card-bg);
-  padding: 1.5rem;
-  border-radius: 8px;
-  text-align: center;
+  background: rgba(34, 34, 34, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
   border-left: 4px solid var(--color-teal);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card:hover {
+  background: rgba(34, 34, 34, 0.7);
+  border-color: var(--color-teal);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
 .stat-card h3 {

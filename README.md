@@ -51,7 +51,7 @@ cd backend
 pnpm start
 # to start frontend
 cd frontend
-npm run dev
+pnpm run dev
 # Access the application:
 # Frontend: http://localhost:5173
 # Backend API: http://localhost:8080

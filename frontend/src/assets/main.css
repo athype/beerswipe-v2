@@ -53,11 +53,21 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   
-  /* Shadows */
+  /* Shadows - Enhanced for glassmorphism */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  
+  /* Glassmorphism Effects */
+  --glass-bg: rgba(52, 52, 52, 0.5);
+  --glass-bg-light: rgba(52, 52, 52, 0.3);
+  --glass-bg-dark: rgba(52, 52, 52, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-border-accent: rgba(5, 94, 104, 0.4);
+  --glass-blur: blur(10px);
+  --glass-blur-strong: blur(16px);
   
   /* Breakpoints */
   --breakpoint-sm: 640px;
@@ -170,18 +180,28 @@ a:hover {
    ============================================ */
 
 .card {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-teal);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-accent);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-glass);
   padding: var(--spacing-xl);
   margin-bottom: var(--spacing-lg);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  background: var(--glass-bg-dark);
+  border-color: var(--color-teal);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
 }
 
 .card-header {
-  border-bottom: 1px solid var(--color-grey);
-  padding-bottom: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
 }
 
 .card-title {
@@ -201,14 +221,17 @@ a:hover {
   justify-content: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-lg);
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   min-height: 40px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn:disabled {
@@ -217,42 +240,57 @@ a:hover {
 }
 
 .btn-primary {
-  background: var(--color-teal);
+  background: rgba(5, 94, 104, 0.8);
+  border-color: var(--glass-border-accent);
   color: var(--color-white);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-teal-dark);
+  background: rgba(5, 94, 104, 1);
+  border-color: var(--color-teal);
   color: var(--color-white);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .btn-secondary {
-  background: var(--color-grey);
-  color: var(--color-black);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--color-medium-grey);
+  background: rgba(185, 210, 210, 0.3);
+  border-color: var(--glass-border);
   color: var(--color-white);
 }
 
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(185, 210, 210, 0.5);
+  border-color: var(--color-grey);
+  color: var(--color-white);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
 .btn-danger {
-  background: var(--color-error);
+  background: rgba(220, 53, 69, 0.8);
+  border-color: rgba(220, 53, 69, 0.4);
   color: var(--color-white);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #c82333;
+  background: rgba(200, 35, 51, 1);
+  border-color: var(--color-error);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .btn-success {
-  background: var(--color-success);
+  background: rgba(40, 167, 69, 0.8);
+  border-color: rgba(40, 167, 69, 0.4);
   color: var(--color-white);
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #218838;
+  background: rgba(33, 136, 56, 1);
+  border-color: var(--color-success);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .btn-sm {
@@ -286,13 +324,16 @@ a:hover {
 .form-select,
 .form-textarea {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 2px solid var(--color-grey);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
-  transition: border-color 0.2s ease;
-  background: var(--color-input-bg);
+  transition: all 0.3s ease;
+  background: rgba(34, 34, 34, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--color-light-grey);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .form-input:focus,
@@ -300,7 +341,9 @@ a:hover {
 .form-textarea:focus {
   outline: none;
   border-color: var(--color-teal);
-  box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.1);
+  background: rgba(34, 34, 34, 0.7);
+  box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .form-input.error,
@@ -322,31 +365,44 @@ a:hover {
 .table-container {
   overflow-x: auto;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-glass);
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--color-table-bg);
+  background: transparent;
 }
 
 .table th,
 .table td {
-  padding: var(--spacing-md);
+  padding: var(--spacing-lg);
   text-align: left;
-  border-bottom: 1px solid var(--color-grey);
+  border-bottom: 1px solid var(--glass-border);
   color: var(--color-light-grey);
 }
 
 .table th {
-  background: var(--color-teal);
+  background: rgba(5, 94, 104, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-weight: 600;
   color: var(--color-white);
+  border-bottom: 2px solid var(--color-teal);
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
 }
 
 .table tbody tr:hover {
-  background: rgba(5, 94, 104, 0.05);
+  background: rgba(5, 94, 104, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* ============================================
@@ -416,28 +472,50 @@ a:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: var(--spacing-md);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .popup {
-  background: var(--color-modal-bg);
-  border: 1px solid var(--color-teal);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
+  background: var(--glass-bg-dark);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-border-accent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
   max-width: 500px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .popup-header {
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-grey);
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--glass-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -464,12 +542,12 @@ a:hover {
 }
 
 .popup-body {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-xl);
 }
 
 .popup-footer {
-  padding: var(--spacing-lg);
-  border-top: 1px solid var(--color-grey);
+  padding: var(--spacing-xl);
+  border-top: 1px solid var(--glass-border);
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-md);
@@ -565,49 +643,66 @@ a:hover {
 .inline-block { display: inline-block; }
 
 /* ============================================
-   DARK THEME OVERRIDES
+   GLASSMORPHISM THEME OVERRIDES
    ============================================ */
 
-/* Override any remaining white backgrounds */
+/* Apply glass effect to modals */
 .modal, .modal-content, .popup-content {
-  background: var(--color-modal-bg) !important;
+  background: var(--glass-bg-dark) !important;
+  backdrop-filter: var(--glass-blur-strong) !important;
+  -webkit-backdrop-filter: var(--glass-blur-strong) !important;
+  border: 1px solid var(--glass-border-accent) !important;
   color: var(--color-light-grey) !important;
+  box-shadow: var(--shadow-glass) !important;
 }
 
-/* Override table styling throughout the app */
+/* Apply glass effect to tables */
 table {
-  background: var(--color-table-bg) !important;
+  background: transparent !important;
   color: var(--color-light-grey) !important;
 }
 
 table th {
-  background: var(--color-teal) !important;
+  background: rgba(5, 94, 104, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
   color: var(--color-white) !important;
 }
 
 table td {
   color: var(--color-light-grey) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
 }
 
-/* Override form inputs throughout the app */
+/* Apply glass effect to form inputs */
 input, select, textarea {
-  background: var(--color-input-bg) !important;
+  background: rgba(34, 34, 34, 0.5) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
   color: var(--color-light-grey) !important;
-  border-color: var(--color-grey) !important;
+  border: 1px solid var(--glass-border) !important;
+  transition: all 0.3s ease !important;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--color-teal) !important;
+  background: rgba(34, 34, 34, 0.7) !important;
+  box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2) !important;
 }
 
-/* Ensure card-like elements use dark theme */
-.card, .users-table, .drinks-table, .sales-container {
-  background: var(--color-card-bg) !important;
+/* Apply glass effect to card-like elements */
+.card, .users-table, .drinks-table {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border-accent) !important;
+  box-shadow: var(--shadow-glass) !important;
 }
 
-/* Override any hardcoded dark text colors */
+/* Ensure text has proper contrast */
 h1, h2, h3, h4, h5, h6 {
-  color: var(--color-light-grey);
+  color: var(--color-white);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* ============================================
