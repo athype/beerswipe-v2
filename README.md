@@ -207,4 +207,4 @@ docker-compose logs postgres # Database only
 
 ## License
 
-MIT License
+Proprietary source avalable license
