@@ -318,7 +318,6 @@ onMounted(() => {
 
 .users-header h1 {
   font-size: var(--font-size-4xl);
-  color: var(--color-teal);
   flex-shrink: 0;
 }
 

@@ -12,33 +12,61 @@
     <div class="stats-grid mb-xl" v-if="salesStore.stats">
       <div class="card stat-card">
         <div class="card-body text-center">
-          <h3 class="text-primary text-lg mb-sm">Total Sales</h3>
-          <p class="stat-number">{{ salesStore.stats.sales?.totalSales || 0 }}</p>
-          <p class="text-sm text-secondary">transactions</p>
+          <h3 class="text-lg mb-sm">Total Sales</h3>
+          <CountUp 
+          :from="0" 
+          :to="salesStore.stats.sales?.totalSales || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
+          <p class="text-sm">transactions</p>
         </div>
       </div>
 
       <div class="card stat-card">
         <div class="card-body text-center">
-          <h3 class="text-primary text-lg mb-sm">Revenue</h3>
-          <p class="stat-number">{{ salesStore.stats.sales?.totalRevenue || 0 }}</p>
-          <p class="text-sm text-secondary">credits earned</p>
+          <h3 class="text-lg mb-sm">Revenue</h3>
+          <CountUp 
+          :from="0" 
+          :to="salesStore.stats.sales?.totalRevenue || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
+          <p class="text-sm">credits earned</p>
         </div>
       </div>
 
       <div class="card stat-card">
         <div class="card-body text-center">
-          <h3 class="text-primary text-lg mb-sm">Items Sold</h3>
-          <p class="stat-number">{{ salesStore.stats.sales?.totalItemsSold || 0 }}</p>
-          <p class="text-sm text-secondary">drinks</p>
+          <h3 class="text-lg mb-sm">Items Sold</h3>
+          <CountUp 
+          :from="0" 
+          :to="salesStore.stats.sales?.totalItemsSold || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
+          <p class="text-sm">drinks</p>
         </div>
       </div>
 
       <div class="card stat-card">
         <div class="card-body text-center">
-          <h3 class="text-primary text-lg mb-sm">Credits Added</h3>
-          <p class="stat-number">{{ salesStore.stats.credits?.totalCreditsAdded || 0 }}</p>
-          <p class="text-sm text-secondary">total credits</p>
+          <h3 class="text-lg mb-sm">Credits Added</h3>
+          <CountUp 
+          :from="0"
+          :to="salesStore.stats.credits?.totalCreditsAdded || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
+          <p class="text-sm">total credits</p>
         </div>
       </div>
     </div>
@@ -62,20 +90,23 @@
             <RouterLink to="/history" class="btn btn-secondary btn-lg">
               View History
             </RouterLink>
+            <RouterLink to="/leaderboard" class="btn btn-secondary btn-lg">
+              View Leaderboard
+            </RouterLink>
           </div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">Recent Activity</h2>
+          <h2 class="card-title">Recent Sales</h2>
         </div>
         <div class="card-body">
           <div v-if="salesStore.loading" class="text-center py-xl">
-            <p class="text-secondary">Loading recent transactions...</p>
+            <p>Loading recent transactions...</p>
           </div>
           <div v-else-if="recentTransactions.length === 0" class="text-center py-xl">
-            <p class="text-secondary">No recent transactions</p>
+            <p>No recent transactions</p>
           </div>
           <div v-else class="transaction-list">
             <div 
@@ -90,7 +121,7 @@
               </div>
               <div class="transaction-details flex-1">
                 <p class="text-sm font-medium mb-xs">{{ transaction.description }}</p>
-                <p class="text-xs text-secondary">
+                <p class="text-xs">
                   {{ transaction.user?.username }} • 
                   {{ transaction.amount }} credits •
                   {{ formatDate(transaction.transactionDate) }}
@@ -128,6 +159,7 @@ import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useSalesStore } from '@/stores/sales.js'
 import { useDrinksStore } from '@/stores/drinks.js'
+import CountUp from '@/vue-bits-animations/CountUp/CountUp.vue'
 
 const authStore = useAuthStore()
 const salesStore = useSalesStore()
@@ -172,8 +204,7 @@ onMounted(async () => {
 
 .stat-number {
   font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--color-teal);
+  font-weight: 900;
   margin: var(--spacing-xs) 0;
 }
 
@@ -229,23 +260,6 @@ onMounted(async () => {
   border-radius: var(--border-radius);
   border: 1px solid var(--color-grey);
 }
-
-.text-secondary {
-  color: var(--color-black);
-}
-
-.text-primary {
-  color: var(--color-black);
-}
-
-.transaction-details {
-  color: var(--color-black);
-}
-
-.transaction-icon {
-  color: var(--color-black);
-}
-
 
 @media (max-width: 768px) {
   .dashboard-grid {
