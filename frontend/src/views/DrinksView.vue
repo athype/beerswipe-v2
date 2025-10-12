@@ -358,7 +358,6 @@ onMounted(() => {
 
 .drinks-header h1 {
   font-size: var(--font-size-4xl);
-  color: var(--color-teal);
 }
 
 .drinks-filters {

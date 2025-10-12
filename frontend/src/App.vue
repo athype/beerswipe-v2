@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
 import NotificationContainer from './components/NotificationContainer.vue'
@@ -8,6 +8,11 @@ import Dither from './vue-bits-backgrounds/Dither/Dither.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+
+const isChrome = computed(() => {
+  const userAgent = navigator.userAgent.toLowerCase()
+  return userAgent.includes('chrome') && !userAgent.includes('edg')
+})
 
 onMounted(() => {
   authStore.initializeAuth()
@@ -21,9 +26,9 @@ const logout = async () => {
 
 <template>
   <div id="app">
-    <!-- Dither background -->
     <Dither 
-      class="dither-bg"
+      v-if="!isChrome"
+      class="bg"
       :wave-speed="0.03"
       :wave-frequency="3"
       :wave-amplitude="0.3"
@@ -31,7 +36,7 @@ const logout = async () => {
       :color-num="4"
       :pixel-size="2"
       :disable-animation="false"
-      :enable-mouse-interaction="true"
+      :enable-mouse-interaction="false"
       :mouse-radius="0.3"
     />
     
@@ -69,7 +74,7 @@ main > * {
   pointer-events: auto;
 }
 
-.dither-bg {
+.bg {
   position: fixed;
   top: 0;
   left: 0;

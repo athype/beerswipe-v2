@@ -13,7 +13,14 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Total Sales</h3>
-          <p class="stat-number">{{ salesStore.stats.sales?.totalSales || 0 }}</p>
+          <CountUp 
+          :from="0" 
+          :to="salesStore.stats.sales?.totalSales || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
           <p class="text-sm">transactions</p>
         </div>
       </div>
@@ -21,7 +28,14 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Revenue</h3>
-          <p class="stat-number">{{ salesStore.stats.sales?.totalRevenue || 0 }}</p>
+          <CountUp 
+          :from="0" 
+          :to="salesStore.stats.sales?.totalRevenue || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
           <p class="text-sm">credits earned</p>
         </div>
       </div>
@@ -29,7 +43,14 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Items Sold</h3>
-          <p class="stat-number">{{ salesStore.stats.sales?.totalItemsSold || 0 }}</p>
+          <CountUp 
+          :from="0" 
+          :to="salesStore.stats.sales?.totalItemsSold || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
           <p class="text-sm">drinks</p>
         </div>
       </div>
@@ -37,7 +58,14 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Credits Added</h3>
-          <p class="stat-number">{{ salesStore.stats.credits?.totalCreditsAdded || 0 }}</p>
+          <CountUp 
+          :from="0"
+          :to="salesStore.stats.credits?.totalCreditsAdded || 0"
+          direction="up"
+          :duration="1"
+          :start-when="true"
+          class-name="stat-number"
+          />
           <p class="text-sm">total credits</p>
         </div>
       </div>
@@ -61,6 +89,9 @@
             </RouterLink>
             <RouterLink to="/history" class="btn btn-secondary btn-lg">
               View History
+            </RouterLink>
+            <RouterLink to="/leaderboard" class="btn btn-secondary btn-lg">
+              View Leaderboard
             </RouterLink>
           </div>
         </div>
@@ -128,6 +159,7 @@ import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useSalesStore } from '@/stores/sales.js'
 import { useDrinksStore } from '@/stores/drinks.js'
+import CountUp from '@/vue-bits-animations/CountUp/CountUp.vue'
 
 const authStore = useAuthStore()
 const salesStore = useSalesStore()
@@ -172,8 +204,7 @@ onMounted(async () => {
 
 .stat-number {
   font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--color-teal);
+  font-weight: 900;
   margin: var(--spacing-xs) 0;
 }
 

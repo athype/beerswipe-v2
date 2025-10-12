@@ -26,6 +26,7 @@ const handleLogout = () => {
             <RouterLink to="/users" class="navbar-link">Users</RouterLink>
             <RouterLink to="/drinks" class="navbar-link">Drinks</RouterLink>
             <RouterLink to="/history" class="navbar-link">History</RouterLink>
+            <RouterLink to="/leaderboard" class="navbar-link">Leaderboard</RouterLink>
             
             <div class="navbar-user">
               <span class="text-sm">{{ authStore.user?.username }}</span>

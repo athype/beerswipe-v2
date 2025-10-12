@@ -8,6 +8,7 @@ import UsersView from '../views/UsersView.vue'
 import DrinksView from '../views/DrinksView.vue'
 import SalesView from '../views/SalesView.vue'
 import TransactionHistoryView from '../views/TransactionHistoryView.vue'
+import LeaderboardView from '../views/LeaderboardView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +51,12 @@ const router = createRouter({
       path: '/history',
       name: 'history',
       component: TransactionHistoryView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/leaderboard',
+      name: 'leaderboard',
+      component: LeaderboardView,
       meta: { requiresAuth: true },
     },
     {

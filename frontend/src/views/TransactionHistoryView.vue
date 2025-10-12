@@ -375,7 +375,6 @@ onMounted(() => {
 
 .history-header h1 {
   font-size: var(--font-size-4xl);
-  color: var(--color-teal);
 }
 
 .history-filters {

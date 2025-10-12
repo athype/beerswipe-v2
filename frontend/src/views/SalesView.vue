@@ -361,7 +361,6 @@ onMounted(async () => {
 
 .sales-header h1 {
   font-size: var(--font-size-4xl);
-  color: var(--color-teal);
   margin-bottom: 0.5rem;
 }
 
