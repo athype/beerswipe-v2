@@ -35,11 +35,11 @@ const corsOptions = {
     
     // Production: Allow specific origins
     const allowedOrigins = [
-      `${env.FEURL}:${env.FEPORT}`, // Development frontend
-      env.FEURL, // Production frontend (port 80, no need to specify)
-      'http://localhost', // Production frontend on port 80
-      'http://localhost:80', // Production frontend with explicit port
-      "http://localhost:5173" // Production frontend on port 5173
+      env.FEURL, // Production frontend (uses DOMAIN from .env, e.g., https://beer.sv-ada.nl)
+      'http://localhost', // Local development
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:80', // Local nginx
+      'https://beer.sv-ada.nl', // Production domain (explicit)
     ];
     
     if (allowedOrigins.includes(origin)) {

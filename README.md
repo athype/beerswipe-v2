@@ -4,36 +4,39 @@ A modern drink selling and management system for student associations. Features 
 
 ## Features
 
-- 🔐 **Admin Authentication**: Secure JWT-based login system
-- 👥 **User Management**: Support for admins, members, and non-members with CSV import/export
-- 💰 **Credit System**: Add credits to user accounts and track balances
-- 🍻 **Inventory Management**: Manage drinks, stock levels, and categories
-- 🛒 **Sales Terminal**: Point-of-sale interface for processing transactions
-- 📊 **Transaction History**: Complete audit trail of all operations
-- 🐳 **Dockerized**: Easy deployment with Docker Compose
+- **Admin Authentication**: Secure JWT-based login system
+- **User Management**: Support for admins, members, and non-members with CSV import/export
+- **Credit System**: Add credits to user accounts and track balances
+- **Inventory Management**: Manage drinks, stock levels, and categories
+- **Sales Terminal**: Point-of-sale interface for processing transactions
+- **Transaction History**: Complete audit trail of all operations
+- **Dockerized**: Easy deployment with Docker Compose
 
 ## Technology Stack
 
 **Backend**: Node.js, Express.js, PostgreSQL, Sequelize, JWT  
 **Frontend**: Vue.js 3, Pinia, Vue Router, Vite  
-**Deployment**: Docker, Docker Compose, Nginx
+**Deployment**: Docker, Docker Compose, Nginx, Caddy
 
 ## Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
+- (Production only) Domain name with DNS configured
 
 ### 1. Clone and Setup Environment
 ```bash
 git clone <repository-url>
-cd beermachine_v3
+cd beerswipe-v2
 
 # Copy and configure environment variables
 cp .env.example .env
 # Edit .env with your settings (see Environment Variables section)
 ```
 
-### 2.1 Development Setup Docker
+### 2. Development Setup (Local)
+
+#### Option A: Full Docker Development
 ```bash
 # Start development environment
 docker-compose -f docker-compose.dev.yml up --build
@@ -42,30 +45,56 @@ docker-compose -f docker-compose.dev.yml up --build
 # Backend API: http://localhost:8080
 ```
 
-### 2.2 Development Setup Docker DB local FE and BE
+#### Option B: Docker DB + Local Frontend & Backend
 ```bash
-# Start development environment
+# Start PostgreSQL only
 docker-compose -f docker-compose.dev.yml up postgres -d
-# to start backend
+
+# Start backend
 cd backend
+pnpm install
 pnpm start
-# to start frontend
+
+# Start frontend (in another terminal)
 cd frontend
+pnpm install
 pnpm run dev
+
 # Access the application:
 # Frontend: http://localhost:5173
 # Backend API: http://localhost:8080
 ```
 
-### 3. Production Setup
+### 3. Production Setup (HTTPS with Caddy)
+
+**Production domain:** https://beer.sv-ada.nl
+
 ```bash
-# Start production environment
+# On your VPS/server
+git clone <repository-url>
+cd beerswipe-v2
+git checkout beer-over-https
+
+# Configure environment
+cp .env.example .env
+nano .env  # Update JWT_SECRET, DB_PASSWORD, and other production values
+
+# Start services (includes automatic HTTPS via Caddy)
 docker-compose up --build -d
 
-# Access the application:
-# Frontend: http://localhost
-# Backend API: http://localhost:8080
+# Check logs
+docker-compose logs -f caddy
+docker-compose logs -f frontend
+docker-compose logs -f backend
 ```
+
+**HTTPS is automatically handled by Caddy:**
+- SSL certificates from Let's Encrypt
+- Auto-renewal of certificates
+- HTTP → HTTPS redirect
+- Security headers configured
+
+For detailed HTTPS setup instructions, see the **HTTPS Configuration** section below.
 
 ### 4. Initial Setup
 1. Open the application in your browser
@@ -77,18 +106,18 @@ docker-compose up --build -d
 
 Create a `.env` file in the root directory with the following variables:
 
+**Development (localhost):**
 ```env
-# Application Settings
 NODE_ENV=development
 BEPORT=8080
 BEURL=http://localhost:8080/api/v1
 JWT_SECRET=your-secret-key-here
 
-# Frontend Settings  
 FEURL=http://localhost:5173
 FEPORT=5173
 
-# Database Settings (PostgreSQL)
+DOMAIN=localhost
+
 DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=beermachine
@@ -96,11 +125,72 @@ DB_USER=postgres
 DB_PASSWORD=password
 ```
 
+**Production (beer.sv-ada.nl):**
+```env
+NODE_ENV=production
+BEPORT=6969
+BEURL=https://beer.sv-ada.nl
+JWT_SECRET=your-super-secret-jwt-key-change-this
+
+FEURL=https://beer.sv-ada.nl
+FEPORT=443
+
+DOMAIN=beer.sv-ada.nl
+
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=beermachine
+DB_USER=postgres
+DB_PASSWORD=your-secure-password-here
+```
+
 **Required Variables:**
+- `NODE_ENV`: Environment (development/production)
 - `BEPORT`: Backend server port
 - `BEURL`: Backend API URL for frontend
-- `JWT_SECRET`: Secret key for JWT token generation
+- `JWT_SECRET`: Secret key for JWT token generation (change in production!)
+- `DOMAIN`: Your domain name for HTTPS (production only)
 - `DB_*`: Database connection settings
+
+## HTTPS Configuration
+
+The production setup uses **Caddy** as a reverse proxy for automatic HTTPS:
+
+### Features:
+- ✅ Automatic SSL certificates from Let's Encrypt
+- ✅ Auto-renewal of certificates (no manual intervention)
+- ✅ HTTP → HTTPS automatic redirect
+- ✅ Security headers pre-configured
+- ✅ Health checks for services
+
+### Prerequisites for Production:
+1. **Domain name** pointing to your server: `beer.sv-ada.nl`
+2. **DNS A record** configured: `beer.sv-ada.nl → YOUR_VPS_IP`
+3. **Ports open**: 80 (HTTP) and 443 (HTTPS)
+4. **Email configured**: `info@sv-ada.nl` (for Let's Encrypt notifications)
+
+### Deployment Steps:
+```bash
+# 1. Ensure DNS is configured
+dig beer.sv-ada.nl  # Should return your VPS IP
+
+# 2. Deploy with docker-compose
+docker-compose up -d --build
+
+# 3. Verify HTTPS is working
+curl -I https://beer.sv-ada.nl  # Should show 200 OK with valid SSL
+
+# 4. Check Caddy logs
+docker-compose logs caddy
+```
+
+### Adding Subdomains (Future):
+To add subdomains like `api.beer.sv-ada.nl` or `admin.beer.sv-ada.nl`, edit the `Caddyfile` and uncomment the relevant sections.
+
+### Troubleshooting HTTPS:
+- **Certificate not issued**: Check DNS propagation (can take 10-30 min)
+- **Port blocked**: Verify firewall allows ports 80 and 443
+- **Logs**: `docker-compose logs caddy` for detailed error messages
 
 ## CSV Import Format
 
@@ -183,27 +273,102 @@ cd frontend && pnpm test:unit  # Frontend tests
 
 ## Troubleshooting
 
-**Database Connection Issues**
+### Database Connection Issues
 - Ensure PostgreSQL container is running: `docker-compose logs postgres`
 - Check environment variables in `.env`
 - Verify database credentials
 
-**API Connection Issues**  
+### API Connection Issues  
 - Confirm backend is running on correct port
 - Check `BEURL` in `.env` matches frontend expectations
 - Review CORS settings if accessing from different domains
 
-**CSV Import Errors**
+### HTTPS/SSL Issues (Production)
+- **No certificate**: Check DNS points to correct IP (`dig beer.sv-ada.nl`)
+- **Certificate errors**: Wait 10-30 min for DNS propagation
+- **Port blocked**: Ensure firewall allows ports 80 and 443
+- **Logs**: `docker-compose logs caddy` for detailed errors
+
+### CSV Import Errors
 - Verify CSV format matches expected structure
 - Ensure usernames are unique
 - Check date format is DD-MM-YYYY
 
-**View Logs**
+### View Logs
 ```bash
 docker-compose logs          # All services
 docker-compose logs backend  # Backend only
+docker-compose logs frontend # Frontend only
 docker-compose logs postgres # Database only
+docker-compose logs caddy    # Reverse proxy (production)
 ```
+
+### Service Not Accessible
+```bash
+# Check all services are running
+docker-compose ps
+
+# Restart specific service
+docker-compose restart frontend
+docker-compose restart backend
+
+# Rebuild if needed
+docker-compose up -d --build
+```
+
+## Security Best Practices
+
+### Production Checklist:
+- [ ] Changed `JWT_SECRET` from default value
+- [ ] Changed `DB_PASSWORD` from default value
+- [ ] PostgreSQL not exposed externally (port 5432 not in docker-compose.yml ports)
+- [ ] Using HTTPS in production (via Caddy)
+- [ ] Domain DNS configured correctly
+- [ ] Email configured in Caddyfile for SSL notifications
+- [ ] Regular backups of PostgreSQL volume
+- [ ] Environment variables not committed to git (.env in .gitignore)
+
+### Network Security:
+- Backend and database only accessible via internal Docker network
+- Frontend served through Caddy reverse proxy
+- HTTPS enforced with automatic redirect from HTTP
+- Security headers configured in Caddy
+
+## Architecture
+
+```
+Internet → Caddy (HTTPS) → Frontend (Nginx) → Backend (Express) → PostgreSQL
+                  ↓
+            SSL Certificates
+            (Let's Encrypt)
+```
+
+**Production (beer.sv-ada.nl):**
+- Caddy handles HTTPS termination and reverse proxying
+- Frontend served as static files via Nginx
+- Backend API accessible internally to frontend
+- Database isolated in Docker network
+
+## Backup and Recovery
+
+### Database Backup:
+```bash
+# Create backup
+docker-compose exec postgres pg_dump -U postgres beermachine > backup.sql
+
+# Restore from backup
+docker-compose exec -T postgres psql -U postgres beermachine < backup.sql
+```
+
+### Volume Backup:
+```bash
+# Backup all volumes
+docker run --rm -v beermachine_postgres_data:/data -v $(pwd):/backup ubuntu tar czf /backup/postgres_backup.tar.gz /data
+```
+
+## Additional Documentation
+
+- **CODEOWNERS**: See `.github/CODEOWNERS` for repository ownership
 
 ## License
 
