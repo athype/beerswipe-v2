@@ -1,0 +1,21 @@
+# CODEOWNERS file
+# These owners will be the default owners for everything in the repo.
+# Unless a later match takes precedence, @athype will be requested for
+# review when someone opens a pull request.
+
+# Global owner
+* @athype
+
+# Backend code
+/backend/ @athype
+
+# Frontend code
+/frontend/ @athype
+
+# Docker and infrastructure
+/docker-compose*.yml @athype
+/backend/Dockerfile @athype
+/frontend/Dockerfile* @athype
+
+# Documentation
+*.md @athype

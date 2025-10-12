@@ -6,6 +6,18 @@ import { Op } from 'sequelize';
 
 const router = express.Router();
 
+/**
+ * Helper function to get the date range for a specific month
+ * @param {number} year - The year
+ * @param {number} month - The month (1-12)
+ * @returns {{ startDate: Date, endDate: Date }} Object containing start and end dates
+ */
+const getMonthDateRange = (year, month) => {
+  const startDate = new Date(year, month - 1, 1); // First day of month at 00:00:00
+  const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of month at 23:59:59.999
+  return { startDate, endDate };
+};
+
 // Get monthly leaderboard
 router.get('/monthly', authenticateToken, async (req, res) => {
   try {
@@ -15,8 +27,7 @@ router.get('/monthly', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Year and month are required' });
     }
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const { startDate, endDate } = getMonthDateRange(year, month);
 
     const leaderboard = await Transaction.findAll({
       where: {
@@ -80,8 +91,7 @@ router.get('/rank/:userId', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Year and month are required' });
     }
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const { startDate, endDate } = getMonthDateRange(year, month);
 
     // Get all users' totals
     const leaderboard = await Transaction.findAll({
