@@ -277,7 +277,6 @@ Chips,Potato chips snack,2,50,snack,true
 - Existing drinks (matched by name) will have their stock and other fields updated
 - New drinks will be created if they don't exist
 - You can use this to bulk update stock levels or add new products
-- `isMember`: true for members, false for non-members
 
 ## Development
 
