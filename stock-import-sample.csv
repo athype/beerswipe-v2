@@ -1,0 +1,9 @@
+name,description,price,stock,category,isActive
+Heineken,Dutch lager beer,5,100,beverage,true
+Coca Cola,Classic soft drink,3,150,beverage,true
+Sprite,Lemon-lime soft drink,3,120,beverage,true
+Fanta,Orange flavored soft drink,3,100,beverage,true
+Water,Bottled water,2,200,beverage,true
+Chips,Potato chips snack,2,50,snack,true
+Peanuts,Roasted peanuts,2,40,snack,true
+Chocolate Bar,Milk chocolate bar,3,30,snack,true
