@@ -1,0 +1,58 @@
+# Caddyfile - Automatic HTTPS Configuration
+# Replace {$DOMAIN} with your actual domain in production
+
+{
+    # Global options
+    email info@sv-ada.nl
+}
+
+# Main application
+{$DOMAIN:localhost} {
+    # Enable automatic HTTPS (Let's Encrypt)
+    # In production with real domain, Caddy automatically gets certificates
+    
+    # Logging
+    log {
+        output file /data/access.log
+        format json
+    }
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        # Prevent MIME sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS Protection
+        X-XSS-Protection "1; mode=block"
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server header
+        -Server
+    }
+
+    # Proxy all requests to frontend nginx container
+    reverse_proxy frontend:80 {
+        # Health check
+        health_uri /
+        health_interval 30s
+        health_timeout 5s
+    }
+}
+
+# Future: API subdomain (uncomment when ready)
+# api.{$DOMAIN:localhost} {
+#     reverse_proxy backend:{$BEPORT:6969}
+# }
+
+# Future: Admin subdomain (uncomment when ready)
+# admin.{$DOMAIN:localhost} {
+#     reverse_proxy admin:3000
+# }
+
+# Future: Metrics subdomain (uncomment when ready)
+# metrics.{$DOMAIN:localhost} {
+#     reverse_proxy grafana:3000
+# }

@@ -3,12 +3,12 @@ version: '3.8'
 services:
   # PostgreSQL Database (Development)
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: beermachine_dev_db
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-beermachine}
     ports:
       - "5432:5432"
     volumes:
@@ -22,17 +22,20 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: beermachine_dev_backend
     environment:
       NODE_ENV: development
-      PORT: ${BEPORT}
-      JWT_SECRET: dev-secret-key
+      PORT: ${BEPORT:-8080}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: beermachine
-      DB_USER: postgres
-      DB_PASSWORD: password
+      DB_NAME: ${DB_NAME:-beermachine}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      FEURL: ${FEURL:-http://localhost:5173}
+      FEPORT: ${FEPORT:-5173}
     ports:
-      - "${BEPORT}:${BEPORT}"
+      - "${BEPORT:-8080}:${BEPORT:-8080}"
     depends_on:
       - postgres
     networks:
@@ -41,6 +44,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ./backend/uploads:/app/uploads
     command: ["pnpm", "dev"]
 
   # Frontend Web App (Development)
@@ -48,9 +52,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    container_name: beermachine_dev_frontend
     environment:
-      VITE_API_URL: ${BEURL}
-      VITE_API_PORT: ${BEPORT}
+      VITE_API_URL: ${BEURL:-http://localhost:8080/api/v1}
+      VITE_API_PORT: ${BEPORT:-8080}
     depends_on:
       - backend
     ports:
