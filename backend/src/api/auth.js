@@ -1,80 +1,82 @@
-import express from 'express';
-import { User } from '../models/index.js';
-import { generateToken } from '../middleware/auth.js';
+import express from "express";
+import { generateToken } from "../middleware/auth.js";
+import { User } from "../models/index.js";
 
 const router = express.Router();
 
 // Admin login
-router.post('/login', async (req, res) => {
+router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+      return res.status(400).json({ error: "Username and password required" });
     }
 
     const user = await User.findOne({ where: { username } });
 
     if (!user || !user.canLogin()) {
-      return res.status(401).json({ error: 'Invalid credentials or unauthorized user' });
+      return res.status(401).json({ error: "Invalid credentials or unauthorized user" });
     }
 
     const isValidPassword = await user.validatePassword(password);
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const token = generateToken(user);
 
     res.json({
-      message: 'Login successful',
+      message: "Login successful",
       token,
       user: {
         id: user.id,
         username: user.username,
         userType: user.userType,
-        credits: user.credits
-      }
+        credits: user.credits,
+      },
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  }
+  catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.post('/create-admin', async (req, res) => {
+router.post("/create-admin", async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ error: 'Admin creation not allowed in production' });
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ error: "Admin creation not allowed in production" });
     }
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+      return res.status(400).json({ error: "Username and password required" });
     }
 
     const existingUser = await User.findOne({ where: { username } });
     if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
+      return res.status(400).json({ error: "Username already exists" });
     }
 
     const admin = await User.create({
       username,
       password,
-      userType: 'admin'
+      userType: "admin",
     });
 
     res.status(201).json({
-      message: 'Admin created successfully',
+      message: "Admin created successfully",
       user: {
         id: admin.id,
         username: admin.username,
-        userType: admin.userType
-      }
+        userType: admin.userType,
+      },
     });
-  } catch (error) {
-    console.error('Create admin error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  }
+  catch (error) {
+    console.error("Create admin error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

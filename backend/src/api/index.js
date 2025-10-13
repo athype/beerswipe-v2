@@ -1,10 +1,10 @@
 import express from "express";
 
 import auth from "./auth.js";
-import users from "./users.js";
 import drinks from "./drinks.js";
-import sales from "./sales.js";
 import leaderboard from "./leaderboard.js";
+import sales from "./sales.js";
+import users from "./users.js";
 
 const router = express.Router();
 

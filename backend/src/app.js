@@ -13,8 +13,9 @@ const app = express();
 
 try {
   await initializeDatabase();
-} catch (error) {
-  console.error('Failed to initialize database:', error);
+}
+catch (error) {
+  console.error("Failed to initialize database:", error);
   process.exit(1);
 }
 
@@ -23,33 +24,34 @@ app.use(helmet());
 
 // CORS configuration
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
+  origin(origin, callback) {
+    if (!origin)
+      return callback(null, true);
+
     // In development, allow localhost on any port
-    if (env.NODE_ENV === 'development') {
-      if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+    if (env.NODE_ENV === "development") {
+      if (origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1")) {
         return callback(null, true);
       }
     }
-    
+
     // Production: Allow specific origins
     const allowedOrigins = [
       env.FEURL, // Production frontend (uses DOMAIN from .env, e.g., https://beer.sv-ada.nl)
-      'http://localhost', // Local development
-      'http://localhost:5173', // Vite dev server
-      'http://localhost:80', // Local nginx
-      'https://beer.sv-ada.nl', // Production domain (explicit)
+      "http://localhost", // Local development
+      "http://localhost:5173", // Vite dev server
+      "http://localhost:80", // Local nginx
+      "https://beer.sv-ada.nl", // Production domain (explicit)
     ];
-    
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
-    console.log(`CORS blocked origin: ${origin}, allowed origins: ${allowedOrigins.join(', ')}`);
-    callback(new Error('Not allowed by CORS'));
+
+    console.log(`CORS blocked origin: ${origin}, allowed origins: ${allowedOrigins.join(", ")}`);
+    callback(new Error("Not allowed by CORS"));
   },
-  credentials: true
+  credentials: true,
 };
 
 app.use(cors(corsOptions));

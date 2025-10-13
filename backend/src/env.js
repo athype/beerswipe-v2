@@ -4,11 +4,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(6969),
   JWT_SECRET: z.string().default("your-secret-key-change-in-production"),
-  
+
   // Frontend URL configuration
   FEURL: z.string().default("http://localhost"),
   FEPORT: z.coerce.number().default(5173),
-  
+
   // Database configuration for production (PostgreSQL)
   DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default("localhost"),

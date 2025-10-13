@@ -2,9 +2,17 @@
   <div class="drinks-view">
     <div class="drinks-header">
       <h1>Drinks Management</h1>
-      <button @click="showCreateModal = true" class="btn primary">
-        Add New Drink
-      </button>
+      <div class="header-actions">
+        <button @click="showExportModal = true" class="btn export-btn">
+          Export Stock CSV
+        </button>
+        <button @click="showImportModal = true" class="btn import-btn">
+          Import Stock CSV
+        </button>
+        <button @click="showCreateModal = true" class="btn primary">
+          Add New Drink
+        </button>
+      </div>
     </div>
 
     <div class="drinks-filters">
@@ -210,6 +218,19 @@
         </form>
       </div>
     </div>
+
+    <!-- Stock CSV Import/Export Modals -->
+    <StockCsvImportModal
+      :show="showImportModal"
+      @close="showImportModal = false"
+      @import="handleImportCSV"
+    />
+    
+    <StockCsvExportModal
+      :show="showExportModal"
+      @close="showExportModal = false"
+      @export="handleExportCSV"
+    />
   </div>
 </template>
 
@@ -217,6 +238,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useNotifications } from '@/composables/useNotifications.js'
 import { useDrinksStore } from '../stores/drinks.js'
+import StockCsvImportModal from '../components/StockCsvImportModal.vue'
+import StockCsvExportModal from '../components/StockCsvExportModal.vue'
 
 const drinksStore = useDrinksStore()
 const { showSuccess, showError } = useNotifications()
@@ -227,6 +250,8 @@ const filterStock = ref('')
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showStockModal = ref(false)
+const showImportModal = ref(false)
+const showExportModal = ref(false)
 const selectedDrink = ref(null)
 const stockQuantity = ref(1)
 
@@ -338,6 +363,29 @@ const closeStockModal = () => {
   stockQuantity.value = 1
 }
 
+const handleImportCSV = async (file) => {
+  const formData = new FormData()
+  formData.append('csvFile', file)
+
+  const result = await drinksStore.importCSV(formData)
+  if (result.success) {
+    showImportModal.value = false
+    showSuccess(`Import completed. ${result.data.imported} items imported, ${result.data.errors} errors.`)
+  } else {
+    showError(result.error)
+  }
+}
+
+const handleExportCSV = async (params) => {
+  const result = await drinksStore.exportCSV(params)
+  if (result.success) {
+    showExportModal.value = false
+    showSuccess('Stock exported successfully!')
+  } else {
+    showError(result.error)
+  }
+}
+
 onMounted(() => {
   drinksStore.fetchDrinks()
 })
@@ -358,6 +406,11 @@ onMounted(() => {
 
 .drinks-header h1 {
   font-size: var(--font-size-4xl);
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
 }
 
 .drinks-filters {
@@ -543,6 +596,26 @@ onMounted(() => {
 
 .btn.success:hover {
   background: var(--color-teal-dark);
+}
+
+.btn.export-btn {
+  background: #f39c12;
+  color: var(--color-black);
+  font-weight: 600;
+}
+
+.btn.export-btn:hover {
+  background: #e67e22;
+}
+
+.btn.import-btn {
+  background: #9b59b6;
+  color: var(--color-white);
+  font-weight: 600;
+}
+
+.btn.import-btn:hover {
+  background: #8e44ad;
 }
 
 .btn:disabled {

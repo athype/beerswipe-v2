@@ -118,5 +118,53 @@ export const useDrinksStore = defineStore('drinks', {
         this.loading = false;
       }
     },
+
+    async importCSV(formData) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await drinksAPI.importCSV(formData);
+        await this.fetchDrinks(); // Refresh the list
+        return { success: true, data: response.data };
+      } catch (error) {
+        this.error = error.response?.data?.error || 'Failed to import CSV';
+        return { success: false, error: this.error };
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async exportCSV(params = {}) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await drinksAPI.exportCSV(params);
+        
+        const blob = new Blob([response.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const filename = params.category 
+          ? `stock-${params.category}-export-${today}.csv`
+          : `stock-export-${today}.csv`;
+        
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        return { success: true };
+      } catch (error) {
+        this.error = error.response?.data?.error || 'Failed to export CSV';
+        return { success: false, error: this.error };
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });
