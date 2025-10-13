@@ -29,16 +29,15 @@ router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
       attributes: ["name", "description", "price", "stock", "category", "isActive"],
     });
 
-    // Generate CSV content
     const csvRows = drinks.map((drink) => {
-      const description = (drink.description || "").replace(/"/g, "\"\""); // Escape quotes
-      return `"${drink.name}","${description}",${drink.price},${drink.stock},"${drink.category}",${drink.isActive}`;
+      const escapedName = (drink.name || "").replace(/"/g, "\"\"");
+      const escapedDescription = (drink.description || "").replace(/"/g, "\"\"");
+      return `"${escapedName}","${escapedDescription}",${drink.price},${drink.stock},"${drink.category}",${drink.isActive}`;
     });
 
     const header = "name,description,price,stock,category,isActive";
     const csvContent = [header, ...csvRows].join("\n");
 
-    // Set headers for CSV download
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename=stock-export-${new Date().toISOString().split("T")[0]}.csv`);
 
