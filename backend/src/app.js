@@ -38,6 +38,7 @@ const corsOptions = {
     // Production: Allow specific origins
     const allowedOrigins = [
       env.FEURL, // Production frontend (uses DOMAIN from .env, e.g., https://beer.sv-ada.nl)
+      "https://localhost",
       "http://localhost", // Local development
       "http://localhost:5173", // Vite dev server
       "http://localhost:80", // Local nginx

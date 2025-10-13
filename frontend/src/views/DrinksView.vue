@@ -3,13 +3,13 @@
     <div class="drinks-header">
       <h1>Drinks Management</h1>
       <div class="header-actions">
-        <button @click="showExportModal = true" class="btn export-btn">
+        <button @click="showExportModal = true" class="btn">
           Export Stock CSV
         </button>
-        <button @click="showImportModal = true" class="btn import-btn">
+        <button @click="showImportModal = true" class="btn">
           Import Stock CSV
         </button>
-        <button @click="showCreateModal = true" class="btn primary">
+        <button @click="showCreateModal = true" class="btn">
           Add New Drink
         </button>
       </div>
@@ -596,26 +596,6 @@ onMounted(() => {
 
 .btn.success:hover {
   background: var(--color-teal-dark);
-}
-
-.btn.export-btn {
-  background: #f39c12;
-  color: var(--color-black);
-  font-weight: 600;
-}
-
-.btn.export-btn:hover {
-  background: #e67e22;
-}
-
-.btn.import-btn {
-  background: #9b59b6;
-  color: var(--color-white);
-  font-weight: 600;
-}
-
-.btn.import-btn:hover {
-  background: #8e44ad;
 }
 
 .btn:disabled {
