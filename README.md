@@ -227,6 +227,8 @@ john_doe,0,15-03-1995,false
 - `POST /api/v1/drinks` - Create drink
 - `PUT /api/v1/drinks/:id` - Update drink
 - `POST /api/v1/drinks/:id/add-stock` - Add stock
+- `POST /api/v1/drinks/import-csv` - CSV stock import
+- `GET /api/v1/drinks/export-csv` - CSV stock export
 - `DELETE /api/v1/drinks/:id` - Delete drink
 
 **Sales** (Admin only)
@@ -235,6 +237,8 @@ john_doe,0,15-03-1995,false
 - `GET /api/v1/sales/stats` - Sales statistics
 
 ## CSV Import/Export
+
+### Users Import/Export
 
 Import users in bulk using CSV files with this format:
 
@@ -249,6 +253,30 @@ john_doe,0,15-03-1995,false
 - `credits`: Initial credit amount (number)
 - `dateOfBirth`: DD-MM-YYYY format
 - `isMember`: true for members, false for non-members
+
+### Stock Import/Export
+
+Import and export stock (drinks) data using CSV files with this format:
+
+```csv
+name,description,price,stock,category,isActive
+Heineken,Dutch lager beer,5,100,beverage,true
+Coca Cola,Classic soft drink,3,150,beverage,true
+Chips,Potato chips snack,2,50,snack,true
+```
+
+**Fields:**
+- `name`: Drink name (required, unique)
+- `description`: Drink description (optional)
+- `price`: Price in credits (required for new drinks)
+- `stock`: Stock quantity (number, default: 0)
+- `category`: Category like "beverage", "snack" (default: "beverage")
+- `isActive`: true or false (default: true)
+
+**Import behavior:**
+- Existing drinks (matched by name) will have their stock and other fields updated
+- New drinks will be created if they don't exist
+- You can use this to bulk update stock levels or add new products
 
 ## Development
 

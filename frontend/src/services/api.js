@@ -67,6 +67,13 @@ export const drinksAPI = {
   update: (id, drinkData) => api.put(`/drinks/${id}`, drinkData),
   addStock: (id, quantity) => api.post(`/drinks/${id}/add-stock`, { quantity }),
   delete: (id) => api.delete(`/drinks/${id}`),
+  importCSV: (formData) => api.post('/drinks/import-csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  exportCSV: (params) => api.get('/drinks/export-csv', { 
+    params, 
+    responseType: 'blob' 
+  }),
 };
 
 export const salesAPI = {

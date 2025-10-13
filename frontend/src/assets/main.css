@@ -224,8 +224,8 @@ a:hover {
   padding: var(--spacing-sm) var(--spacing-lg);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-size: var(--font-size-base);
+  font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.3s ease;
