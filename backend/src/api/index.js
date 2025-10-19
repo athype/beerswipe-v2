@@ -1,5 +1,6 @@
 import express from "express";
 
+import admin from "./admin.js";
 import auth from "./auth.js";
 import drinks from "./drinks.js";
 import leaderboard from "./leaderboard.js";
@@ -15,6 +16,7 @@ router.get("/", (req, res) => {
 });
 
 router.use("/auth", auth);
+router.use("/admin", admin);
 router.use("/users", users);
 router.use("/drinks", drinks);
 router.use("/sales", sales);

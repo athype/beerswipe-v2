@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/auth.js'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
+import AdminDashboardView from '../views/AdminDashboardView.vue'
 import UsersView from '../views/UsersView.vue'
 import DrinksView from '../views/DrinksView.vue'
 import SalesView from '../views/SalesView.vue'
@@ -27,6 +28,12 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: AdminDashboardView,
       meta: { requiresAuth: true },
     },
     {
