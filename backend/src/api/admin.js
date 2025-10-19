@@ -151,7 +151,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     const { username, password } = req.body;
     const adminId = req.params.id;
 
-    if (Number.parseInt(adminId) === req.user.id) {
+    if (Number.parseInt(adminId, 10) === req.user.id) {
       return res.status(400).json({ error: "Use /profile endpoint to update your own account" });
     }
 
@@ -209,7 +209,7 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const adminId = req.params.id;
 
-    if (Number.parseInt(adminId) === req.user.id) {
+    if (Number.parseInt(adminId, 10) === req.user.id) {
       return res.status(400).json({ error: "Cannot delete your own account" });
     }
 

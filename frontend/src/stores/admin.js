@@ -47,11 +47,7 @@ export const useAdminStore = defineStore('admin', () => {
       const response = await api.put('/admin/profile', data)
       currentAdmin.value = response.data.admin
       
-      // If token is returned (username changed), update it
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token)
-      }
-      
+      // Return the response so the component can handle token update via authStore
       return response.data
     } catch (err) {
       error.value = err.response?.data?.error || 'Failed to update profile'

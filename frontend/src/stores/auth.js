@@ -74,5 +74,24 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false;
       }
     },
+
+    updateUsername(newUsername) {
+      if (this.user) {
+        this.user.username = newUsername;
+        localStorage.setItem('user', JSON.stringify(this.user));
+      }
+    },
+
+    updateToken(newToken) {
+      this.token = newToken;
+      localStorage.setItem('authToken', newToken);
+    },
+
+    updateUserData(userData) {
+      if (this.user) {
+        this.user = { ...this.user, ...userData };
+        localStorage.setItem('user', JSON.stringify(this.user));
+      }
+    },
   },
 });

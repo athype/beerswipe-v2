@@ -36,11 +36,14 @@ const loadData = async () => {
 const handleProfileUpdate = async (data) => {
   profileLoading.value = true
   try {
-    await adminStore.updateProfile(data)
+    const response = await adminStore.updateProfile(data)
     
-    // Update auth store with new username if changed
     if (data.username && data.username !== authStore.user.username) {
-      authStore.user.username = data.username
+      authStore.updateUsername(data.username)
+    }
+    
+    if (response.token) {
+      authStore.updateToken(response.token)
     }
     
     addNotification('success', 'Profile updated successfully')
