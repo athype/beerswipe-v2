@@ -29,7 +29,9 @@ const handleLogout = () => {
             <RouterLink to="/leaderboard" class="navbar-link">Leaderboard</RouterLink>
             
             <div class="navbar-user">
-              <span class="text-sm">{{ authStore.user?.username }}</span>
+              <RouterLink to="/admin" class="username-link">
+                {{ authStore.user?.username }}
+              </RouterLink>
               <button @click="handleLogout" class="btn btn-danger btn-sm">
                 Logout
               </button>
@@ -143,6 +145,22 @@ header {
 .navbar-user .text-sm {
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
+}
+
+.username-link {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  text-decoration: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+  font-size: var(--font-size-sm);
+}
+
+.username-link:hover {
+  color: var(--color-white);
+  background: rgba(5, 94, 104, 0.3);
+  transform: translateY(-1px);
 }
 
 /* Glass effect on hover for user section */
