@@ -12,6 +12,8 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAdmin: (state) => state.user?.userType === 'admin',
+    isSeller: (state) => state.user?.userType === 'seller',
+    isAdminOrSeller: (state) => state.user?.userType === 'admin' || state.user?.userType === 'seller',
   },
 
   actions: {
@@ -20,6 +22,10 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       
       try {
+        this.user = null;
+        this.token = null;
+        this.isAuthenticated = false;
+        
         const response = await authAPI.login(credentials);
         const { token, user } = response.data;
         
@@ -27,9 +33,7 @@ export const useAuthStore = defineStore('auth', {
         this.user = user;
         this.isAuthenticated = true;
         
-        // Store in localStorage
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('authToken', token);
         
         return { success: true };
       } catch (error) {
@@ -45,18 +49,32 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       this.isAuthenticated = false;
       
+      sessionStorage.removeItem('authToken');
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
     },
 
     async initializeAuth() {
-      const token = localStorage.getItem('authToken');
-      const user = localStorage.getItem('user');
+      let token = sessionStorage.getItem('authToken');
       
-      if (token && user) {
+      if (!token) {
+        token = localStorage.getItem('authToken');
+        if (token) {
+          sessionStorage.setItem('authToken', token);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+        }
+      }
+      
+      if (token) {
         this.token = token;
-        this.user = JSON.parse(user);
-        this.isAuthenticated = true;
+        try {
+          const response = await authAPI.getProfile();
+          this.user = response.data.admin || response.data.user;
+          this.isAuthenticated = true;
+        } catch (error) {
+          this.logout();
+        }
       }
     },
 
@@ -78,19 +96,17 @@ export const useAuthStore = defineStore('auth', {
     updateUsername(newUsername) {
       if (this.user) {
         this.user.username = newUsername;
-        localStorage.setItem('user', JSON.stringify(this.user));
       }
     },
 
     updateToken(newToken) {
       this.token = newToken;
-      localStorage.setItem('authToken', newToken);
+      sessionStorage.setItem('authToken', newToken);
     },
 
     updateUserData(userData) {
       if (this.user) {
         this.user = { ...this.user, ...userData };
-        localStorage.setItem('user', JSON.stringify(this.user));
       }
     },
   },

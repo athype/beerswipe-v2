@@ -3,14 +3,14 @@ import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
-import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { User } from "../models/index.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all users (admin only)
-router.get("/", authenticateToken, requireAdmin, async (req, res) => {
+router.get("/", authenticateToken, requireAdminOrSeller, async (req, res) => {
   try {
     const { type, search, page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
@@ -348,9 +348,9 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Prevent changing admin users
-    if (user.userType === "admin") {
-      return res.status(400).json({ error: "Cannot modify admin users" });
+    // Prevent changing admin or seller users
+    if (user.userType === "admin" || user.userType === "seller") {
+      return res.status(400).json({ error: "Cannot modify admin or seller users through this endpoint" });
     }
 
     const updatedUser = await user.update({

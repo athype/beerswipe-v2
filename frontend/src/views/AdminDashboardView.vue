@@ -178,7 +178,7 @@ const closeModals = () => {
         <div class="card-header">
           <h2 class="card-title">Admin Accounts</h2>
           <button class="btn btn-primary" @click="openCreateModal">
-            Create New Admin
+            Create New Account
           </button>
         </div>
         <div class="card-body">
@@ -196,10 +196,10 @@ const closeModals = () => {
       </div>
     </div>
 
-    <!-- Create Admin Modal -->
+    <!-- Create Account Modal -->
     <Modal
       :show="showCreateModal"
-      title="Create New Admin"
+      title="Create New Account"
       @close="closeModals"
     >
       <AdminForm
@@ -208,7 +208,7 @@ const closeModals = () => {
       />
     </Modal>
 
-    <!-- Edit Admin Modal -->
+    <!-- Edit Account Modal -->
     <Modal
       :show="showEditModal"
       title="Edit Admin"

@@ -47,58 +47,6 @@
           {{ authStore.loading ? 'Logging in...' : 'Login' }}
         </button>
       </form>
-      
-      <div class="admin-setup">
-        <p class="text-center text-sm mb-md">Need to create an admin account?</p>
-        <button 
-          @click="showCreateAdmin = !showCreateAdmin" 
-          class="btn btn-secondary"
-          type="button"
-        >
-          {{ showCreateAdmin ? 'Cancel' : 'Create Admin Account' }}
-        </button>
-      </div>
-      
-      <div v-if="showCreateAdmin" class="create-admin-form mt-lg">
-        <div class="card-header">
-          <h3 class="card-title">Create Admin Account</h3>
-        </div>
-        
-        <form @submit.prevent="handleCreateAdmin">
-          <div class="form-group">
-            <label for="adminUsername" class="form-label">Admin Username</label>
-            <input
-              id="adminUsername"
-              v-model="adminData.username"
-              type="text"
-              class="form-input"
-              required
-              placeholder="Enter admin username"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="adminPassword" class="form-label">Admin Password</label>
-            <input
-              id="adminPassword"
-              v-model="adminData.password"
-              type="password"
-              class="form-input"
-              required
-              minlength="6"
-              placeholder="Enter admin password (min 6 characters)"
-            />
-          </div>
-          
-          <button 
-            type="submit" 
-            :disabled="authStore.loading" 
-            class="btn btn-success"
-          >
-            {{ authStore.loading ? 'Creating...' : 'Create Admin' }}
-          </button>
-        </form>
-      </div>
     </div>
   </div>
 </template>

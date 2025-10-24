@@ -34,37 +34,37 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: AdminDashboardView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/users',
       name: 'users',
       component: UsersView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/drinks',
       name: 'drinks',
       component: DrinksView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/sales',
       name: 'sales',
       component: SalesView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdminOrSeller: true },
     },
     {
       path: '/history',
       name: 'history',
       component: TransactionHistoryView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdminOrSeller: true },
     },
     {
       path: '/leaderboard',
       name: 'leaderboard',
       component: LeaderboardView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdminOrSeller: true },
     },
     {
       path: '/about',
@@ -83,6 +83,10 @@ router.beforeEach((to, from, next) => {
   
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
+  } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    next('/sales') // Redirect non-admins to sales
+  } else if (to.meta.requiresAdminOrSeller && !authStore.isAdminOrSeller) {
+    next('/login') // Redirect if not admin or seller
   } else {
     next()
   }

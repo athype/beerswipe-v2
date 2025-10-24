@@ -18,7 +18,8 @@ const formData = ref({
   username: props.admin?.username || '',
   password: '',
   currentPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  userType: props.admin?.userType || 'admin'
 })
 
 const errors = ref({})
@@ -56,6 +57,7 @@ const handleSubmit = () => {
 
   const data = {
     username: formData.value.username,
+    userType: formData.value.userType,
   }
 
   if (formData.value.password) {
@@ -87,6 +89,22 @@ const handleCancel = () => {
         placeholder="Enter username"
       >
       <span v-if="errors.username" class="form-error">{{ errors.username }}</span>
+    </div>
+
+    <!-- User Type (only for new users, not for profile updates) -->
+    <div v-if="!isProfile" class="form-group">
+      <label for="userType" class="form-label">User Type</label>
+      <select
+        id="userType"
+        v-model="formData.userType"
+        class="form-input"
+      >
+        <option value="admin">Admin</option>
+        <option value="seller">Seller</option>
+      </select>
+      <span class="text-sm text-medium-grey">
+        Sellers can only access the sales terminal
+      </span>
     </div>
 
     <!-- Current Password (only for profile updates) -->
@@ -142,7 +160,7 @@ const handleCancel = () => {
         Cancel
       </button>
       <button type="submit" class="btn btn-primary">
-        {{ admin ? 'Update' : 'Create' }} Admin
+        {{ admin ? 'Update' : 'Create' }} {{ formData.userType === 'seller' ? 'Seller' : 'Admin' }}
       </button>
     </div>
   </form>

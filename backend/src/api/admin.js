@@ -10,7 +10,7 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const admins = await User.findAll({
       where: {
-        userType: "admin",
+        userType: { [Op.in]: ["admin", "seller"] },
         isActive: true,
       },
       attributes: ["id", "username", "userType", "createdAt", "updatedAt"],
@@ -106,13 +106,17 @@ router.put("/profile", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Create new admin (admin only)
+// Create new admin or seller (admin only)
 router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, userType = "admin" } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password required" });
+    }
+
+    if (!["admin", "seller"].includes(userType)) {
+      return res.status(400).json({ error: "Invalid user type. Must be 'admin' or 'seller'" });
     }
 
     if (password.length < 6) {
@@ -124,23 +128,23 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Username already exists" });
     }
 
-    const admin = await User.create({
+    const user = await User.create({
       username,
       password,
-      userType: "admin",
+      userType,
     });
 
     res.status(201).json({
-      message: "Admin created successfully",
+      message: `${userType.charAt(0).toUpperCase() + userType.slice(1)} created successfully`,
       admin: {
-        id: admin.id,
-        username: admin.username,
-        userType: admin.userType,
+        id: user.id,
+        username: user.username,
+        userType: user.userType,
       },
     });
   }
   catch (error) {
-    console.error("Create admin error:", error);
+    console.error("Create admin/seller error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -148,7 +152,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 // Update another admin (admin only)
 router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, userType } = req.body;
     const adminId = req.params.id;
 
     if (Number.parseInt(adminId, 10) === req.user.id) {
@@ -158,12 +162,12 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     const admin = await User.findOne({
       where: {
         id: adminId,
-        userType: "admin",
+        userType: { [Op.in]: ["admin", "seller"] },
       },
     });
 
     if (!admin) {
-      return res.status(404).json({ error: "Admin not found" });
+      return res.status(404).json({ error: "Admin or seller not found" });
     }
 
     if (username && username !== admin.username) {
@@ -183,14 +187,19 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
+    if (userType && !["admin", "seller"].includes(userType)) {
+      return res.status(400).json({ error: "Invalid user type. Must be 'admin' or 'seller'" });
+    }
+
     const updates = {};
     if (username) updates.username = username;
     if (password) updates.password = password;
+    if (userType) updates.userType = userType;
 
     await admin.update(updates);
 
     res.json({
-      message: "Admin updated successfully",
+      message: "User updated successfully",
       admin: {
         id: admin.id,
         username: admin.username,
@@ -204,7 +213,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Deactivate admin (admin only)
+// Deactivate admin or seller (admin only)
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const adminId = req.params.id;
@@ -216,12 +225,12 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
     const admin = await User.findOne({
       where: {
         id: adminId,
-        userType: "admin",
+        userType: { [Op.in]: ["admin", "seller"] },
       },
     });
 
     if (!admin) {
-      return res.status(404).json({ error: "Admin not found" });
+      return res.status(404).json({ error: "Admin or seller not found" });
     }
 
     const activeAdminCount = await User.count({
@@ -231,16 +240,16 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
       },
     });
 
-    if (activeAdminCount <= 1) {
+    if (admin.userType === "admin" && activeAdminCount <= 1) {
       return res.status(400).json({ error: "Cannot delete the last active admin" });
     }
 
     await admin.update({ isActive: false });
 
-    res.json({ message: "Admin deactivated successfully" });
+    res.json({ message: `${admin.userType.charAt(0).toUpperCase() + admin.userType.slice(1)} deactivated successfully` });
   }
   catch (error) {
-    console.error("Delete admin error:", error);
+    console.error("Delete admin/seller error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

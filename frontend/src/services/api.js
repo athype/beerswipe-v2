@@ -16,7 +16,8 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
+    // Try sessionStorage first (more secure), fallback to localStorage
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,6 +33,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      sessionStorage.removeItem('authToken');
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -43,6 +45,7 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   createAdmin: (adminData) => api.post('/auth/create-admin', adminData),
+  getProfile: () => api.get('/admin/profile'),
 };
 
 export const usersAPI = {

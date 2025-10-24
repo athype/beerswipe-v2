@@ -33,6 +33,13 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
+export function requireAdminOrSeller(req, res, next) {
+  if (!req.user || (req.user.userType !== "admin" && req.user.userType !== "seller")) {
+    return res.status(403).json({ error: "Admin or seller access required" });
+  }
+  next();
+}
+
 export function generateToken(user) {
   return jwt.sign(
     {

@@ -1,13 +1,13 @@
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
-import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { Drink, Transaction, User } from "../models/index.js";
 
 const router = express.Router();
 
-// Make a sale (admin only)
-router.post("/sell", authenticateToken, requireAdmin, async (req, res) => {
+// Make a sale (admin or seller)
+router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
@@ -92,8 +92,8 @@ router.post("/sell", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Get transaction history
-router.get("/history", authenticateToken, requireAdmin, async (req, res) => {
+// Get transaction history (admin or seller)
+router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res) => {
   try {
     const {
       userId,
@@ -167,8 +167,8 @@ router.get("/history", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Get sales statistics
-router.get("/stats", authenticateToken, requireAdmin, async (req, res) => {
+// Get sales statistics (admin or seller)
+router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const whereClause = {};
