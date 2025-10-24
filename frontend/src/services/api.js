@@ -11,16 +11,12 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
-// Request interceptor to add auth token
+// Request interceptor - no longer needed for auth token since it's in httpOnly cookie
 api.interceptors.request.use(
   (config) => {
-    // Try sessionStorage first (more secure), fallback to localStorage
-    const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     return config;
   },
   (error) => {
@@ -36,7 +32,9 @@ api.interceptors.response.use(
       sessionStorage.removeItem('authToken');
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -44,8 +42,9 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
+  logout: () => api.post('/auth/logout'),
+  getCurrentUser: () => api.get('/auth/me'),
   createAdmin: (adminData) => api.post('/auth/create-admin', adminData),
-  getProfile: () => api.get('/admin/profile'),
 };
 
 export const usersAPI = {

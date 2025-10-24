@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { authAPI } from '../services/api.js';
+import router from '@/router/index.js';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -23,17 +24,14 @@ export const useAuthStore = defineStore('auth', {
       
       try {
         this.user = null;
-        this.token = null;
         this.isAuthenticated = false;
         
         const response = await authAPI.login(credentials);
-        const { token, user } = response.data;
+        const { user } = response.data;
         
-        this.token = token;
+        // No need to store token - it's in httpOnly cookie
         this.user = user;
         this.isAuthenticated = true;
-        
-        sessionStorage.setItem('authToken', token);
         
         return { success: true };
       } catch (error) {
@@ -45,36 +43,38 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
-      this.user = null;
-      this.token = null;
-      this.isAuthenticated = false;
-      
-      sessionStorage.removeItem('authToken');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+      try {
+        // Call backend to clear cookie
+        await authAPI.logout();
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        this.user = null;
+        this.token = null;
+        this.isAuthenticated = false;
+        
+        // Clean up old storage just in case
+        sessionStorage.removeItem('authToken');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+      }
     },
 
     async initializeAuth() {
-      let token = sessionStorage.getItem('authToken');
+      // Clean up old storage-based tokens
+      sessionStorage.removeItem('authToken');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
       
-      if (!token) {
-        token = localStorage.getItem('authToken');
-        if (token) {
-          sessionStorage.setItem('authToken', token);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
-        }
-      }
-      
-      if (token) {
-        this.token = token;
-        try {
-          const response = await authAPI.getProfile();
-          this.user = response.data.admin || response.data.user;
-          this.isAuthenticated = true;
-        } catch (error) {
-          this.logout();
-        }
+      try {
+        // Try to get user from backend using cookie
+        const response = await authAPI.getCurrentUser();
+        this.user = response.data.user;
+        this.isAuthenticated = true;
+      } catch (error) {
+        // No valid session, user needs to login
+        this.user = null;
+        this.isAuthenticated = false;
       }
     },
 
@@ -97,11 +97,6 @@ export const useAuthStore = defineStore('auth', {
       if (this.user) {
         this.user.username = newUsername;
       }
-    },
-
-    updateToken(newToken) {
-      this.token = newToken;
-      sessionStorage.setItem('authToken', newToken);
     },
 
     updateUserData(userData) {
