@@ -85,4 +85,19 @@ export const salesAPI = {
   undoTransaction: (transactionId) => api.delete(`/sales/undo/${transactionId}`),
 };
 
+export const passkeysAPI = {
+  getRegistrationOptions: () => api.post('/passkeys/register-options'),
+  verifyRegistration: (credential, deviceName) => api.post('/passkeys/register-verify', { credential, deviceName }),
+  getLoginOptions: (username) => api.post('/passkeys/login-options', { username }),
+  verifyLogin: (credential) => api.post('/passkeys/login-verify', { credential }),
+  getAll: () => api.get('/passkeys'),
+  delete: (id) => api.delete(`/passkeys/${id}`),
+  update: (id, deviceName) => api.put(`/passkeys/${id}`, { deviceName }),
+};
+
+export const leaderboardAPI = {
+  getMonthly: (year, month) => api.get('/leaderboard/monthly', { params: { year, month } }),
+  getUserRank: (userId, year, month) => api.get(`/leaderboard/rank/${userId}`, { params: { year, month } }),
+};
+
 export default api;

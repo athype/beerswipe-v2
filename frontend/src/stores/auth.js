@@ -67,14 +67,25 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('user');
       
       try {
-        // Try to get user from backend using cookie
         const response = await authAPI.getCurrentUser();
         this.user = response.data.user;
         this.isAuthenticated = true;
       } catch (error) {
-        // No valid session, user needs to login
         this.user = null;
         this.isAuthenticated = false;
+      }
+    },
+
+    async fetchUser() {
+      try {
+        const response = await authAPI.getCurrentUser();
+        this.user = response.data.user;
+        this.isAuthenticated = true;
+        return { success: true };
+      } catch (error) {
+        this.user = null;
+        this.isAuthenticated = false;
+        return { success: false, error: error.response?.data?.error || 'Failed to fetch user' };
       }
     },
 

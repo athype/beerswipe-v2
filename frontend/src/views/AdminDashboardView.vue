@@ -2,13 +2,17 @@
 import { ref, onMounted } from 'vue'
 import { useAdminStore } from '../stores/admin'
 import { useAuthStore } from '../stores/auth'
+import { usePasskeyStore } from '../stores/passkey'
 import { useNotifications } from '../composables/useNotifications'
 import AdminForm from '../components/AdminForm.vue'
 import AdminList from '../components/AdminList.vue'
+import PasskeyList from '../components/PasskeyList.vue'
+import PasskeyRegistration from '../components/PasskeyRegistration.vue'
 import Modal from '../components/Modal.vue'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
+const passkeyStore = usePasskeyStore()
 const { addNotification } = useNotifications()
 
 const activeTab = ref('profile')
@@ -16,9 +20,14 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const selectedAdmin = ref(null)
 const profileLoading = ref(false)
+const passkeySupported = ref(false)
 
 onMounted(async () => {
   await loadData()
+  passkeySupported.value = await passkeyStore.checkSupport()
+  if (passkeySupported.value) {
+    await passkeyStore.fetchPasskeys()
+  }
 })
 
 const loadData = async () => {
@@ -101,6 +110,21 @@ const closeModals = () => {
   showEditModal.value = false
   selectedAdmin.value = null
 }
+
+// Passkey Management
+const handlePasskeyRegistered = async () => {
+  await passkeyStore.fetchPasskeys()
+  addNotification('success', 'Passkey registered successfully')
+}
+
+const handlePasskeyDelete = async (passkeyId) => {
+  try {
+    await passkeyStore.deletePasskey(passkeyId)
+    addNotification('success', 'Passkey removed successfully')
+  } catch (error) {
+    addNotification('error', error.message || 'Failed to remove passkey')
+  }
+}
 </script>
 
 <template>
@@ -120,6 +144,13 @@ const closeModals = () => {
         @click="activeTab = 'profile'"
       >
         My Profile
+      </button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'security' }"
+        @click="activeTab = 'security'"
+      >
+        Security
       </button>
       <button
         class="tab"
@@ -167,6 +198,45 @@ const closeModals = () => {
               @submit="handleProfileUpdate"
               @cancel="() => {}"
             />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Tab -->
+    <div v-if="activeTab === 'security'" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Security & Authentication</h2>
+        </div>
+        <div class="card-body">
+          <div v-if="!passkeySupported" class="alert alert-warning mb-lg">
+            <p>Passkeys are not supported in your current browser. Please use a modern browser with WebAuthn support.</p>
+          </div>
+          
+          <div v-else>
+            <div class="security-section">
+              <h3 class="mb-md">Passkeys</h3>
+              <p class="text-medium-grey mb-lg">
+                Passkeys provide secure, passwordless authentication using your device's biometric sensors or PIN.
+              </p>
+              
+              <div v-if="passkeyStore.loading" class="text-center py-xl">
+                <p>Loading passkeys...</p>
+              </div>
+              
+              <div v-else>
+                <PasskeyList
+                  :passkeys="passkeyStore.passkeys"
+                  @delete="handlePasskeyDelete"
+                  class="mb-xl"
+                />
+                
+                <div class="divider"></div>
+                
+                <PasskeyRegistration @registered="handlePasskeyRegistered" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -342,6 +412,24 @@ const closeModals = () => {
   height: 1px;
   background: var(--glass-border);
   margin: var(--spacing-xl) 0;
+}
+
+.alert {
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid;
+}
+
+.alert-warning {
+  background: rgba(255, 193, 7, 0.1);
+  border-color: rgba(255, 193, 7, 0.3);
+  color: #ffc107;
+}
+
+.security-section h3 {
+  font-size: var(--font-size-xl);
+  color: var(--color-white);
+  margin-bottom: var(--spacing-md);
 }
 
 /* Card Header with Button */

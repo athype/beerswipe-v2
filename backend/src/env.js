@@ -16,6 +16,11 @@ const envSchema = z.object({
   DB_NAME: z.string().default("beermachine"),
   DB_USER: z.string().default("postgres"),
   DB_PASSWORD: z.string().default("hd?m6&p$KG$Sbg7T"),
+
+  // WebAuthn configuration
+  RP_NAME: z.string().default("Beer-Machine"),
+  RP_ID: z.string().optional(),
+  DOMAIN: z.string().optional(),
 });
 
 try {

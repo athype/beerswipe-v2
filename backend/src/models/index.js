@@ -1,6 +1,7 @@
 import Drink from "./Drink.js";
 import Transaction from "./Transaction.js";
 import User from "./User.js";
+import Passkey from "./Passkey.js";
 
 // Define associations
 User.hasMany(Transaction, {
@@ -11,6 +12,12 @@ User.hasMany(Transaction, {
 User.hasMany(Transaction, {
   foreignKey: "adminId",
   as: "processedTransactions",
+});
+
+User.hasMany(Passkey, {
+  foreignKey: "userId",
+  as: "passkeys",
+  onDelete: "CASCADE",
 });
 
 Drink.hasMany(Transaction, {
@@ -33,8 +40,14 @@ Transaction.belongsTo(Drink, {
   as: "drink",
 });
 
+Passkey.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
 export {
   Drink,
+  Passkey,
   Transaction,
   User,
 };

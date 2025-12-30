@@ -47,18 +47,37 @@
           {{ authStore.loading ? 'Logging in...' : 'Login' }}
         </button>
       </form>
+
+      <div v-if="passkeySupported" class="passkey-divider">
+        <span>or</span>
+      </div>
+
+      <button
+        v-if="passkeySupported"
+        @click="handlePasskeyLogin"
+        :disabled="passkeyStore.loading || authStore.loading"
+        class="btn btn-secondary btn-lg passkey-btn"
+      >
+        {{ passkeyStore.loading ? 'Authenticating...' : 'Sign in with Passkey' }}
+      </button>
+
+      <div v-if="!passkeySupported" class="passkey-warning">
+        <p class="text-sm text-medium-grey">Passkey login not supported in this browser</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
+import { usePasskeyStore } from '@/stores/passkey.js'
 import { useNotifications } from '@/composables/useNotifications.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const passkeyStore = usePasskeyStore()
 const { showSuccess, showError } = useNotifications()
 
 const credentials = reactive({
@@ -72,6 +91,11 @@ const adminData = reactive({
 })
 
 const showCreateAdmin = ref(false)
+const passkeySupported = ref(false)
+
+onMounted(async () => {
+  passkeySupported.value = await passkeyStore.checkSupport()
+})
 
 const handleLogin = async () => {
   try {
@@ -84,6 +108,21 @@ const handleLogin = async () => {
     }
   } catch (error) {
     showError(error.message || 'Login failed')
+  }
+}
+
+const handlePasskeyLogin = async () => {
+  try {
+    const result = await passkeyStore.authenticateWithPasskey()
+    if (result.success) {
+      await authStore.fetchUser()
+      showSuccess('Passkey authentication successful!')
+      router.push('/dashboard')
+    } else {
+      showError(result.error || 'Passkey authentication failed')
+    }
+  } catch (error) {
+    showError(error.message || 'Passkey authentication failed')
   }
 }
 
@@ -121,6 +160,40 @@ const handleCreateAdmin = async () => {
 
 .login-form .btn {
   width: 100%;
+}
+
+.passkey-divider {
+  position: relative;
+  text-align: center;
+  margin: var(--spacing-lg) 0;
+}
+
+.passkey-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background: var(--color-grey);
+}
+
+.passkey-divider span {
+  position: relative;
+  display: inline-block;
+  padding: 0 var(--spacing-md);
+  background: var(--color-black);
+  color: var(--color-medium-grey);
+  font-size: var(--text-sm);
+}
+
+.passkey-btn {
+  width: 100%;
+}
+
+.passkey-warning {
+  margin-top: var(--spacing-lg);
+  text-align: center;
 }
 
 .admin-setup {
