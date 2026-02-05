@@ -64,7 +64,7 @@ const router = createRouter({
       path: '/leaderboard',
       name: 'leaderboard',
       component: LeaderboardView,
-      meta: { requiresAuth: true, requiresAdminOrSeller: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/about',
@@ -81,15 +81,23 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    next('/sales') // Redirect non-admins to sales
-  } else if (to.meta.requiresAdminOrSeller && !authStore.isAdminOrSeller) {
-    next('/login') // Redirect if not admin or seller
-  } else {
-    next()
+  const requiresAuth = to.meta.requiresAuth
+  const requiresAdmin = to.meta.requiresAdmin
+  const requiresAdminOrSeller = to.meta.requiresAdminOrSeller
+  // Always handle authentication before any role-based authorization
+  if (requiresAuth && !authStore.isAuthenticated) {
+    return next('/login')
   }
+  // Handle admin-only routes
+  if (requiresAdmin && !authStore.isAdmin) {
+    // If not authenticated, redirect to login instead of a protected route
+    return next(authStore.isAuthenticated ? '/sales' : '/login')
+  }
+  // Handle routes accessible to admins or sellers
+  if (requiresAdminOrSeller && !authStore.isAdminOrSeller) {
+    return next('/login')
+  }
+  return next()
 })
 
 export default router

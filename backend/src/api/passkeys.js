@@ -13,6 +13,7 @@ import {
   getChallenge,
   clearChallenge,
 } from "../utils/webauthn.js";
+import { env } from "../env.js";
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.post("/register-options", authenticateToken, requireAdmin, async (req, re
       userDisplayName: user.username,
       attestationType: "none",
       excludeCredentials: existingPasskeys.map(passkey => ({
-        id: passkey.credentialId, // Already base64url string
+        id: passkey.credentialId,
         transports: passkey.transports,
       })),
       authenticatorSelection: {
@@ -73,14 +74,14 @@ router.post("/register-verify", authenticateToken, requireAdmin, async (req, res
 
     const { credential: credentialData } = verification.registrationInfo;
 
-    // credential.id from browser is already base64url - use it directly!
-    // credentialData.id is Uint8Array which would need conversion, but we don't need it
+    // credential.id from browser is already base64url
+    // credentialData.id is Uint8Array which would need conversion, but not necessary
     const credentialIdToStore = credential.id;
-
-    console.log("Registration - Browser credential.id:", credential.id);
-    console.log("Registration - Storing credentialId:", credentialIdToStore);
-    console.log("Registration - Match:", credential.id === credentialIdToStore);
-
+  if (env.NODE_ENV !== "production") {
+      console.log("Registration - Browser credential.id:", credential.id);
+      console.log("Registration - Storing credentialId:", credentialIdToStore);
+      console.log("Registration - Match:", credential.id === credentialIdToStore);
+    }
     await Passkey.create({
       userId: user.id,
       credentialId: credentialIdToStore,
@@ -128,7 +129,6 @@ router.post("/login-options", async (req, res) => {
     res.json(options);
   }
   catch (error) {
-    console.error("Generate authentication options error:", error);
     res.status(500).json({ error: "Failed to generate authentication options" });
   }
 });
@@ -136,15 +136,8 @@ router.post("/login-options", async (req, res) => {
 router.post("/login-verify", async (req, res) => {
   try {
     const { credential } = req.body;
-
-    // The credential.rawId from SimpleWebAuthn browser library is base64url
-    // credential.id might be different encoding, so use rawId
-    console.log("Login - credential.id:", credential.id);
-    console.log("Login - credential.rawId:", credential.rawId);
     
     const credentialId = credential.rawId || credential.id;
-
-    console.log("Login - Looking for credentialId:", credentialId);
 
     const passkey = await Passkey.findOne({
       where: { credentialId },
@@ -152,17 +145,6 @@ router.post("/login-verify", async (req, res) => {
     });
 
     if (!passkey) {
-      console.error("Passkey not found for credentialId:", credentialId);
-      
-      // Debug: show what we have in database
-      const allPasskeys = await Passkey.findAll({
-        attributes: ['credentialId', 'deviceName'],
-      });
-      console.log("Available passkeys:", allPasskeys.map(p => ({
-        id: p.credentialId,
-        name: p.deviceName
-      })));
-      
       return res.status(401).json({ error: "Passkey not found" });
     }
 
@@ -171,8 +153,6 @@ router.post("/login-verify", async (req, res) => {
     if (!user.isActive || !user.canLogin()) {
       return res.status(401).json({ error: "User cannot login" });
     }
-
-    const expectedChallenge = getChallenge(`auth-${credential.response.clientDataJSON ? Buffer.from(credential.response.clientDataJSON, "base64url").toString() : ""}`);
     
     const actualChallenge = JSON.parse(
       Buffer.from(credential.response.clientDataJSON, "base64url").toString()

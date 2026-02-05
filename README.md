@@ -108,20 +108,7 @@ For detailed HTTPS setup instructions, see the **HTTPS Configuration** section b
 
 When deploying or updating, run database migrations to ensure schema is up to date:
 
-### Development:
-```bash
-# Using Docker
-docker-compose exec backend npx sequelize-cli db:migrate
-
-# Or locally
-cd backend
-npx sequelize-cli db:migrate
-```
-
-### Production:
-```bash
-docker-compose exec backend npx sequelize-cli db:migrate
-```
+Follow the README file in the backend/migrations folder
 
 **Current Migrations:**
 - `002-add-passkey-support.js` - Adds seller user type and Passkeys table

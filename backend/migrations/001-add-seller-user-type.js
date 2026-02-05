@@ -19,7 +19,6 @@ const sequelize = new Sequelize(env.DATABASE_URL || env.DB_NAME, env.DB_USER, en
 });
 
 async function up() {
-  const queryInterface = sequelize.getQueryInterface();
   
   console.log("Running migration: Add 'seller' to userType enum");
   
@@ -62,7 +61,6 @@ async function up() {
 }
 
 async function down() {
-  const queryInterface = sequelize.getQueryInterface();
   
   console.log("Reverting migration: Remove 'seller' from userType enum");
   

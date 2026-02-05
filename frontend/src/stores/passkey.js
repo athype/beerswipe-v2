@@ -13,7 +13,7 @@ export const usePasskeyStore = defineStore("passkey", {
   actions: {
     async checkSupport() {
       try {
-        this.isSupported = await window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable() || false;
+        this.isSupported = (await window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable()) || false;
       }
       catch {
         this.isSupported = false;
