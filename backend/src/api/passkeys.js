@@ -37,7 +37,7 @@ router.post("/register-options", authenticateToken, requireAdmin, async (req, re
       })),
       authenticatorSelection: {
         residentKey: "preferred",
-        userVerification: "preferred",
+        userVerification: "required",
       },
     });
 
@@ -169,6 +169,7 @@ router.post("/login-verify", async (req, res) => {
       expectedChallenge: storedChallenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
+      requireUserVerification: false,
       credential: {
         id: passkey.credentialId, // Already base64url string
         publicKey: Buffer.from(passkey.publicKey, "base64url"),

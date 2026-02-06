@@ -10,7 +10,7 @@ export const rpName = env.RP_NAME || "Beer Machine";
 export const rpID = env.RP_ID || (env.NODE_ENV === "production" ? env.DOMAIN : "localhost");
 export const origin = env.NODE_ENV === "production"
   ? `https://${env.DOMAIN}`
-  : `http://localhost:${env.FEPORT || 5173}`;
+  : `https://localhost`;
 
 const challengeStore = new Map();
 
