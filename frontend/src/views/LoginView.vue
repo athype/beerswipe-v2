@@ -196,21 +196,6 @@ const handleCreateAdmin = async () => {
   text-align: center;
 }
 
-.admin-setup {
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--color-grey);
-  text-align: center;
-}
-
-.admin-setup .btn {
-  width: 100%;
-}
-
-.create-admin-form .btn {
-  width: 100%;
-}
-
 @media (max-width: 480px) {
   .login-container {
     padding: var(--spacing-sm);

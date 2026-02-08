@@ -13,8 +13,7 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
-// Initialize auth from HTTP-only cookies via /auth/me before mounting
-const authStore = useAuthStore()
-await authStore.initializeAuth()
-
 app.mount('#app')
+// Initialize auth from HTTP-only cookies via /auth/me after mounting (non-blocking)
+const authStore = useAuthStore()
+void authStore.initializeAuth()

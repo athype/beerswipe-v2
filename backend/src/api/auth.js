@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticateToken, generateToken } from "../middleware/auth.js";
 import { User } from "../models/index.js";
+import { env } from "../env.js";
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.post("/login", async (req, res) => {
     // Set httpOnly cookie for security
     res.cookie("authToken", token, {
       httpOnly: true, // Cannot be accessed by JavaScript (XSS protection)
-      secure: process.env.NODE_ENV === "production", // Only sent over HTTPS in production
+      secure: env.NODE_ENV === "production", // Only sent over HTTPS in production
       sameSite: "strict", // CSRF protection
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
@@ -70,7 +71,7 @@ router.get("/me", authenticateToken, async (req, res) => {
 router.post("/logout", (req, res) => {
   res.clearCookie("authToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "strict",
   });
   res.json({ message: "Logout successful" });
@@ -78,7 +79,7 @@ router.post("/logout", (req, res) => {
 
 router.post("/create-admin", async (req, res) => {
   try {
-    if (process.env.NODE_ENV === "production") {
+    if (env.NODE_ENV === "production") {
       return res.status(403).json({ error: "Admin creation not allowed in production" });
     }
     const { username, password } = req.body;

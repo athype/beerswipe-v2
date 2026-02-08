@@ -4,7 +4,6 @@ import { authAPI } from '../services/api.js';
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    token: null,
     isAuthenticated: false,
     loading: false,
     error: null,

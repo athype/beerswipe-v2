@@ -105,7 +105,9 @@ router.post("/login-options", async (req, res) => {
   try {
     const { username } = req.body;
 
-    let allowCredentials;
+    // To prevent user enumeration, we always return a challenge with empty allowCredentials
+    // The authenticator will present all available credentials for this RP
+    let allowCredentials = [];
 
     if (username) {
       const user = await User.findOne({ where: { username } });
@@ -125,7 +127,6 @@ router.post("/login-options", async (req, res) => {
     });
 
     storeChallenge(`auth-${options.challenge}`, options.challenge);
-
     res.json(options);
   }
   catch (error) {
@@ -192,7 +193,7 @@ router.post("/login-verify", async (req, res) => {
 
     res.cookie("authToken", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 24 * 60 * 60 * 1000,
     });
