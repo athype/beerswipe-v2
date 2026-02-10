@@ -4,8 +4,8 @@
 BeerSwipe v2 is a modern drink selling and management system for student associations. It features user management, credit system, inventory tracking, and sales processing with a responsive web interface.
 
 **Core Features:**
-- Admin authentication (JWT-based)
-- User management (admins, members, non-members) with CSV import/export
+- Admin and seller authentication (JWT-based with httpOnly cookies, passkey support)
+- User management (admins, sellers, members, non-members) with CSV import/export
 - Credit system for user accounts
 - Inventory management for drinks and stock
 - Point-of-sale terminal
@@ -18,7 +18,7 @@ BeerSwipe v2 is a modern drink selling and management system for student associa
 - **Runtime:** Node.js (ES modules)
 - **Framework:** Express.js 5.x
 - **Database:** PostgreSQL with Sequelize ORM
-- **Authentication:** JWT (jsonwebtoken)
+- **Authentication:** JWT (jsonwebtoken) with httpOnly cookies, WebAuthn/Passkeys (@simplewebauthn/server)
 - **Validation:** Zod schemas
 - **Security:** Helmet, bcryptjs
 - **Testing:** Vitest, Supertest
@@ -29,6 +29,7 @@ BeerSwipe v2 is a modern drink selling and management system for student associa
 - **Routing:** Vue Router 4
 - **Build Tool:** Vite
 - **HTTP Client:** Axios
+- **Authentication:** @simplewebauthn/browser for passkey support
 - **Testing:** Vitest, Vue Test Utils
 
 ### Deployment
@@ -105,7 +106,11 @@ docker-compose -f docker-compose.dev.yml up postgres -d
 - **Error Handling:** Use consistent error response format with proper HTTP status codes
 - **Environment Variables:** Access via `env.js`, never use `process.env` directly (enforced by ESLint rule `node/no-process-env`)
 - **Database:** Use Sequelize ORM for all database operations
-- **Authentication:** JWT tokens with bcrypt for password hashing
+- **Authentication:** 
+  - JWT tokens stored in httpOnly cookies for session management
+  - Bcrypt for password hashing
+  - WebAuthn/Passkeys for passwordless authentication
+  - Cookie settings: httpOnly, secure (in production), sameSite
 
 ### Frontend Conventions
 - **Component Structure:** Vue 3 Composition API with `<script setup>`
@@ -128,8 +133,19 @@ docker-compose -f docker-compose.dev.yml up postgres -d
 ## API Endpoints
 
 **Authentication:**
-- `POST /api/v1/auth/login` - Admin login
+- `POST /api/v1/auth/login` - Admin/seller login (sets httpOnly cookie)
+- `POST /api/v1/auth/logout` - Logout (clears httpOnly cookie)
 - `POST /api/v1/auth/create-admin` - Create admin user
+- `GET /api/v1/auth/me` - Get current authenticated user
+
+**Passkey Authentication:**
+- `POST /api/v1/passkeys/register-options` - Generate passkey registration challenge
+- `POST /api/v1/passkeys/register-verify` - Verify and store passkey
+- `POST /api/v1/passkeys/login-options` - Generate passkey authentication challenge
+- `POST /api/v1/passkeys/login-verify` - Verify passkey and issue token
+- `GET /api/v1/passkeys` - List user's registered passkeys
+- `DELETE /api/v1/passkeys/:id` - Remove a passkey
+- `PUT /api/v1/passkeys/:id` - Update passkey device name
 
 **Users (Admin only):**
 - `GET /api/v1/users` - List users (with pagination/filters)
@@ -148,10 +164,33 @@ docker-compose -f docker-compose.dev.yml up postgres -d
 - `GET /api/v1/drinks/export-csv` - Export stock to CSV
 - `DELETE /api/v1/drinks/:id` - Delete drink
 
-**Sales (Admin only):**
+**Sales (Admin and Seller):**
 - `POST /api/v1/sales/sell` - Process sale
 - `GET /api/v1/sales/history` - Transaction history
 - `GET /api/v1/sales/stats` - Sales statistics
+
+## Passkey Authentication
+
+The system supports WebAuthn/Passkeys for passwordless authentication:
+
+### Features
+- **Passwordless Login:** Authenticate using biometrics (Touch ID, Face ID) or security keys
+- **Multi-Device Support:** Register multiple passkeys per user (phone, laptop, security key)
+- **Phishing-Resistant:** Domain-bound credentials prevent phishing attacks
+- **Hybrid Approach:** Passkeys work alongside traditional password authentication
+
+### Implementation Details
+- **Backend:** Uses `@simplewebauthn/server` for WebAuthn operations
+- **Frontend:** Uses `@simplewebauthn/browser` for credential management
+- **Storage:** Passkey credentials stored in separate `Passkeys` table
+- **Challenge Management:** Temporary challenge storage with 5-minute expiration
+- **Counter Verification:** Signature counter prevents credential cloning
+
+### User Flow
+1. **Registration:** User registers passkey from security settings
+2. **Authentication:** User can login with passkey or fallback to password
+3. **Management:** Users can view, rename, and delete registered passkeys
+4. **Device Naming:** Each passkey has a user-friendly name (e.g., "iPhone 13")
 
 ## Testing
 
@@ -174,8 +213,16 @@ docker-compose -f docker-compose.dev.yml up postgres -d
 
 ## Database Schema
 
+### User Types
+The system supports four user types:
+- **Admin:** Full access to all features, user management, inventory, sales, and reports
+- **Seller:** Can process sales and view transaction history (POS terminal access)
+- **Member:** Regular members with credit accounts, cannot login to admin portal
+- **Non-member:** Guest users with credit accounts, cannot login to admin portal
+
 ### Key Models
-- **User:** username, email, credits, dateOfBirth, isMember, isAdmin
+- **User:** username, password, credits, dateOfBirth, userType (admin/seller/member/non-member), isActive
+- **Passkey:** userId, credentialId, publicKey, counter, transports, deviceName, lastUsedAt
 - **Drink:** name, description, price, stock, category, isActive
 - **Transaction:** userId, drinkId, amount, price, timestamp, type
 
@@ -185,13 +232,18 @@ docker-compose -f docker-compose.dev.yml up postgres -d
 - Always validate input before database operations
 
 ## Security Considerations
-- JWT tokens for authentication
-- Passwords hashed with bcryptjs
-- Helmet middleware for security headers
-- CORS configured for frontend domain
-- Input validation with Zod schemas
-- SQL injection prevention via Sequelize ORM
-- Environment variables for sensitive data (never commit .env)
+- **Authentication:**
+  - JWT tokens stored in httpOnly cookies (prevents XSS attacks)
+  - Secure flag enabled in production (HTTPS only)
+  - SameSite attribute to prevent CSRF
+  - Passkey/WebAuthn support for passwordless authentication (phishing-resistant)
+- **Password Security:** Passwords hashed with bcryptjs (10 rounds)
+- **HTTP Headers:** Helmet middleware for security headers
+- **CORS:** Configured for frontend domain only
+- **Input Validation:** Zod schemas for all API inputs
+- **SQL Injection Prevention:** Sequelize ORM with parameterized queries
+- **Secrets Management:** Environment variables for sensitive data (never commit .env)
+- **Session Security:** Automatic token expiration and refresh mechanisms
 
 ## CSV Import/Export
 
