@@ -134,9 +134,9 @@ docker-compose -f docker-compose.dev.yml up postgres -d
 
 **Authentication:**
 - `POST /api/v1/auth/login` - Admin/seller login (sets httpOnly cookie)
-- `POST /api/v1/auth/logout` - Logout (clears httpOnly cookie)
+- `POST /api/v1/auth/logout` - Logout (clears httpOnly cookie, can be called with or without authentication)
 - `POST /api/v1/auth/create-admin` - Create admin user
-- `GET /api/v1/auth/me` - Get current authenticated user
+- `GET /api/v1/auth/me` - Get current authenticated user (requires authentication)
 
 **Passkey Authentication:**
 - `POST /api/v1/passkeys/register-options` - Generate passkey registration challenge
@@ -221,7 +221,7 @@ The system supports four user types:
 - **Non-member:** Guest users with credit accounts, cannot login to admin portal
 
 ### Key Models
-- **User:** username, password, credits, dateOfBirth, userType (admin/seller/member/non-member), isActive
+- **User:** username (required), password (nullable, required for admin/seller login unless using passkey), credits, dateOfBirth, userType (admin/seller/member/non-member), isActive
 - **Passkey:** userId, credentialId, publicKey, counter, transports, deviceName, lastUsedAt
 - **Drink:** name, description, price, stock, category, isActive
 - **Transaction:** userId, drinkId, amount, price, timestamp, type
