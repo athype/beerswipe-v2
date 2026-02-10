@@ -63,6 +63,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       RP_NAME: ${RP_NAME}
       RP_ID: ${RP_ID}
+      DOMAIN: ${DOMAIN:-localhost}
     depends_on:
       - postgres
     expose:
