@@ -11,15 +11,12 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
-// Request interceptor to add auth token
+// Request interceptor - no longer needed for auth token since it's in httpOnly cookie
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     return config;
   },
   (error) => {
@@ -32,9 +29,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      sessionStorage.removeItem('authToken');
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -42,6 +42,8 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
+  logout: () => api.post('/auth/logout'),
+  getCurrentUser: () => api.get('/auth/me'),
   createAdmin: (adminData) => api.post('/auth/create-admin', adminData),
 };
 
@@ -81,6 +83,21 @@ export const salesAPI = {
   getHistory: (params) => api.get('/sales/history', { params }),
   getStats: (params) => api.get('/sales/stats', { params }),
   undoTransaction: (transactionId) => api.delete(`/sales/undo/${transactionId}`),
+};
+
+export const passkeysAPI = {
+  getRegistrationOptions: () => api.post('/passkeys/register-options'),
+  verifyRegistration: (credential, deviceName) => api.post('/passkeys/register-verify', { credential, deviceName }),
+  getLoginOptions: (username) => api.post('/passkeys/login-options', { username }),
+  verifyLogin: (credential) => api.post('/passkeys/login-verify', { credential }),
+  getAll: () => api.get('/passkeys'),
+  delete: (id) => api.delete(`/passkeys/${id}`),
+  update: (id, deviceName) => api.put(`/passkeys/${id}`, { deviceName }),
+};
+
+export const leaderboardAPI = {
+  getMonthly: (year, month) => api.get('/leaderboard/monthly', { params: { year, month } }),
+  getUserRank: (userId, year, month) => api.get(`/leaderboard/rank/${userId}`, { params: { year, month } }),
 };
 
 export default api;

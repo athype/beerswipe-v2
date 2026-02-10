@@ -3,8 +3,14 @@ import { env } from "../env.js";
 import { User } from "../models/index.js";
 
 export async function authenticateToken(req, res, next) {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(" ")[1];
+  // Try to get token from cookie first (most secure)
+  let token = req.cookies?.authToken;
+  
+  // Fallback to Authorization header for backward compatibility
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    token = authHeader && authHeader.split(" ")[1];
+  }
 
   if (!token) {
     return res.status(401).json({ error: "Access token required" });
@@ -29,6 +35,13 @@ export async function authenticateToken(req, res, next) {
 export function requireAdmin(req, res, next) {
   if (!req.user || req.user.userType !== "admin") {
     return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+
+export function requireAdminOrSeller(req, res, next) {
+  if (!req.user || (req.user.userType !== "admin" && req.user.userType !== "seller")) {
+    return res.status(403).json({ error: "Admin or seller access required" });
   }
   next();
 }

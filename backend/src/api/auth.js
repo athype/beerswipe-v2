@@ -1,6 +1,7 @@
 import express from "express";
-import { generateToken } from "../middleware/auth.js";
+import { authenticateToken, generateToken } from "../middleware/auth.js";
 import { User } from "../models/index.js";
+import { env } from "../env.js";
 
 const router = express.Router();
 
@@ -26,9 +27,16 @@ router.post("/login", async (req, res) => {
 
     const token = generateToken(user);
 
+    // Set httpOnly cookie for security
+    res.cookie("authToken", token, {
+      httpOnly: true, // Cannot be accessed by JavaScript (XSS protection)
+      secure: env.NODE_ENV === "production", // Only sent over HTTPS in production
+      sameSite: "strict", // CSRF protection
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    });
+
     res.json({
       message: "Login successful",
-      token,
       user: {
         id: user.id,
         username: user.username,
@@ -43,9 +51,35 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.get("/me", authenticateToken, async (req, res) => {
+  try {
+    res.json({
+      user: {
+        id: req.user.id,
+        username: req.user.username,
+        userType: req.user.userType,
+        credits: req.user.credits,
+      },
+    });
+  }
+  catch (error) {
+    console.error("Get current user error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/logout", (req, res) => {
+  res.clearCookie("authToken", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+  res.json({ message: "Logout successful" });
+});
+
 router.post("/create-admin", async (req, res) => {
   try {
-    if (process.env.NODE_ENV === "production") {
+    if (env.NODE_ENV === "production") {
       return res.status(403).json({ error: "Admin creation not allowed in production" });
     }
     const { username, password } = req.body;

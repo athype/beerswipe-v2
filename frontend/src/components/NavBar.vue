@@ -21,17 +21,20 @@ const handleLogout = () => {
           </RouterLink>
           
           <div class="navbar-nav">
-            <RouterLink to="/dashboard" class="navbar-link">Dashboard</RouterLink>
+            <RouterLink v-if="authStore.isAdmin" to="/dashboard" class="navbar-link">Dashboard</RouterLink>
             <RouterLink to="/sales" class="navbar-link">Sales</RouterLink>
-            <RouterLink to="/users" class="navbar-link">Users</RouterLink>
-            <RouterLink to="/drinks" class="navbar-link">Drinks</RouterLink>
+            <RouterLink v-if="authStore.isAdmin" to="/users" class="navbar-link">Users</RouterLink>
+            <RouterLink v-if="authStore.isAdmin" to="/drinks" class="navbar-link">Drinks</RouterLink>
             <RouterLink to="/history" class="navbar-link">History</RouterLink>
-            <RouterLink to="/leaderboard" class="navbar-link">Leaderboard</RouterLink>
+            <RouterLink v-if="authStore.isAdmin" to="/leaderboard" class="navbar-link">Leaderboard</RouterLink>
             
             <div class="navbar-user">
-              <RouterLink to="/admin" class="username-link">
+              <RouterLink v-if="authStore.isAdmin" to="/admin" class="username-link">
                 {{ authStore.user?.username }}
               </RouterLink>
+              <span v-else class="username-display">
+                {{ authStore.user?.username }}
+              </span>
               <button @click="handleLogout" class="btn btn-danger btn-sm">
                 Logout
               </button>
@@ -161,6 +164,13 @@ header {
   color: var(--color-white);
   background: rgba(5, 94, 104, 0.3);
   transform: translateY(-1px);
+}
+
+.username-display {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
 }
 
 /* Glass effect on hover for user section */

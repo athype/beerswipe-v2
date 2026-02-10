@@ -28,43 +28,43 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdminOrSeller: true },
     },
     {
       path: '/admin',
       name: 'admin',
       component: AdminDashboardView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/users',
       name: 'users',
       component: UsersView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/drinks',
       name: 'drinks',
       component: DrinksView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/sales',
       name: 'sales',
       component: SalesView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdminOrSeller: true },
     },
     {
       path: '/history',
       name: 'history',
       component: TransactionHistoryView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdminOrSeller: true },
     },
     {
       path: '/leaderboard',
       name: 'leaderboard',
       component: LeaderboardView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/about',
@@ -81,11 +81,23 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else {
-    next()
+  const requiresAuth = to.meta.requiresAuth
+  const requiresAdmin = to.meta.requiresAdmin
+  const requiresAdminOrSeller = to.meta.requiresAdminOrSeller
+  // Always handle authentication before any role-based authorization
+  if (requiresAuth && !authStore.isAuthenticated) {
+    return next('/login')
   }
+  // Handle admin-only routes
+  if (requiresAdmin && !authStore.isAdmin) {
+    // If not authenticated, redirect to login instead of a protected route
+    return next(authStore.isAuthenticated ? '/sales' : '/login')
+  }
+  // Handle routes accessible to admins or sellers
+  if (requiresAdminOrSeller && !authStore.isAdminOrSeller) {
+    return next('/login')
+  }
+  return next()
 })
 
 export default router

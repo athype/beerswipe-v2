@@ -36,7 +36,7 @@ const User = sequelize.define("User", {
     allowNull: true,
   },
   userType: {
-    type: DataTypes.ENUM("admin", "member", "non-member"),
+    type: DataTypes.ENUM("admin", "seller", "member", "non-member"),
     allowNull: false,
     defaultValue: "member",
   },
@@ -67,7 +67,7 @@ User.prototype.validatePassword = async function (password) {
 };
 
 User.prototype.canLogin = function () {
-  return this.userType === "admin" && this.password !== null;
+  return (this.userType === "admin" || this.userType === "seller") && this.password !== null;
 };
 
 User.prototype.addCredits = function (amount) {

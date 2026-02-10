@@ -47,70 +47,37 @@
           {{ authStore.loading ? 'Logging in...' : 'Login' }}
         </button>
       </form>
-      
-      <div class="admin-setup">
-        <p class="text-center text-sm mb-md">Need to create an admin account?</p>
-        <button 
-          @click="showCreateAdmin = !showCreateAdmin" 
-          class="btn btn-secondary"
-          type="button"
-        >
-          {{ showCreateAdmin ? 'Cancel' : 'Create Admin Account' }}
-        </button>
+
+      <div v-if="passkeySupported" class="passkey-divider">
+        <span>or</span>
       </div>
-      
-      <div v-if="showCreateAdmin" class="create-admin-form mt-lg">
-        <div class="card-header">
-          <h3 class="card-title">Create Admin Account</h3>
-        </div>
-        
-        <form @submit.prevent="handleCreateAdmin">
-          <div class="form-group">
-            <label for="adminUsername" class="form-label">Admin Username</label>
-            <input
-              id="adminUsername"
-              v-model="adminData.username"
-              type="text"
-              class="form-input"
-              required
-              placeholder="Enter admin username"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="adminPassword" class="form-label">Admin Password</label>
-            <input
-              id="adminPassword"
-              v-model="adminData.password"
-              type="password"
-              class="form-input"
-              required
-              minlength="6"
-              placeholder="Enter admin password (min 6 characters)"
-            />
-          </div>
-          
-          <button 
-            type="submit" 
-            :disabled="authStore.loading" 
-            class="btn btn-success"
-          >
-            {{ authStore.loading ? 'Creating...' : 'Create Admin' }}
-          </button>
-        </form>
+
+      <button
+        v-if="passkeySupported"
+        @click="handlePasskeyLogin"
+        :disabled="passkeyStore.loading || authStore.loading"
+        class="btn btn-secondary btn-lg passkey-btn"
+      >
+        {{ passkeyStore.loading ? 'Authenticating...' : 'Sign in with Passkey' }}
+      </button>
+
+      <div v-if="!passkeySupported" class="passkey-warning">
+        <p class="text-sm text-medium-grey">Passkey login not supported in this browser</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
+import { usePasskeyStore } from '@/stores/passkey.js'
 import { useNotifications } from '@/composables/useNotifications.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const passkeyStore = usePasskeyStore()
 const { showSuccess, showError } = useNotifications()
 
 const credentials = reactive({
@@ -124,6 +91,11 @@ const adminData = reactive({
 })
 
 const showCreateAdmin = ref(false)
+const passkeySupported = ref(false)
+
+onMounted(async () => {
+  passkeySupported.value = await passkeyStore.checkSupport()
+})
 
 const handleLogin = async () => {
   try {
@@ -136,6 +108,21 @@ const handleLogin = async () => {
     }
   } catch (error) {
     showError(error.message || 'Login failed')
+  }
+}
+
+const handlePasskeyLogin = async () => {
+  try {
+    const result = await passkeyStore.authenticateWithPasskey()
+    if (result.success) {
+      await authStore.fetchUser()
+      showSuccess('Passkey authentication successful!')
+      router.push('/dashboard')
+    } else {
+      showError(result.error || 'Passkey authentication failed')
+    }
+  } catch (error) {
+    showError(error.message || 'Passkey authentication failed')
   }
 }
 
@@ -175,19 +162,38 @@ const handleCreateAdmin = async () => {
   width: 100%;
 }
 
-.admin-setup {
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--color-grey);
+.passkey-divider {
+  position: relative;
   text-align: center;
+  margin: var(--spacing-lg) 0;
 }
 
-.admin-setup .btn {
+.passkey-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background: var(--color-grey);
+}
+
+.passkey-divider span {
+  position: relative;
+  display: inline-block;
+  padding: 0 var(--spacing-md);
+  background: var(--color-black);
+  color: var(--color-medium-grey);
+  font-size: var(--text-sm);
+}
+
+.passkey-btn {
   width: 100%;
 }
 
-.create-admin-form .btn {
-  width: 100%;
+.passkey-warning {
+  margin-top: var(--spacing-lg);
+  text-align: center;
 }
 
 @media (max-width: 480px) {

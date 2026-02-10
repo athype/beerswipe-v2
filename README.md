@@ -4,8 +4,9 @@ A modern drink selling and management system for student associations. Features 
 
 ## Features
 
-- **Admin Authentication**: Secure JWT-based login system
-- **User Management**: Support for admins, members, and non-members with CSV import/export
+- **Admin Authentication**: Secure JWT-based login system with passkey support
+- **Passwordless Login**: WebAuthn/FIDO2 passkeys for phishing-resistant authentication
+- **User Management**: Support for admins, sellers, members, and non-members with CSV import/export
 - **Credit System**: Add credits to user accounts and track balances
 - **Inventory Management**: Manage drinks, stock levels, and categories
 - **Sales Terminal**: Point-of-sale interface for processing transactions
@@ -101,6 +102,21 @@ For detailed HTTPS setup instructions, see the **HTTPS Configuration** section b
 2. Click "Create Admin Account" on the login page
 3. Create your first admin user
 4. Log in and start managing users and drinks
+5. (Optional) Navigate to Admin Dashboard → Security to register a passkey for passwordless login
+
+## Database Migrations
+
+When deploying or updating, run database migrations to ensure schema is up to date:
+
+Follow the README file in the backend/migrations folder
+
+**Current Migrations:**
+- `002-add-passkey-support.js` - Adds seller user type and Passkeys table
+
+**Migration Notes:**
+- Migrations are automatically safe to run multiple times
+- Run after pulling new code or before deployment
+- Always backup database before running in production
 
 ## Environment Variables
 
@@ -117,6 +133,11 @@ FEURL=http://localhost:5173
 FEPORT=5173
 
 DOMAIN=localhost
+
+# WebAuthn Configuration (for passkeys)
+RP_NAME=Beer Machine
+RP_ID=localhost
+ORIGIN=http://localhost:5173
 
 DB_HOST=postgres
 DB_PORT=5432
@@ -137,6 +158,11 @@ FEPORT=443
 
 DOMAIN=beer.sv-ada.nl
 
+# WebAuthn Configuration (for passkeys)
+RP_NAME=Beer Machine
+RP_ID=beer.sv-ada.nl
+ORIGIN=https://beer.sv-ada.nl
+
 DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=beermachine
@@ -150,6 +176,9 @@ DB_PASSWORD=your-secure-password-here
 - `BEURL`: Backend API URL for frontend
 - `JWT_SECRET`: Secret key for JWT token generation (change in production!)
 - `DOMAIN`: Your domain name for HTTPS (production only)
+- `RP_NAME`: WebAuthn Relying Party name (displayed during passkey registration)
+- `RP_ID`: WebAuthn Relying Party ID (must match your domain)
+- `ORIGIN`: Expected origin for WebAuthn challenges (must match frontend URL)
 - `DB_*`: Database connection settings
 
 ## HTTPS Configuration
@@ -211,8 +240,19 @@ john_doe,0,15-03-1995,false
 ## API Endpoints
 
 **Authentication**
-- `POST /api/v1/auth/login` - Admin login
+- `POST /api/v1/auth/login` - Admin login with username/password
 - `POST /api/v1/auth/create-admin` - Create admin user
+- `GET /api/v1/auth/me` - Get current user session
+- `POST /api/v1/auth/logout` - Logout and clear session
+
+**Passkeys** (WebAuthn)
+- `POST /api/v1/passkeys/register-options` - Get registration options
+- `POST /api/v1/passkeys/register-verify` - Verify and save passkey
+- `POST /api/v1/passkeys/login-options` - Get authentication options
+- `POST /api/v1/passkeys/login-verify` - Verify passkey and authenticate
+- `GET /api/v1/passkeys` - List user's registered passkeys
+- `DELETE /api/v1/passkeys/:id` - Delete passkey
+- `PUT /api/v1/passkeys/:id` - Update passkey name
 
 **Users** (Admin only)
 - `GET /api/v1/users` - List users with pagination/filters
@@ -231,7 +271,7 @@ john_doe,0,15-03-1995,false
 - `GET /api/v1/drinks/export-csv` - CSV stock export
 - `DELETE /api/v1/drinks/:id` - Delete drink
 
-**Sales** (Admin only)
+**Sales** (Admin/Seller)
 - `POST /api/v1/sales/sell` - Process sale
 - `GET /api/v1/sales/history` - Transaction history
 - `GET /api/v1/sales/stats` - Sales statistics
@@ -346,11 +386,41 @@ docker-compose up -d --build
 
 ## Security Best Practices
 
+### Passkey Authentication
+
+Passkeys provide phishing-resistant, passwordless authentication using WebAuthn/FIDO2:
+
+**Features:**
+- Hardware-backed cryptographic keys (TPM, Secure Enclave)
+- Biometric authentication (Face ID, Touch ID, Windows Hello)
+- No password to steal or phish
+- Resistant to credential stuffing attacks
+
+**How to use:**
+1. Login with username/password first
+2. Navigate to Admin Dashboard → Security tab
+3. Click "Register Passkey"
+4. Follow browser prompts (Face ID, Touch ID, PIN, etc.)
+5. Next login, use "Sign in with Passkey" button
+
+**Browser Support:**
+- Chrome/Edge 67+
+- Safari 16+
+- Firefox 119+
+- Mobile: iOS 16+, Android 9+
+
+**Important Notes:**
+- Passkeys are device-specific (register on each device)
+- Keep password as backup authentication method
+- Name your passkeys (e.g., "MacBook Pro", "iPhone 14")
+- Remove lost/stolen device passkeys from Security tab
+
 ### Production Checklist:
 - [ ] Changed `JWT_SECRET` from default value
 - [ ] Changed `DB_PASSWORD` from default value
+- [ ] WebAuthn variables configured (`RP_ID`, `RP_NAME`, `ORIGIN`)
 - [ ] PostgreSQL not exposed externally (port 5432 not in docker-compose.yml ports)
-- [ ] Using HTTPS in production (via Caddy)
+- [ ] Using HTTPS in production (via Caddy) - **Required for passkeys**
 - [ ] Domain DNS configured correctly
 - [ ] Email configured in Caddyfile for SSL notifications
 - [ ] Regular backups of PostgreSQL volume
@@ -361,6 +431,8 @@ docker-compose up -d --build
 - Frontend served through Caddy reverse proxy
 - HTTPS enforced with automatic redirect from HTTP
 - Security headers configured in Caddy
+- HttpOnly cookies prevent XSS token theft
+- Passkey credentials never leave the device
 
 ## Architecture
 

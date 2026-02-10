@@ -81,16 +81,16 @@
             <RouterLink to="/sales" class="btn btn-primary btn-lg">
               Make Sale
             </RouterLink>
-            <RouterLink to="/users" class="btn btn-secondary btn-lg">
+            <RouterLink v-if="authStore.isAdmin" to="/users" class="btn btn-secondary btn-lg">
               Manage Users
             </RouterLink>
-            <RouterLink to="/drinks" class="btn btn-secondary btn-lg">
+            <RouterLink v-if="authStore.isAdmin" to="/drinks" class="btn btn-secondary btn-lg">
               Manage Drinks
             </RouterLink>
             <RouterLink to="/history" class="btn btn-secondary btn-lg">
               View History
             </RouterLink>
-            <RouterLink to="/leaderboard" class="btn btn-secondary btn-lg">
+            <RouterLink v-if="authStore.isAdmin" to="/leaderboard" class="btn btn-secondary btn-lg">
               View Leaderboard
             </RouterLink>
           </div>

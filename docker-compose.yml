@@ -61,6 +61,8 @@ services:
       FEURL: ${FEURL}
       FEPORT: ${FEPORT}
       DB_PASSWORD: ${DB_PASSWORD}
+      RP_NAME: ${RP_NAME}
+      RP_ID: ${RP_ID}
     depends_on:
       - postgres
     expose:

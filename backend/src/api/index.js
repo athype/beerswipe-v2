@@ -4,6 +4,7 @@ import admin from "./admin.js";
 import auth from "./auth.js";
 import drinks from "./drinks.js";
 import leaderboard from "./leaderboard.js";
+import passkeys from "./passkeys.js";
 import sales from "./sales.js";
 import users from "./users.js";
 
@@ -21,5 +22,6 @@ router.use("/users", users);
 router.use("/drinks", drinks);
 router.use("/sales", sales);
 router.use("/leaderboard", leaderboard);
+router.use("/passkeys", passkeys);
 
 export default router;

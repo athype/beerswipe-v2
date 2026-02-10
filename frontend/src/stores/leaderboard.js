@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import api from '../services/api.js'
+import { leaderboardAPI } from '../services/api.js'
 
 export const useLeaderboardStore = defineStore('leaderboard', {
   state: () => ({
@@ -30,9 +30,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
       this.error = null
 
       try {
-        const response = await api.get('/leaderboard/monthly', {
-          params: { year, month }
-        })
+        const response = await leaderboardAPI.getMonthly(year, month)
 
         if (response.data) {
           this.leaderboard = response.data.leaderboard || []
@@ -54,9 +52,7 @@ export const useLeaderboardStore = defineStore('leaderboard', {
 
     async fetchUserRank(userId, year, month) {
       try {
-        const response = await api.get(`/leaderboard/rank/${userId}`, {
-          params: { year, month }
-        })
+        const response = await leaderboardAPI.getUserRank(userId, year, month)
 
         if (response.data) {
           this.userRank = response.data

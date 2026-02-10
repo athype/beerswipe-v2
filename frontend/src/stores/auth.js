@@ -4,7 +4,6 @@ import { authAPI } from '../services/api.js';
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    token: null,
     isAuthenticated: false,
     loading: false,
     error: null,
@@ -12,6 +11,8 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAdmin: (state) => state.user?.userType === 'admin',
+    isSeller: (state) => state.user?.userType === 'seller',
+    isAdminOrSeller: (state) => state.user?.userType === 'admin' || state.user?.userType === 'seller',
   },
 
   actions: {
@@ -20,16 +21,15 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       
       try {
-        const response = await authAPI.login(credentials);
-        const { token, user } = response.data;
+        this.user = null;
+        this.isAuthenticated = false;
         
-        this.token = token;
+        const response = await authAPI.login(credentials);
+        const { user } = response.data;
+        
+        // No need to store token - it's in httpOnly cookie
         this.user = user;
         this.isAuthenticated = true;
-        
-        // Store in localStorage
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('user', JSON.stringify(user));
         
         return { success: true };
       } catch (error) {
@@ -41,22 +41,49 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
-      this.user = null;
-      this.token = null;
-      this.isAuthenticated = false;
-      
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+      try {
+        // Call backend to clear cookie
+        await authAPI.logout();
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        this.user = null;
+        this.token = null;
+        this.isAuthenticated = false;
+        
+        // Clean up old storage just in case
+        sessionStorage.removeItem('authToken');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+      }
     },
 
     async initializeAuth() {
-      const token = localStorage.getItem('authToken');
-      const user = localStorage.getItem('user');
+      // Clean up old storage-based tokens
+      sessionStorage.removeItem('authToken');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
       
-      if (token && user) {
-        this.token = token;
-        this.user = JSON.parse(user);
+      try {
+        const response = await authAPI.getCurrentUser();
+        this.user = response.data.user;
         this.isAuthenticated = true;
+      } catch (error) {
+        this.user = null;
+        this.isAuthenticated = false;
+      }
+    },
+
+    async fetchUser() {
+      try {
+        const response = await authAPI.getCurrentUser();
+        this.user = response.data.user;
+        this.isAuthenticated = true;
+        return { success: true };
+      } catch (error) {
+        this.user = null;
+        this.isAuthenticated = false;
+        return { success: false, error: error.response?.data?.error || 'Failed to fetch user' };
       }
     },
 
@@ -78,19 +105,12 @@ export const useAuthStore = defineStore('auth', {
     updateUsername(newUsername) {
       if (this.user) {
         this.user.username = newUsername;
-        localStorage.setItem('user', JSON.stringify(this.user));
       }
-    },
-
-    updateToken(newToken) {
-      this.token = newToken;
-      localStorage.setItem('authToken', newToken);
     },
 
     updateUserData(userData) {
       if (this.user) {
         this.user = { ...this.user, ...userData };
-        localStorage.setItem('user', JSON.stringify(this.user));
       }
     },
   },
