@@ -36,7 +36,7 @@ services:
       FEPORT: ${FEPORT:-5173}
       RP_NAME: ${RP_NAME}
       RP_ID: ${RP_ID}
-      DOMAIN: ${DOMAIN}
+      DOMAIN: ${DOMAIN:-localhost}
     ports:
       - "${BEPORT:-8080}:${BEPORT:-8080}"
     depends_on:
