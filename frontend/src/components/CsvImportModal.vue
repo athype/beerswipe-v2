@@ -128,7 +128,7 @@ const handleImport = async () => {
 
 .instructions h4 {
   margin: 0 0 1rem 0;
-  color: var(--color-teal);
+  color: var(--green-11);
 }
 
 .instructions ul {
@@ -168,11 +168,11 @@ const handleImport = async () => {
 
 .form-input:focus {
   outline: none;
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
 }
 
 .selected-file {
-  background: var(--color-green);
+  background: var(--green-3);
   color: white;
   padding: 0.75rem;
   border-radius: 6px;
@@ -191,39 +191,5 @@ const handleImport = async () => {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
-}
-
-.btn {
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: background 0.3s ease;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--color-green);
-  color: white;
-  flex: 1;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #4cae4c;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #545b62;
 }
 </style>

@@ -26,7 +26,7 @@ const logout = async () => {
 
 <template>
   <div id="app">
-    <Dither 
+    <!-- <Dither 
       v-if="!isChrome"
       class="bg"
       :wave-speed="0.03"
@@ -38,7 +38,7 @@ const logout = async () => {
       :disable-animation="false"
       :enable-mouse-interaction="false"
       :mouse-radius="0.3"
-    />
+    /> -->
     
     <!-- Navigation -->
     <NavBar @logout="logout" />

@@ -62,7 +62,7 @@ header {
   padding: var(--spacing-md) 0;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 5;
 }
 
 .navbar-content {
@@ -82,8 +82,7 @@ header {
 }
 
 .navbar-brand:hover {
-  color: var(--color-teal);
-  background: rgba(5, 94, 104, 0.1);
+  color: var(--green-9);
 }
 
 .navbar-nav {
@@ -111,7 +110,7 @@ header {
   transform: translateX(-50%);
   width: 0;
   height: 2px;
-  background: var(--color-teal);
+  background: var(--green-5);
   transition: width 0.3s ease;
 }
 
@@ -126,10 +125,10 @@ header {
 
 .navbar-link.router-link-active {
   color: var(--color-white);
-  background: rgba(5, 94, 104, 0.5);
+  background: var(--green-5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(5, 94, 104, 0.6);
+  border: 1px solid var(--green-7);
 }
 
 .navbar-link.router-link-active::before {
