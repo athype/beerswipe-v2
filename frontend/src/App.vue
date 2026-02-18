@@ -5,6 +5,7 @@ import { useAuthStore } from './stores/auth.js'
 import NotificationContainer from './components/NotificationContainer.vue'
 import NavBar from './components/NavBar.vue'
 import Dither from './vue-bits-backgrounds/Dither/Dither.vue'
+import Footer from './components/Footer.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -51,6 +52,7 @@ const logout = async () => {
     
     <!-- Global notification system -->
     <NotificationContainer />
+    <Footer />
   </div>
 </template>
 

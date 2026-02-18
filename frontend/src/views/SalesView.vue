@@ -806,16 +806,11 @@ onMounted(async () => {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-accent);
+  border: 1px solid var(--green-7);
   padding: var(--spacing-xl);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-glass);
   transition: all 0.3s ease;
-}
-
-.recent-sales:hover {
-  background: var(--glass-bg-dark);
-  border-color: var(--green-7);
 }
 
 .recent-sales h2 {

@@ -57,12 +57,12 @@
   --gray-12: #eceeed;
   --color-background: #101211;
 
-
+  --red-3: #3B1219;
   --red-7: #8C333A;
   --red-9: #E5484D;
-
+  --blue-3: #0D2847;
   --blue-9: #00A2C7;
-
+  --orange-3: #331E0B;
   --orange-9: #F76B15;
   
   /* Typography */
@@ -312,7 +312,7 @@ a:hover {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: rgba(200, 35, 51, 1);
+  background: var(--red-9);
   border-color: var(--color-error);
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
@@ -619,22 +619,22 @@ a:hover {
 }
 
 .notification-success {
-  background: var(--color-success);
+  background: var(--green-9);
   color: var(--color-white);
 }
 
 .notification-error {
-  background: var(--color-error);
+  background: var(--red-9);
   color: var(--color-white);
 }
 
 .notification-warning {
-  background: var(--color-warning);
+  background: var(--orange-9);
   color: var(--color-black);
 }
 
 .notification-info {
-  background: var(--color-info);
+  background: var(--blue-9);
   color: var(--color-white);
 }
 

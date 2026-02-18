@@ -35,7 +35,7 @@ const handleLogout = () => {
               <span v-else class="username-display">
                 {{ authStore.user?.username }}
               </span>
-              <button @click="handleLogout" class="btn btn-danger btn-sm">
+              <button @click="handleLogout" class="btn btn-sm">
                 Logout
               </button>
             </div>
@@ -56,7 +56,7 @@ header {
   background: rgba(52, 52, 52, 0.4);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(5, 94, 104, 0.3);
+  border-bottom: 1px solid var(--green-7);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
   color: var(--color-white);
   padding: var(--spacing-md) 0;
@@ -139,9 +139,12 @@ header {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
   margin-left: var(--spacing-xl);
   padding-left: var(--spacing-xl);
-  border-left: 1px solid rgba(5, 94, 104, 0.4);
+  border-left: 1px solid var(--green-7);
+  transition: all 0.3s ease;
 }
 
 .navbar-user .text-sm {
@@ -161,7 +164,7 @@ header {
 
 .username-link:hover {
   color: var(--color-white);
-  background: rgba(5, 94, 104, 0.3);
+  background: var(--green-5);
   transform: translateY(-1px);
 }
 
@@ -174,12 +177,16 @@ header {
 
 /* Glass effect on hover for user section */
 .navbar-user:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gray-3);
   border-radius: var(--radius-md);
   margin-left: calc(var(--spacing-xl) - var(--spacing-sm));
   padding-left: calc(var(--spacing-xl) + var(--spacing-sm));
   padding-right: var(--spacing-sm);
   margin-right: calc(-1 * var(--spacing-sm));
+  transition: all 0.3s ease;
+}
+
+.navbar-user:not(:hover) {
   transition: all 0.3s ease;
 }
 
@@ -199,7 +206,7 @@ header {
     margin-left: 0;
     padding-left: 0;
     border-left: none;
-    border-top: 1px solid rgba(5, 94, 104, 0.4);
+    border-top: 1px solid var(--green-7);
     padding-top: var(--spacing-md);
   }
   
