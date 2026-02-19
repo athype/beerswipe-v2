@@ -137,7 +137,7 @@ body {
   font-size: var(--font-size-base);
   line-height: 1.6;
   color: var(--color-white);
-  background-color: var(--color-background);
+  background-color: var(--gray-1);
   min-height: 100vh;
 }
 

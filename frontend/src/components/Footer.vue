@@ -14,6 +14,7 @@
     align-items: center;
     gap: 0.5rem;
     padding-top: 2rem;
+    z-index: 1;
 }
 
 .footer-info {
