@@ -503,7 +503,7 @@ th {
   color: var(--color-white);
   position: sticky;
   top: 0;
-  border-bottom: 2px solid var(--greeen-7);
+  border-bottom: 2px solid var(--green-7);
 }
 
 .transaction-type {
