@@ -16,6 +16,7 @@
             @input="debouncedSearch"
             @focus="showUserSuggestions = true"
             @blur="hideUserSuggestions"
+            class="form-input"
           />
           <div v-if="showUserSuggestions && userSuggestions.length > 0" class="user-suggestions">
             <div 
@@ -47,6 +48,7 @@
           v-model="filters.startDate"
           type="date"
           @change="applyFilters"
+          class="form-input"
         />
       </div>
       
@@ -57,6 +59,7 @@
           v-model="filters.endDate"
           type="date"
           @change="applyFilters"
+          class="form-input"
         />
       </div>
       
@@ -434,7 +437,6 @@ onMounted(() => {
 }
 
 .user-suggestion:hover {
-  background: rgba(5, 94, 104, 0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: var(--color-white);
@@ -464,16 +466,12 @@ onMounted(() => {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-accent);
+  border: 1px solid var(--green-7);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-glass);
   overflow: hidden;
   margin-bottom: var(--spacing-xl);
   transition: all 0.3s ease;
-}
-
-.transactions-table:hover {
-  border-color: var(--color-teal);
 }
 
 table {
@@ -493,7 +491,6 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: rgba(5, 94, 104, 0.15);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -506,7 +503,7 @@ th {
   color: var(--color-white);
   position: sticky;
   top: 0;
-  border-bottom: 2px solid var(--color-teal);
+  border-bottom: 2px solid var(--green-7);
 }
 
 .transaction-type {
@@ -518,7 +515,7 @@ th {
 }
 
 .transaction-type.sale {
-  background: var(--color-teal);
+  background: var(--green-3);
   color: var(--color-white);
 }
 
@@ -544,32 +541,12 @@ th {
 
 .amount {
   font-weight: bold;
-  color: var(--color-teal);
-}
-
-.btn {
-  background: var(--color-teal);
-  color: var(--color-white);
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.3s ease;
-}
-
-.btn:hover {
-  background: var(--color-teal-dark);
+  color: var(--green-11);
 }
 
 .btn.small {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
-}
-
-.btn:disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
 }
 
 .undo-btn {
@@ -595,7 +572,7 @@ th {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-accent);
+  border: 1px solid var(--green-7);
   padding: var(--spacing-xl);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-glass);
@@ -603,8 +580,7 @@ th {
 }
 
 .stats-summary:hover {
-  background: var(--glass-bg-dark);
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
 }
 
 .stats-summary h2 {
@@ -622,8 +598,7 @@ th {
   background: rgba(34, 34, 34, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border);
-  border-left: 4px solid var(--color-teal);
+  border: 2px solid var(--green-7);
   padding: var(--spacing-xl);
   border-radius: var(--radius-lg);
   text-align: center;
@@ -632,9 +607,7 @@ th {
 }
 
 .stat-card:hover {
-  background: rgba(34, 34, 34, 0.7);
-  border-color: var(--color-teal);
-  transform: translateY(-4px);
+  border-color: var(--green-7);
   box-shadow: var(--shadow-lg);
 }
 
@@ -648,7 +621,7 @@ th {
 .stat-number {
   font-size: 2rem;
   font-weight: bold;
-  color: var(--color-teal);
+  color: var(--green-11);
   margin: 0;
 }
 

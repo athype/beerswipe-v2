@@ -53,7 +53,7 @@
                 </div>
               </div>
               <div class="customer-actions">
-                <button @click="openAddCreditsModal" class="add-credits-btn">
+                <button @click="openAddCreditsModal" class="btn add-credits-btn">
                   💰 Add Credits
                 </button>
               </div>
@@ -119,11 +119,11 @@
               <strong>Total: {{ totalCost }} credits</strong>
             </div>
             <div class="actions">
-              <button @click="clearCart" class="clear-btn">Clear Cart</button>
+              <button @click="clearCart" class="btn clear-btn">Clear Cart</button>
               <button 
                 @click="processeSale" 
                 :disabled="!selectedUser || cart.length === 0 || selectedUser.credits < totalCost"
-                class="checkout-btn"
+                class="btn checkout-btn"
               >
                 Process Sale
               </button>
@@ -375,15 +375,11 @@ onMounted(async () => {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-accent);
+  border: 1px solid var(--green-7);
   padding: var(--spacing-xl);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-glass);
   transition: all 0.3s ease;
-}
-
-.sales-section:hover {
-  transform: translateY(-2px);
 }
 
 .sales-section h2 {
@@ -396,7 +392,7 @@ onMounted(async () => {
 .drinks-search input {
   width: 100%;
   padding: var(--spacing-md);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--green-7);
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-lg);
   background: rgba(34, 34, 34, 0.5);
@@ -409,7 +405,7 @@ onMounted(async () => {
 .customer-search input:focus,
 .drinks-search input:focus {
   outline: none;
-  border-color: var(--color-teal);
+  border-color: var(--green-9);
   background: rgba(34, 34, 34, 0.7);
   box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2);
 }
@@ -435,18 +431,17 @@ onMounted(async () => {
 }
 
 .user-item:hover {
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
   background: rgba(34, 34, 34, 0.5);
-  transform: translateX(4px);
 }
 
 .user-item.selected {
-  background: rgba(5, 94, 104, 0.8);
+  background: var(--green-3);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: var(--color-white);
-  border-color: var(--color-teal);
-  box-shadow: 0 4px 12px rgba(5, 94, 104, 0.3);
+  border-color: var(--green-7);
+  box-shadow: 0 4px 12px var(--green-3);
 }
 
 .user-info {
@@ -483,7 +478,7 @@ onMounted(async () => {
 }
 
 .credits {
-  color: var(--color-teal);
+  color: var(--green-11);
   font-weight: bold;
 }
 
@@ -514,7 +509,7 @@ onMounted(async () => {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: var(--color-white);
-  border: 1px solid rgba(40, 167, 69, 0.5);
+  border: 1px solid var(--green-7);
 }
 
 .alcohol-status.cannot-serve {
@@ -522,7 +517,7 @@ onMounted(async () => {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: var(--color-white);
-  border: 1px solid rgba(220, 53, 69, 0.5);
+  border: 1px solid var(--red-7);
 }
 
 .status-icon {
@@ -540,7 +535,7 @@ onMounted(async () => {
 }
 
 .add-credits-btn {
-  background: var(--color-green);
+  background: var(--green-3);
   color: white;
   border: none;
   padding: 0.75rem 1rem;
@@ -553,7 +548,7 @@ onMounted(async () => {
 }
 
 .add-credits-btn:hover {
-  background: #4cae4c;
+  background: var(--green-5);
 }
 
 /* Modal Styles */
@@ -608,11 +603,11 @@ onMounted(async () => {
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
 }
 
 .current-credits {
-  background: var(--color-teal);
+  background: var(--green-3);
   color: white;
   padding: 1rem;
   border-radius: 6px;
@@ -638,13 +633,13 @@ onMounted(async () => {
 }
 
 .btn.primary {
-  background: var(--color-green);
+  background: var(--green-3);
   color: white;
   flex: 1;
 }
 
 .btn.primary:hover {
-  background: #4cae4c;
+  background: var(--green-5);
 }
 
 .btn.secondary {
@@ -676,9 +671,8 @@ onMounted(async () => {
 }
 
 .drink-card:hover {
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
   background: rgba(34, 34, 34, 0.5);
-  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(5, 94, 104, 0.2);
 }
 
@@ -688,7 +682,7 @@ onMounted(async () => {
 }
 
 .drink-price {
-  color: var(--color-teal);
+  color: var(--green-11);
   font-weight: bold;
 }
 
@@ -713,7 +707,7 @@ onMounted(async () => {
 
 .cart-item:hover {
   background: rgba(34, 34, 34, 0.5);
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
 }
 
 .item-info {
@@ -779,22 +773,28 @@ onMounted(async () => {
 }
 
 .clear-btn {
-  background: #6c757d;
+  background: var(--gray-7);
   color: white;
   border: none;
   padding: 0.75rem 1rem;
   border-radius: 6px;
   cursor: pointer;
 }
+.clear-btn:hover {
+  background: var(--gray-9);
+}
 
 .checkout-btn {
-  background: #28a745;
+  background: var(--green-3);
   color: white;
   border: none;
   padding: 0.75rem 1rem;
   border-radius: 6px;
   cursor: pointer;
   flex: 1;
+}
+.checkout-btn:hover {
+  background: var(--green-5);
 }
 
 .checkout-btn:disabled {
@@ -806,16 +806,11 @@ onMounted(async () => {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-accent);
+  border: 1px solid var(--green-7);
   padding: var(--spacing-xl);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-glass);
   transition: all 0.3s ease;
-}
-
-.recent-sales:hover {
-  background: var(--glass-bg-dark);
-  border-color: var(--color-teal);
 }
 
 .recent-sales h2 {
@@ -848,7 +843,7 @@ onMounted(async () => {
 
 .sale-amount {
   font-weight: bold;
-  color: var(--color-teal);
+  color: var(--green-11);
 }
 
 .sale-time {

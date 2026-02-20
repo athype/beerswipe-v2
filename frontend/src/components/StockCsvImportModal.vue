@@ -133,7 +133,7 @@ const handleImport = async () => {
 
 .instructions h4 {
   margin: 0 0 1rem 0;
-  color: var(--color-teal);
+  color: var(--green-11);
 }
 
 .instructions ul {

@@ -84,8 +84,8 @@
           <button @click="openEditModal(drink)" class="btn small">
             Edit
           </button>
-          <button 
-            @click="toggleDrinkStatus(drink)" 
+          <button
+            @click="toggleDrinkStatus(drink)"
             class="btn small"
             :class="drink.isActive ? 'danger' : 'success'"
           >
@@ -97,7 +97,7 @@
 
     <!-- Pagination -->
     <div v-if="drinksStore.pagination.pages > 1" class="pagination">
-      <button 
+      <button
         @click="changePage(drinksStore.pagination.page - 1)"
         :disabled="drinksStore.pagination.page === 1"
         class="btn small"
@@ -107,7 +107,7 @@
       <span>
         Page {{ drinksStore.pagination.page }} of {{ drinksStore.pagination.pages }}
       </span>
-      <button 
+      <button
         @click="changePage(drinksStore.pagination.page + 1)"
         :disabled="drinksStore.pagination.page === drinksStore.pagination.pages"
         class="btn small"
@@ -116,108 +116,23 @@
       </button>
     </div>
 
-    <!-- Create/Edit Drink Modal -->
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModals">
-      <div class="modal" @click.stop>
-        <h2>{{ showEditModal ? 'Edit Drink' : 'Add New Drink' }}</h2>
-        <form @submit.prevent="showEditModal ? updateDrink() : createDrink()">
-          <div class="form-group">
-            <label for="name">Name:</label>
-            <input
-              id="name"
-              v-model="drinkForm.name"
-              type="text"
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="description">Description:</label>
-            <textarea
-              id="description"
-              v-model="drinkForm.description"
-              rows="3"
-            ></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="price">Price (credits):</label>
-            <input
-              id="price"
-              v-model.number="drinkForm.price"
-              type="number"
-              min="1"
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="stock">Initial Stock:</label>
-            <input
-              id="stock"
-              v-model.number="drinkForm.stock"
-              type="number"
-              min="0"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="category">Category:</label>
-            <input
-              id="category"
-              v-model="drinkForm.category"
-              type="text"
-              placeholder="beverage, snack, etc."
-            />
-          </div>
-          
-          <div v-if="showEditModal" class="form-group">
-            <label class="checkbox-label">
-              <input
-                v-model="drinkForm.isActive"
-                type="checkbox"
-              />
-              Active
-            </label>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeModals" class="btn">Cancel</button>
-            <button type="submit" class="btn primary">
-              {{ showEditModal ? 'Update Drink' : 'Create Drink' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <CreateEditDrinkModal
+      :show="showCreateModal || showEditModal"
+      :is-edit="showEditModal"
+      :form="drinkForm"
+      @close="closeModals"
+      @submit="showEditModal ? updateDrink() : createDrink()"
+    />
 
-    <!-- Add Stock Modal -->
-    <div v-if="showStockModal" class="modal-overlay" @click="closeStockModal">
-      <div class="modal" @click.stop>
-        <h2>Add Stock to {{ selectedDrink?.name }}</h2>
-        <form @submit.prevent="addStock">
-          <div class="form-group">
-            <label for="stockQuantity">Quantity to Add:</label>
-            <input
-              id="stockQuantity"
-              v-model.number="stockQuantity"
-              type="number"
-              min="1"
-              required
-            />
-          </div>
-          
-          <div class="current-stock">
-            Current Stock: {{ selectedDrink?.stock }}
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeStockModal" class="btn">Cancel</button>
-            <button type="submit" class="btn primary">Add Stock</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <AddStockModal
+      :show="showStockModal"
+      :drink-name="selectedDrink?.name || ''"
+      :current-stock="selectedDrink?.stock || 0"
+      :quantity="stockQuantity"
+      @update:quantity="stockQuantity = $event"
+      @close="closeStockModal"
+      @submit="addStock"
+    />
 
     <!-- Stock CSV Import/Export Modals -->
     <StockCsvImportModal
@@ -225,7 +140,7 @@
       @close="showImportModal = false"
       @import="handleImportCSV"
     />
-    
+
     <StockCsvExportModal
       :show="showExportModal"
       @close="showExportModal = false"
@@ -240,6 +155,8 @@ import { useNotifications } from '@/composables/useNotifications.js'
 import { useDrinksStore } from '../stores/drinks.js'
 import StockCsvImportModal from '../components/StockCsvImportModal.vue'
 import StockCsvExportModal from '../components/StockCsvExportModal.vue'
+import AddStockModal from '../components/modals/AddStockModal.vue'
+import CreateEditDrinkModal from '../components/modals/CreateEditDrinkModal.vue'
 
 const drinksStore = useDrinksStore()
 const { showSuccess, showError } = useNotifications()
@@ -267,13 +184,13 @@ const drinkForm = reactive({
 const searchDrinks = async () => {
   const params = {}
   if (searchQuery.value) params.search = searchQuery.value
-  
+
   if (filterStock.value === 'in-stock') {
     params.inStock = true
   } else if (filterStock.value === 'low-stock') {
   } else if (filterStock.value === 'out-of-stock') {
   }
-  
+
   await drinksStore.fetchDrinks(params)
 }
 
@@ -281,7 +198,7 @@ const changePage = async (page) => {
   const params = { page }
   if (searchQuery.value) params.search = searchQuery.value
   if (filterStock.value === 'in-stock') params.inStock = true
-  
+
   await drinksStore.fetchDrinks(params)
 }
 
@@ -435,7 +352,7 @@ onMounted(() => {
 .search-input:focus,
 .filter-select:focus {
   outline: none;
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
   background: rgba(34, 34, 34, 0.7);
   box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2);
 }
@@ -456,7 +373,7 @@ onMounted(() => {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-accent);
+  border: 1px solid var(--green-7);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-glass);
   padding: var(--spacing-xl);
@@ -464,9 +381,7 @@ onMounted(() => {
 }
 
 .drink-card:hover {
-  transform: translateY(-4px);
-  background: var(--glass-bg-dark);
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
   box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
 }
 
@@ -538,7 +453,7 @@ onMounted(() => {
 }
 
 .value {
-  color: var(--color-teal);
+  color: var(--green-11);
   font-weight: 500;
 }
 
@@ -554,32 +469,6 @@ onMounted(() => {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-
-.btn {
-  background: var(--color-teal);
-  color: var(--color-white);
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.3s ease;
-  flex: 1;
-  min-width: 100px;
-}
-
-.btn:hover {
-  background: var(--color-teal-dark);
-}
-
-.btn.primary {
-  background: var(--color-teal);
-}
-
-.btn.small {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
 }
 
 .btn.danger {
@@ -609,101 +498,6 @@ onMounted(() => {
   align-items: center;
   gap: 1rem;
   margin-top: 2rem;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: var(--glass-bg-dark);
-  backdrop-filter: var(--glass-blur-strong);
-  -webkit-backdrop-filter: var(--glass-blur-strong);
-  border: 1px solid var(--glass-border-accent);
-  padding: var(--spacing-xl);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-glass);
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.modal h2 {
-  margin-bottom: 1.5rem;
-  color: var(--color-white);
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--color-white);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e1e1e1;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-.checkbox-label {
-  display: flex !important;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-
-.checkbox-label input {
-  width: auto !important;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.current-stock {
-  background: rgba(5, 94, 104, 0.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border-accent);
-  padding: var(--spacing-lg);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--spacing-lg);
-  font-weight: 500;
-  color: var(--color-white);
 }
 
 .loading,

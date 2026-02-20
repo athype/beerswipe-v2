@@ -1,18 +1,13 @@
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
 import NotificationContainer from './components/NotificationContainer.vue'
 import NavBar from './components/NavBar.vue'
-import Dither from './vue-bits-backgrounds/Dither/Dither.vue'
+import Footer from './components/Footer.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
-
-const isChrome = computed(() => {
-  const userAgent = navigator.userAgent.toLowerCase()
-  return userAgent.includes('chrome') && !userAgent.includes('edg')
-})
 
 onMounted(() => {
   authStore.initializeAuth()
@@ -26,20 +21,14 @@ const logout = async () => {
 
 <template>
   <div id="app">
-    <Dither 
-      v-if="!isChrome"
-      class="bg"
-      :wave-speed="0.03"
-      :wave-frequency="3"
-      :wave-amplitude="0.3"
-      :wave-color="[0.1, 0.7, 0.7]"
-      :color-num="4"
-      :pixel-size="2"
-      :disable-animation="false"
-      :enable-mouse-interaction="false"
-      :mouse-radius="0.3"
-    />
     
+    <!-- Background orbs  -->
+    <Teleport to="body">
+      <div class="orb orb-1" aria-hidden="true"></div>
+      <div class="orb orb-2" aria-hidden="true"></div>
+      <div class="orb orb-3" aria-hidden="true"></div>
+    </Teleport>
+
     <!-- Navigation -->
     <NavBar @logout="logout" />
 
@@ -51,6 +40,7 @@ const logout = async () => {
     
     <!-- Global notification system -->
     <NotificationContainer />
+    <Footer />
   </div>
 </template>
 
@@ -62,11 +52,22 @@ const logout = async () => {
   position: relative;
 }
 
+#app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--gray-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  pointer-events: none;
+}
+
 main {
   position: relative;
   z-index: 1;
   flex: 1;
-  padding: var(--spacing-xl) 0;
   pointer-events: none;
 }
 
@@ -74,13 +75,45 @@ main > * {
   pointer-events: auto;
 }
 
-.bg {
+/* Decorative orbs */
+.orb {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
   z-index: 0;
-  pointer-events: auto;
+  opacity: 0.55;
+}
+
+.orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at center, var(--green-8), var(--green-5) 50%, transparent 75%);
+  top: -120px;
+  left: -150px;
+  animation: drift 18s ease-in-out infinite alternate;
+}
+
+.orb-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle at center, var(--green-7), var(--green-4) 50%, transparent 75%);
+  bottom: 5%;
+  right: -100px;
+  animation: drift 22s ease-in-out infinite alternate-reverse;
+}
+
+.orb-3 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle at center, var(--green-3), var(--green-5) 50%, transparent 75%);
+  top: 45%;
+  left: 55%;
+  animation: drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(40px, 30px) scale(1.06); }
 }
 </style>

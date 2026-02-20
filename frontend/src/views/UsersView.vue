@@ -3,13 +3,13 @@
     <div class="users-header">
       <h1>User Management</h1>
       <div class="header-actions">
-        <button @click="showCreateModal = true" class="btn primary">
+        <button @click="showCreateModal = true" class="btn">
           Add New User
         </button>
         <button @click="showCSVModal = true" class="btn">
           Import CSV
         </button>
-        <button @click="showExportModal = true" class="btn export-btn">
+        <button @click="showExportModal = true" class="btn">
           📊 Export CSV
         </button>
       </div>
@@ -134,38 +134,12 @@
       @import="handleImportCSV"
     />
 
-    <!-- CSV Export Modal (keeping inline for now as it's unique) -->
-    <div v-if="showExportModal" class="modal-overlay" @click="closeExportModal">
-      <div class="modal" @click.stop>
-        <h2>Export Users to CSV</h2>
-        <div class="csv-info">
-          <p>Export user data in CSV format compatible with import functionality.</p>
-          <p>Format: username, credits, dateOfBirth (DD-MM-YYYY), member (true/false)</p>
-          <p><strong>Note:</strong> Only members and non-members will be exported (admin users excluded).</p>
-        </div>
-        
-        <form @submit.prevent="exportCSV">
-          <div class="form-group">
-            <label for="exportType">Filter by User Type (optional):</label>
-            <select id="exportType" v-model="exportType">
-              <option value="">All Users (Members & Non-Members)</option>
-              <option value="member">Members Only</option>
-              <option value="non-member">Non-Members Only</option>
-            </select>
-          </div>
-          
-          <div class="export-info">
-            <p><strong>Total Users:</strong> {{ usersStore.pagination.total }}</p>
-            <p><strong>File Name:</strong> users-{{ exportType || 'all' }}-export-{{ new Date().toISOString().split('T')[0] }}.csv</p>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="closeExportModal" class="btn">Cancel</button>
-            <button type="submit" class="btn primary">Export</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <CsvExportModal
+      :show="showExportModal"
+      :total-users="usersStore.pagination.total"
+      @close="closeExportModal"
+      @export="exportCSV"
+    />
   </div>
 </template>
 
@@ -177,6 +151,7 @@ import CreateUserModal from '../components/CreateUserModal.vue'
 import EditUserModal from '../components/EditUserModal.vue'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
 import CsvImportModal from '../components/CsvImportModal.vue'
+import CsvExportModal from '../components/modals/CsvExportModal.vue'
 
 const usersStore = useUsersStore()
 const { showSuccess, showError } = useNotifications()
@@ -189,7 +164,6 @@ const showCreditsModal = ref(false)
 const showCSVModal = ref(false)
 const showExportModal = ref(false)
 const selectedUser = ref(null)
-const exportType = ref('')
 
 const searchUsers = async () => {
   const params = {}
@@ -261,15 +235,10 @@ const handleImportCSV = async (file) => {
   }
 }
 
-const exportCSV = async () => {
-  const params = {}
-  if (exportType.value) {
-    params.type = exportType.value
-  }
-
+const exportCSV = async (params = {}) => {
   const result = await usersStore.exportCSV(params)
   if (result.success) {
-    closeExportModal()
+    showExportModal.value = false
     showSuccess('Users exported successfully!')
   } else {
     showError(result.error)
@@ -288,7 +257,6 @@ const closeEditModal = () => {
 
 const closeExportModal = () => {
   showExportModal.value = false
-  exportType.value = ''
 }
 
 const formatDate = (date) => {
@@ -353,15 +321,23 @@ onMounted(() => {
 
 .search-input,
 .filter-select {
-  padding: 0.75rem;
-  border: 2px solid #e1e1e1;
-  border-radius: 6px;
-  font-size: 1rem;
+  padding: var(--spacing-md);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  background: rgba(34, 34, 34, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-light-grey);
+  transition: all 0.3s ease;
 }
 
-.search-input {
-  flex: 1;
-  max-width: 400px;
+.search-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--green-7);
+  background: rgba(34, 34, 34, 0.7);
+  box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2);
 }
 
 .users-table {
@@ -384,7 +360,7 @@ td {
 }
 
 th {
-  background: var(--color-teal);
+  background: var(--green-3);
   font-weight: 600;
   color: var(--color-white);
 }
@@ -398,23 +374,23 @@ th {
 }
 
 .user-type.admin {
-  background: #e74c3c;
+  background: var(--red-9);
   color: white;
 }
 
 .user-type.member {
-  background: #3498db;
+  background: var(--blue-9);
   color: white;
 }
 
 .user-type.non-member {
-  background: #f39c12;
+  background: var(--orange-9);
   color: white;
 }
 
 .credits {
   font-weight: bold;
-  color: var(--color-teal);
+  color: var(--green-11);
 }
 
 .status {
@@ -440,7 +416,7 @@ th {
 }
 
 .btn {
-  background: var(--color-teal);
+  background: var(--green-3);
   color: var(--color-white);
   border: none;
   padding: 0.75rem 1rem;
@@ -453,21 +429,7 @@ th {
 }
 
 .btn:hover {
-  background: var(--color-teal-dark);
-}
-
-.btn.primary {
-  background: var(--color-green);
-}
-
-.btn.export-btn {
-  background: var(--color-warning, #ffc107);
-  color: var(--color-black);
-  font-weight: 600;
-}
-
-.btn.export-btn:hover {
-  background: #e0a800;
+  background: var(--green-5);
 }
 
 .btn.small {
@@ -486,89 +448,6 @@ th {
   align-items: center;
   gap: 1rem;
   margin-top: 2rem;
-}
-
-/* Export Modal Styles (keeping for the remaining inline modal) */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: var(--color-black);
-  padding: 2rem;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal h2 {
-  margin-bottom: 1.5rem;
-  color: var(--color-light-grey);
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--color-light-grey);
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e1e1e1;
-  border-radius: 6px;
-  font-size: 1rem;
-  background: var(--color-input-bg);
-  color: var(--color-light-grey);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.csv-info {
-  background: var(--color-card-bg);
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-  border: 1px solid #333;
-}
-
-.csv-info p {
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.export-info {
-  background: #f0f9ff;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-  border-left: 4px solid var(--color-teal);
-}
-
-.export-info p {
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
 }
 
 .loading,

@@ -50,7 +50,7 @@
     <template #footer>
       <div class="modal-actions">
         <button type="button" @click="close" class="btn btn-secondary">Cancel</button>
-        <button type="button" @click="handleSubmit" class="btn btn-primary">Create User</button>
+        <button type="button" @click="handleSubmit" class="btn">Create User</button>
       </div>
     </template>
   </Modal>
@@ -121,41 +121,12 @@ watch(() => props.show, (newVal) => {
 
 .form-input:focus {
   outline: none;
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
 }
 
 .modal-actions {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
-}
-
-.btn {
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: background 0.3s ease;
-}
-
-.btn-primary {
-  background: var(--color-green);
-  color: white;
-  flex: 1;
-}
-
-.btn-primary:hover {
-  background: #4cae4c;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #545b62;
 }
 </style>
