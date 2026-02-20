@@ -42,6 +42,7 @@ const handleLogout = () => {
   </header>
 
   <Teleport to="body">
+    <Transition name="mobile-overlay">
     <div v-if="isMenuOpen" class="mobile-overlay">
       <div class="mobile-overlay-header">
         <span class="mobile-overlay-brand">Beer Machine</span>
@@ -65,6 +66,7 @@ const handleLogout = () => {
         <button @click="handleLogout" class="btn btn-sm">Logout</button>
       </div>
     </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -141,7 +143,7 @@ const handleLogout = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md) 0;
+  padding-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--green-7);
   margin-bottom: var(--spacing-xl);
 }
@@ -217,5 +219,23 @@ const handleLogout = () => {
 
 a.mobile-username:hover {
   background: var(--green-5);
+}
+
+/* Overlay transition */
+.mobile-overlay-enter-active,
+.mobile-overlay-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.mobile-overlay-enter-from,
+.mobile-overlay-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+.mobile-overlay-enter-to,
+.mobile-overlay-leave-from {
+  opacity: 1;
+  transform: translateY(0);
 }
 </style>

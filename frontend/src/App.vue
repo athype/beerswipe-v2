@@ -68,7 +68,6 @@ main {
   position: relative;
   z-index: 1;
   flex: 1;
-  padding: var(--spacing-xl) 0;
   pointer-events: none;
 }
 
