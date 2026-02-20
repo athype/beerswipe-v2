@@ -1,18 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import type { Admin } from '../stores/admin.ts'
 
-const props = defineProps({
-  admin: {
-    type: Object,
-    default: null
-  },
-  isProfile: {
-    type: Boolean,
-    default: false
-  }
-})
+const props = defineProps<{
+  admin?: Admin | null
+  isProfile?: boolean
+}>()
 
-const emit = defineEmits(['submit', 'cancel'])
+const emit = defineEmits<{
+  (e: 'submit', data: Record<string, string>): void
+  (e: 'cancel'): void
+}>()
 
 const formData = ref({
   username: props.admin?.username || '',
@@ -22,31 +20,31 @@ const formData = ref({
   userType: props.admin?.userType || 'admin'
 })
 
-const errors = ref({})
+const errors = ref<Record<string, string>>({})
 
 const validate = () => {
   errors.value = {}
 
   if (!formData.value.username.trim()) {
-    errors.value.username = 'Username is required'
+    errors.value["username"] = "Username is required";
   }
 
   if (formData.value.password) {
     if (formData.value.password.length < 6) {
-      errors.value.password = 'Password must be at least 6 characters'
+      errors.value["password"] = "Password must be at least 6 characters";
     }
 
     if (formData.value.password !== formData.value.confirmPassword) {
-      errors.value.confirmPassword = 'Passwords do not match'
+      errors.value["confirmPassword"] = "Passwords do not match";
     }
 
     if (props.isProfile && !formData.value.currentPassword) {
-      errors.value.currentPassword = 'Current password required to change password'
+      errors.value["currentPassword"] = "Current password required to change password";
     }
   }
 
   if (!props.admin && !formData.value.password) {
-    errors.value.password = 'Password is required'
+    errors.value["password"] = "Password is required";
   }
 
   return Object.keys(errors.value).length === 0
@@ -55,15 +53,15 @@ const validate = () => {
 const handleSubmit = () => {
   if (!validate()) return
 
-  const data = {
+  const data: Record<string, string> = {
     username: formData.value.username,
     userType: formData.value.userType,
   }
 
   if (formData.value.password) {
-    data.password = formData.value.password
+    data["password"] = formData.value.password
     if (props.isProfile) {
-      data.currentPassword = formData.value.currentPassword
+      data["currentPassword"] = formData.value.currentPassword
     }
   }
 

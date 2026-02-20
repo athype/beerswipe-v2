@@ -1,5 +1,5 @@
-<script setup>
-import { useAuthStore } from '../stores/auth.js'
+<script setup lang="ts">
+import { useAuthStore } from '../stores/auth.ts'
 import DesktopNavbar from './Navigation/DesktopNavbar.vue'
 import MobileNavbar from './Navigation/MobileNavbar.vue'
 

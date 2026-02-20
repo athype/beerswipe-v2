@@ -34,8 +34,8 @@
   </teleport>
 </template>
 
-<script setup>
-import { useNotifications } from '@/composables/useNotifications.js'
+<script setup lang="ts">
+import { useNotifications } from '@/composables/useNotifications.ts'
 
 const { notifications, removeNotification } = useNotifications()
 </script>

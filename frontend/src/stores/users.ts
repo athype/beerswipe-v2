@@ -10,6 +10,7 @@ export interface AppUser {
   userType: string;
   credits: number;
   isActive: boolean;
+  dateOfBirth?: string;
 }
 
 interface Pagination {

@@ -4,13 +4,18 @@ import { leaderboardAPI } from "../services/api.ts";
 export interface LeaderboardEntry {
   userId: number;
   name: string;
+  username?: string;
+  userType?: string;
   totalSpent: number;
+  totalDrinks: number;
+  transactionCount: number;
   rank: number;
 }
 
 export interface LeaderboardPeriod {
   year: number;
   month: number;
+  monthName?: string;
 }
 
 interface LeaderboardState {

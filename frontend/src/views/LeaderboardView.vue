@@ -106,9 +106,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useLeaderboardStore } from '../stores/leaderboard.js'
+import { useLeaderboardStore } from '../stores/leaderboard.ts'
 import MonthSelector from '../components/MonthSelector.vue'
 import LeaderboardPodium from '../components/LeaderboardPodium.vue'
 import LeaderboardTable from '../components/LeaderboardTable.vue'
@@ -135,7 +135,7 @@ const stats = computed(() => {
   }
 })
 
-const handleMonthChange = ({ year, month }) => {
+const handleMonthChange = (_: { year: number; month: number }) => {
   fetchData()
 }
 

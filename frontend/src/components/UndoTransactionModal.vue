@@ -78,22 +78,20 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import Modal from './Modal.vue'
+import type { Transaction } from '../stores/sales.ts'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  transaction: {
-    type: Object,
-    default: null
-  }
-})
+const props = defineProps<{
+  show?: boolean
+  transaction?: Transaction | null
+}>()
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'confirm', transaction: Transaction): void
+}>()
 
 const isLoading = ref(false)
 
@@ -102,11 +100,12 @@ const close = () => {
 }
 
 const confirmUndo = () => {
+  if (!props.transaction) return
   isLoading.value = true
   emit('confirm', props.transaction)
 }
 
-const formatDateTime = (date) => {
+const formatDateTime = (date: string | undefined) => {
   if (!date) return 'N/A'
   return new Date(date).toLocaleString('en-US', {
     year: 'numeric',

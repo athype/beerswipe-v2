@@ -5,6 +5,7 @@ import type { DrinkData, PaginationParams } from "../services/api.ts";
 export interface Drink {
   id: number;
   name: string;
+  description?: string;
   price: number;
   stock: number;
   category: string;

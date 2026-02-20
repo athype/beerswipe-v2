@@ -58,6 +58,8 @@ export interface UserData {
   userType?: string;
   password?: string;
   credits?: number;
+  dateOfBirth?: string | null;
+  isActive?: boolean;
 }
 
 export interface DrinkData {

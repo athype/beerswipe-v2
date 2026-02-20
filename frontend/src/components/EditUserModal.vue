@@ -67,22 +67,20 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, watch } from 'vue'
 import Modal from './Modal.vue'
+import type { AppUser } from '../stores/users.ts'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  user: {
-    type: Object,
-    default: null
-  }
-})
+const props = defineProps<{
+  show?: boolean
+  user?: AppUser | null
+}>()
 
-const emit = defineEmits(['close', 'submit'])
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'submit', data: Record<string, unknown>): void
+}>()
 
 const userData = reactive({
   username: '',

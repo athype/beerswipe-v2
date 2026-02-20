@@ -53,7 +53,7 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import Modal from './Modal.vue'
 
@@ -84,7 +84,7 @@ const handleExport = async () => {
   error.value = ''
   
   try {
-    const params = {}
+    const params: Record<string, string> = {}
     if (exportCategory.value) {
       params.category = exportCategory.value
     }

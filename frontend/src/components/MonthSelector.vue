@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -38,14 +38,14 @@ const years = computed(() => {
   return yearList
 })
 
-const handleMonthChange = (event) => {
-  const newMonth = parseInt(event.target.value)
+const handleMonthChange = (event: Event) => {
+  const newMonth = parseInt((event.target as HTMLSelectElement).value)
   emit('update:month', newMonth)
   emit('change', { year: props.year, month: newMonth })
 }
 
-const handleYearChange = (event) => {
-  const newYear = parseInt(event.target.value)
+const handleYearChange = (event: Event) => {
+  const newYear = parseInt((event.target as HTMLSelectElement).value)
   emit('update:year', newYear)
   emit('change', { year: newYear, month: props.month })
 }

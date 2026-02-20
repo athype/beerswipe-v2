@@ -6,6 +6,7 @@ export interface Passkey {
   id: number;
   deviceName: string;
   createdAt: string;
+  lastUsedAt?: string;
 }
 
 interface PasskeyState {

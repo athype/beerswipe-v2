@@ -35,7 +35,7 @@
     </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import Modal from '../Modal.vue'
 
@@ -62,9 +62,9 @@ const close = () => {
 }
 
 const handleExport = () => {
-    const params = {}
+    const params: Record<string, string> = {}
     if (exportType.value) {
-        params.type = exportType.value
+        params['type'] = exportType.value
     }
 
     emit('export', params)

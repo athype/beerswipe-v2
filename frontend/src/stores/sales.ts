@@ -9,6 +9,14 @@ export interface Transaction {
   quantity: number;
   totalPrice: number;
   createdAt: string;
+  // Extended fields returned by the API
+  type?: string;
+  amount?: number;
+  transactionDate?: string;
+  description?: string;
+  user?: { id: number; username: string; userType?: string };
+  drink?: { id: number; name: string; price: number };
+  admin?: { id: number; username: string };
 }
 
 interface Pagination {
@@ -18,9 +26,20 @@ interface Pagination {
   limit: number;
 }
 
+export interface SalesStats {
+  sales?: {
+    totalSales?: number;
+    totalRevenue?: number;
+    totalItemsSold?: number;
+  };
+  credits?: {
+    totalCreditsAdded?: number;
+  };
+}
+
 interface SalesState {
   transactions: Transaction[];
-  stats: unknown;
+  stats: SalesStats | null;
   loading: boolean;
   error: string | null;
   pagination: Pagination;

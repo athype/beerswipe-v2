@@ -173,11 +173,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useSalesStore } from '../stores/sales.js'
-import { useUsersStore } from '../stores/users.js'
-import { useNotifications } from '@/composables/useNotifications.js'
+import { useSalesStore } from '../stores/sales.ts'
+import { useUsersStore } from '../stores/users.ts'
+import { useNotifications } from '@/composables/useNotifications.ts'
+import type { Transaction } from '../stores/sales.ts'
+import type { AppUser } from '../stores/users.ts'
+import type { PaginationParams } from '../services/api.ts'
 import UndoTransactionModal from '../components/UndoTransactionModal.vue'
 
 const salesStore = useSalesStore()
@@ -192,17 +195,17 @@ const filters = reactive({
 })
 
 const showUserSuggestions = ref(false)
-const userSuggestions = ref([])
+const userSuggestions = ref<AppUser[]>([])
 const showUndoModal = ref(false)
-const selectedTransaction = ref(null)
+const selectedTransaction = ref<Transaction | null>(null)
 
-let searchTimeout = null
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 const debouncedSearch = async () => {
-  clearTimeout(searchTimeout)
-  
+  if (searchTimeout !== null) clearTimeout(searchTimeout)
+
   if (filters.userSearch.length >= 2) {
     try {
-      const result = await usersStore.fetchUsers({ 
+      const result = await usersStore.fetchUsers({
         search: filters.userSearch,
         limit: 10
       })
@@ -215,17 +218,17 @@ const debouncedSearch = async () => {
   } else {
     userSuggestions.value = []
   }
-  
+
   searchTimeout = setTimeout(() => {
-    applyFilters()
+    void applyFilters()
   }, 500)
 }
 
-const selectUser = (user) => {
-  filters.userSearch = user.username
+const selectUser = (user: AppUser) => {
+  filters.userSearch = user.username ?? ''
   showUserSuggestions.value = false
   userSuggestions.value = []
-  applyFilters()
+  void applyFilters()
 }
 
 const hideUserSuggestions = () => {
@@ -234,17 +237,17 @@ const hideUserSuggestions = () => {
   }, 200)
 }
 
-const getUserIdFromSearch = async () => {
+const getUserIdFromSearch = async (): Promise<number | null> => {
   if (!filters.userSearch.trim()) {
     return null
   }
-  
+
   try {
-    const userSearchResult = await usersStore.fetchUsers({ 
+    const userSearchResult = await usersStore.fetchUsers({
       search: filters.userSearch,
       limit: 100
     })
-    
+
     if (userSearchResult.success && usersStore.users.length > 0) {
       return usersStore.users[0].id
     } else {
@@ -267,44 +270,44 @@ const creditAdditionsCount = computed(() => {
 const totalRevenue = computed(() => {
   return salesStore.transactions
     .filter(t => t.type === 'sale')
-    .reduce((total, t) => total + t.amount, 0)
+    .reduce((total, t) => total + (t.amount ?? 0), 0)
 })
 
 const applyFilters = async () => {
-  const params = {}
-  
+  const params: PaginationParams = {}
+
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
-    params.userId = userId
+    params['userId'] = userId
   }
-  
+
   if (filters.type) {
-    params.type = filters.type
+    params['type'] = filters.type
   }
-  
+
   if (filters.startDate) {
-    params.startDate = filters.startDate
+    params['startDate'] = filters.startDate
   }
-  
+
   if (filters.endDate) {
-    params.endDate = filters.endDate
+    params['endDate'] = filters.endDate
   }
-  
+
   await salesStore.fetchTransactionHistory(params)
 }
 
-const changePage = async (page) => {
-  const params = { page }
-  
+const changePage = async (page: number) => {
+  const params: PaginationParams = { page }
+
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
-    params.userId = userId
+    params['userId'] = userId
   }
-  
-  if (filters.type) params.type = filters.type
-  if (filters.startDate) params.startDate = filters.startDate
-  if (filters.endDate) params.endDate = filters.endDate
-  
+
+  if (filters.type) params['type'] = filters.type
+  if (filters.startDate) params['startDate'] = filters.startDate
+  if (filters.endDate) params['endDate'] = filters.endDate
+
   await salesStore.fetchTransactionHistory(params)
 }
 
@@ -315,10 +318,10 @@ const clearFilters = () => {
     startDate: '',
     endDate: ''
   })
-  applyFilters()
+  void applyFilters()
 }
 
-const openUndoModal = (transaction) => {
+const openUndoModal = (transaction: Transaction) => {
   selectedTransaction.value = transaction
   showUndoModal.value = true
 }
@@ -328,30 +331,31 @@ const closeUndoModal = () => {
   selectedTransaction.value = null
 }
 
-const handleUndoTransaction = async (transaction) => {
+const handleUndoTransaction = async (transaction: Transaction) => {
   try {
     const result = await salesStore.undoTransaction(transaction.id)
-    
+
     if (result.success) {
       closeUndoModal()
       showSuccess(`Transaction undone successfully! ${
-        transaction.type === 'sale' 
-          ? `${transaction.amount} credits restored to ${transaction.user?.username}` 
-          : `${transaction.amount} credits deducted from ${transaction.user?.username}`
+        transaction.type === 'sale'
+          ? `${transaction.amount ?? 0} credits restored to ${transaction.user?.username}`
+          : `${transaction.amount ?? 0} credits deducted from ${transaction.user?.username}`
       }`)
-      
+
       await applyFilters()
     } else {
       showError(result.error || 'Failed to undo transaction')
       closeUndoModal()
     }
-  } catch (error) {
+  } catch {
     showError('An unexpected error occurred while undoing the transaction')
     closeUndoModal()
   }
 }
 
-const formatDateTime = (date) => {
+const formatDateTime = (date: string | undefined) => {
+  if (!date) return "";
   return new Date(date).toLocaleString('en-US', {
     year: 'numeric',
     month: 'short',

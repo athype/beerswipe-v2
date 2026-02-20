@@ -68,12 +68,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth.js'
-import { usePasskeyStore } from '@/stores/passkey.js'
-import { useNotifications } from '@/composables/useNotifications.js'
+import { useAuthStore } from '@/stores/auth.ts'
+import { usePasskeyStore } from '@/stores/passkey.ts'
+import { useNotifications } from '@/composables/useNotifications.ts'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -85,12 +85,6 @@ const credentials = reactive({
   password: ''
 })
 
-const adminData = reactive({
-  username: '',
-  password: ''
-})
-
-const showCreateAdmin = ref(false)
 const passkeySupported = ref(false)
 
 onMounted(async () => {
@@ -107,13 +101,14 @@ const handleLogin = async () => {
       showError(result.error || 'Login failed')
     }
   } catch (error) {
-    showError(error.message || 'Login failed')
+    const err = error as { message?: string }
+    showError(err.message || 'Login failed')
   }
 }
 
 const handlePasskeyLogin = async () => {
   try {
-    const result = await passkeyStore.authenticateWithPasskey()
+    const result = await passkeyStore.authenticateWithPasskey('')
     if (result.success) {
       await authStore.fetchUser()
       showSuccess('Passkey authentication successful!')
@@ -122,23 +117,8 @@ const handlePasskeyLogin = async () => {
       showError(result.error || 'Passkey authentication failed')
     }
   } catch (error) {
-    showError(error.message || 'Passkey authentication failed')
-  }
-}
-
-const handleCreateAdmin = async () => {
-  try {
-    const result = await authStore.createAdmin(adminData)
-    if (result.success) {
-      showSuccess('Admin account created successfully!')
-      showCreateAdmin.value = false
-      adminData.username = ''
-      adminData.password = ''
-    } else {
-      showError(result.error || 'Failed to create admin account')
-    }
-  } catch (error) {
-    showError(error.message || 'Failed to create admin account')
+    const err = error as { message?: string }
+    showError(err.message || 'Passkey authentication failed')
   }
 }
 </script>
