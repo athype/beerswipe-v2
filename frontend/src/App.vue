@@ -1,7 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
-import { useAuthStore } from './stores/auth.js'
+import { useAuthStore } from './stores/auth.ts'
 import NotificationContainer from './components/NotificationContainer.vue'
 import NavBar from './components/NavBar.vue'
 import Footer from './components/Footer.vue'

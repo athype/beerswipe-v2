@@ -33,23 +33,19 @@
   </div>
 </template>
 
-<script setup>
-import { defineProps, defineEmits } from 'vue'
+<script setup lang="ts">
+import type { Passkey } from '../stores/passkey.ts'
 
-defineProps({
-  passkeys: {
-    type: Array,
-    default: () => []
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
-})
+defineProps<{
+  passkeys: Passkey[]
+  loading?: boolean
+}>()
 
-defineEmits(['delete'])
+defineEmits<{
+  (e: 'delete', id: number): void
+}>()
 
-const formatDate = (date) => {
+const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

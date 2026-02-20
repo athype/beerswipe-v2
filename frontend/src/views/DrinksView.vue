@@ -149,10 +149,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useNotifications } from '@/composables/useNotifications.js'
-import { useDrinksStore } from '../stores/drinks.js'
+import { useNotifications } from '@/composables/useNotifications.ts'
+import { useDrinksStore } from '../stores/drinks.ts'
+import type { Drink } from '../stores/drinks.ts'
+import type { PaginationParams } from '../services/api.ts'
 import StockCsvImportModal from '../components/StockCsvImportModal.vue'
 import StockCsvExportModal from '../components/StockCsvExportModal.vue'
 import AddStockModal from '../components/modals/AddStockModal.vue'
@@ -169,7 +171,7 @@ const showEditModal = ref(false)
 const showStockModal = ref(false)
 const showImportModal = ref(false)
 const showExportModal = ref(false)
-const selectedDrink = ref(null)
+const selectedDrink = ref<Drink | null>(null)
 const stockQuantity = ref(1)
 
 const drinkForm = reactive({
@@ -182,22 +184,20 @@ const drinkForm = reactive({
 })
 
 const searchDrinks = async () => {
-  const params = {}
-  if (searchQuery.value) params.search = searchQuery.value
+  const params: PaginationParams = {}
+  if (searchQuery.value) params['search'] = searchQuery.value
 
   if (filterStock.value === 'in-stock') {
-    params.inStock = true
-  } else if (filterStock.value === 'low-stock') {
-  } else if (filterStock.value === 'out-of-stock') {
+    params['inStock'] = true
   }
 
   await drinksStore.fetchDrinks(params)
 }
 
-const changePage = async (page) => {
-  const params = { page }
-  if (searchQuery.value) params.search = searchQuery.value
-  if (filterStock.value === 'in-stock') params.inStock = true
+const changePage = async (page: number) => {
+  const params: PaginationParams = { page }
+  if (searchQuery.value) params['search'] = searchQuery.value
+  if (filterStock.value === 'in-stock') params['inStock'] = true
 
   await drinksStore.fetchDrinks(params)
 }
@@ -208,11 +208,11 @@ const createDrink = async () => {
     closeModals()
     showSuccess('Drink created successfully!')
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Failed to create drink')
   }
 }
 
-const openEditModal = (drink) => {
+const openEditModal = (drink: Drink) => {
   selectedDrink.value = drink
   Object.assign(drinkForm, {
     name: drink.name,
@@ -226,37 +226,39 @@ const openEditModal = (drink) => {
 }
 
 const updateDrink = async () => {
+  if (!selectedDrink.value) return
   const result = await drinksStore.updateDrink(selectedDrink.value.id, drinkForm)
   if (result.success) {
     closeModals()
     showSuccess('Drink updated successfully!')
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Failed to update drink')
   }
 }
 
-const openAddStockModal = (drink) => {
+const openAddStockModal = (drink: Drink) => {
   selectedDrink.value = drink
   stockQuantity.value = 1
   showStockModal.value = true
 }
 
 const addStock = async () => {
+  if (!selectedDrink.value) return
   const result = await drinksStore.addStock(selectedDrink.value.id, stockQuantity.value)
   if (result.success) {
     closeStockModal()
     showSuccess('Stock added successfully!')
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Failed to add stock')
   }
 }
 
-const toggleDrinkStatus = async (drink) => {
+const toggleDrinkStatus = async (drink: Drink) => {
   const result = await drinksStore.updateDrink(drink.id, { isActive: !drink.isActive })
   if (result.success) {
     showSuccess(`Drink ${drink.isActive ? 'deactivated' : 'activated'} successfully!`)
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Failed to update drink status')
   }
 }
 
@@ -280,26 +282,27 @@ const closeStockModal = () => {
   stockQuantity.value = 1
 }
 
-const handleImportCSV = async (file) => {
+const handleImportCSV = async (file: File) => {
   const formData = new FormData()
   formData.append('csvFile', file)
 
   const result = await drinksStore.importCSV(formData)
   if (result.success) {
     showImportModal.value = false
-    showSuccess(`Import completed. ${result.data.imported} items imported, ${result.data.errors} errors.`)
+    const data = result.data as { imported: number; errors: number } | undefined
+    showSuccess(`Import completed. ${data?.imported ?? 0} items imported, ${data?.errors ?? 0} errors.`)
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Import failed')
   }
 }
 
-const handleExportCSV = async (params) => {
+const handleExportCSV = async (params: PaginationParams) => {
   const result = await drinksStore.exportCSV(params)
   if (result.success) {
     showExportModal.value = false
     showSuccess('Stock exported successfully!')
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Export failed')
   }
 }
 

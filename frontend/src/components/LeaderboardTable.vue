@@ -1,15 +1,11 @@
-<script setup>
-import { computed } from 'vue'
+<script setup lang="ts">
+import type { LeaderboardEntry } from '../stores/leaderboard.ts'
 
-const props = defineProps({
-  entries: {
-    type: Array,
-    required: true,
-    default: () => []
-  }
-})
+defineProps<{
+  entries: LeaderboardEntry[]
+}>()
 
-const getMedalEmoji = (rank) => {
+const getMedalEmoji = (rank: number) => {
   switch (rank) {
     case 1: return '🥇'
     case 2: return '🥈'
@@ -18,7 +14,7 @@ const getMedalEmoji = (rank) => {
   }
 }
 
-const getRankClass = (rank) => {
+const getRankClass = (rank: number) => {
   switch (rank) {
     case 1: return 'rank-gold'
     case 2: return 'rank-silver'

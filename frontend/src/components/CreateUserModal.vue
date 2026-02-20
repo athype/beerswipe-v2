@@ -56,7 +56,7 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, watch } from 'vue'
 import Modal from './Modal.vue'
 

@@ -29,10 +29,10 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, defineEmits } from 'vue'
-import { usePasskeyStore } from '../stores/passkey.js'
-import { useNotifications } from '../composables/useNotifications.js'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { usePasskeyStore } from '../stores/passkey.ts'
+import { useNotifications } from '../composables/useNotifications.ts'
 
 const emit = defineEmits(['registered'])
 

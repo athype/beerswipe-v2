@@ -29,7 +29,7 @@
   </teleport>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { watch } from 'vue'
 
 const props = defineProps({
@@ -71,7 +71,7 @@ watch(() => props.show, (newVal) => {
   }
 })
 
-const handleEscape = (e) => {
+const handleEscape = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && props.show && props.closable) {
     close()
   }

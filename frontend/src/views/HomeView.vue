@@ -54,9 +54,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { useAuthStore } from '../stores/auth.js'
+import { useAuthStore } from '../stores/auth.ts'
 
 const authStore = useAuthStore()
 </script>

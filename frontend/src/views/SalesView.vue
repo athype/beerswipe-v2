@@ -165,13 +165,20 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications.js'
-import { useUsersStore } from '../stores/users.js'
-import { useDrinksStore } from '../stores/drinks.js'
-import { useSalesStore } from '../stores/sales.js'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useNotifications } from '@/composables/useNotifications.ts'
+import { useUsersStore } from '../stores/users.ts'
+import { useDrinksStore } from '../stores/drinks.ts'
+import { useSalesStore } from '../stores/sales.ts'
+import type { AppUser } from '../stores/users.ts'
+import type { Drink } from '../stores/drinks.ts'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
+
+interface CartItem {
+  drink: Drink
+  quantity: number
+}
 
 const usersStore = useUsersStore()
 const drinksStore = useDrinksStore()
@@ -180,14 +187,14 @@ const { showSuccess, showError } = useNotifications()
 
 const searchQuery = ref('')
 const drinkSearchQuery = ref('')
-const selectedUser = ref(null)
-const cart = ref([])
+const selectedUser = ref<AppUser | null>(null)
+const cart = ref<CartItem[]>([])
 const showCreditsModal = ref(false)
 
 const filteredUsers = computed(() => {
   if (!searchQuery.value) return []
   return usersStore.users.filter(user =>
-    user.username.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
+    user.username?.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
     user.userType !== 'admin'
   )
 })
@@ -207,18 +214,18 @@ const recentSales = computed(() => {
   return salesStore.transactions.filter(t => t.type === 'sale').slice(0, 10)
 })
 
-const calculateAge = (dateOfBirth) => {
+const calculateAge = (dateOfBirth: string | undefined) => {
   if (!dateOfBirth) return null
-  
+
   const birthDate = new Date(dateOfBirth)
   const today = new Date()
   const age = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
     return age - 1
   }
-  
+
   return age
 }
 
@@ -241,11 +248,11 @@ const searchDrinks = async () => {
   await drinksStore.fetchDrinks({ search: drinkSearchQuery.value, inStock: true })
 }
 
-const selectUser = (user) => {
+const selectUser = (user: AppUser) => {
   selectedUser.value = user
 }
 
-const addToCart = (drink) => {
+const addToCart = (drink: Drink) => {
   const existingItem = cart.value.find(item => item.drink.id === drink.id)
   if (existingItem) {
     if (existingItem.quantity < drink.stock) {
@@ -256,13 +263,13 @@ const addToCart = (drink) => {
   }
 }
 
-const increaseQuantity = (item) => {
+const increaseQuantity = (item: CartItem) => {
   if (item.quantity < item.drink.stock) {
     item.quantity++
   }
 }
 
-const decreaseQuantity = (item) => {
+const decreaseQuantity = (item: CartItem) => {
   if (item.quantity > 1) {
     item.quantity--
   } else {
@@ -270,7 +277,7 @@ const decreaseQuantity = (item) => {
   }
 }
 
-const removeFromCart = (item) => {
+const removeFromCart = (item: CartItem) => {
   const index = cart.value.findIndex(cartItem => cartItem.drink.id === item.drink.id)
   if (index > -1) {
     cart.value.splice(index, 1)
@@ -305,7 +312,7 @@ const processeSale = async () => {
         return
       }
     }
-    
+
     const userIndex = usersStore.users.findIndex(u => u.id === currentUser.id)
     if (userIndex !== -1) {
       usersStore.users[userIndex].credits -= cost
@@ -317,7 +324,7 @@ const processeSale = async () => {
     ])
 
     showSuccess('Sale processed successfully!')
-  } catch (error) {
+  } catch {
     showError('Failed to process sale')
   }
 }
@@ -334,7 +341,8 @@ const closeCreditsModal = () => {
   showCreditsModal.value = false
 }
 
-const formatTime = (date) => {
+const formatTime = (date: string | undefined) => {
+  if (!date) return "";
   return new Date(date).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit'

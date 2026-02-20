@@ -1,21 +1,22 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '../stores/auth.ts'
+import type { Admin } from '../stores/admin.ts'
 
-const props = defineProps({
-  admins: {
-    type: Array,
-    required: true
-  }
-})
+const props = defineProps<{
+  admins: Admin[]
+}>()
 
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  (e: 'edit', admin: Admin): void
+  (e: 'delete', id: number): void
+}>()
 
 const authStore = useAuthStore()
 
 const currentUserId = computed(() => authStore.user?.id)
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string | undefined) => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
   return new Intl.DateTimeFormat('en-US', {
@@ -27,11 +28,11 @@ const formatDate = (dateString) => {
   }).format(date)
 }
 
-const handleEdit = (admin) => {
+const handleEdit = (admin: Admin) => {
   emit('edit', admin)
 }
 
-const handleDelete = (admin) => {
+const handleDelete = (admin: Admin) => {
   if (confirm(`Are you sure you want to deactivate admin "${admin.username}"?`)) {
     emit('delete', admin.id)
   }
