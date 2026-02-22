@@ -38,6 +38,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Modal from '../Modal.vue'
+import type { UserCsvExportParams } from '../../services/api.ts'
 
 defineProps({
     show: {
@@ -50,7 +51,10 @@ defineProps({
     }
 })
 
-const emit = defineEmits(['close', 'export'])
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'export', params: UserCsvExportParams): void
+}>()
 
 const exportType = ref('')
 
@@ -62,9 +66,9 @@ const close = () => {
 }
 
 const handleExport = () => {
-    const params: Record<string, string> = {}
+    const params: UserCsvExportParams = {}
     if (exportType.value) {
-        params['type'] = exportType.value
+        params.type = exportType.value
     }
 
     emit('export', params)

@@ -154,7 +154,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useNotifications } from '@/composables/useNotifications.ts'
 import { useDrinksStore } from '../stores/drinks.ts'
 import type { Drink } from '../stores/drinks.ts'
-import type { PaginationParams } from '../services/api.ts'
+import type { DrinkQueryParams, DrinkCsvExportParams } from '../services/api.ts'
 import StockCsvImportModal from '../components/StockCsvImportModal.vue'
 import StockCsvExportModal from '../components/StockCsvExportModal.vue'
 import AddStockModal from '../components/modals/AddStockModal.vue'
@@ -184,20 +184,20 @@ const drinkForm = reactive({
 })
 
 const searchDrinks = async () => {
-  const params: PaginationParams = {}
-  if (searchQuery.value) params['search'] = searchQuery.value
+  const params: DrinkQueryParams = {}
+  if (searchQuery.value) params.search = searchQuery.value
 
   if (filterStock.value === 'in-stock') {
-    params['inStock'] = true
+    params.inStock = true
   }
 
   await drinksStore.fetchDrinks(params)
 }
 
 const changePage = async (page: number) => {
-  const params: PaginationParams = { page }
-  if (searchQuery.value) params['search'] = searchQuery.value
-  if (filterStock.value === 'in-stock') params['inStock'] = true
+  const params: DrinkQueryParams = { page }
+  if (searchQuery.value) params.search = searchQuery.value
+  if (filterStock.value === 'in-stock') params.inStock = true
 
   await drinksStore.fetchDrinks(params)
 }
@@ -296,7 +296,7 @@ const handleImportCSV = async (file: File) => {
   }
 }
 
-const handleExportCSV = async (params: PaginationParams) => {
+const handleExportCSV = async (params: DrinkCsvExportParams) => {
   const result = await drinksStore.exportCSV(params)
   if (result.success) {
     showExportModal.value = false

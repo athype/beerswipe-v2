@@ -56,15 +56,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Modal from './Modal.vue'
+import type { DrinkCsvExportParams } from '../services/api.ts'
 
-const props = defineProps({
+defineProps({
   show: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['close', 'export'])
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'export', params: DrinkCsvExportParams): void
+}>()
 
 const exportCategory = ref('')
 const exportInStockOnly = ref(false)
@@ -82,16 +86,16 @@ const close = () => {
 const handleExport = async () => {
   isLoading.value = true
   error.value = ''
-  
+
   try {
-    const params: Record<string, string> = {}
+    const params: DrinkCsvExportParams = {}
     if (exportCategory.value) {
       params.category = exportCategory.value
     }
     if (exportInStockOnly.value) {
       params.inStock = 'true'
     }
-    
+
     emit('export', params)
   } catch (err) {
     error.value = 'Failed to export CSV file'

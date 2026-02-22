@@ -76,11 +76,38 @@ export interface SaleData {
   quantity?: number;
 }
 
-export interface PaginationParams {
+export interface DrinkQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  [key: string]: unknown;
+  inStock?: boolean;
+  category?: string;
+  status?: string;
+}
+
+export interface UserQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: string;
+}
+
+export interface SaleQueryParams {
+  page?: number;
+  limit?: number;
+  userId?: number;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface UserCsvExportParams {
+  type?: string;
+}
+
+export interface DrinkCsvExportParams {
+  category?: string;
+  inStock?: string;
 }
 
 export const authAPI = {
@@ -91,7 +118,7 @@ export const authAPI = {
 };
 
 export const usersAPI = {
-  getAll: (params?: PaginationParams) => api.get("/users", { params }),
+  getAll: (params?: UserQueryParams) => api.get("/users", { params }),
   getById: (id: number) => api.get(`/users/${id}`),
   create: (userData: UserData) => api.post("/users", userData),
   update: (id: number, userData: UserData) => api.put(`/users/${id}`, userData),
@@ -100,7 +127,7 @@ export const usersAPI = {
     api.post("/users/import-csv", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
-  exportCSV: (params?: PaginationParams) =>
+  exportCSV: (params?: UserCsvExportParams) =>
     api.get("/users/export-csv", {
       params,
       responseType: "blob",
@@ -108,7 +135,7 @@ export const usersAPI = {
 };
 
 export const drinksAPI = {
-  getAll: (params?: PaginationParams) => api.get("/drinks", { params }),
+  getAll: (params?: DrinkQueryParams) => api.get("/drinks", { params }),
   getById: (id: number) => api.get(`/drinks/${id}`),
   create: (drinkData: DrinkData) => api.post("/drinks", drinkData),
   update: (id: number, drinkData: DrinkData) => api.put(`/drinks/${id}`, drinkData),
@@ -118,7 +145,7 @@ export const drinksAPI = {
     api.post("/drinks/import-csv", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
-  exportCSV: (params?: PaginationParams) =>
+  exportCSV: (params?: DrinkCsvExportParams) =>
     api.get("/drinks/export-csv", {
       params,
       responseType: "blob",
@@ -127,8 +154,8 @@ export const drinksAPI = {
 
 export const salesAPI = {
   makeSale: (saleData: SaleData) => api.post("/sales/sell", saleData),
-  getHistory: (params?: PaginationParams) => api.get("/sales/history", { params }),
-  getStats: (params?: PaginationParams) => api.get("/sales/stats", { params }),
+  getHistory: (params?: SaleQueryParams) => api.get("/sales/history", { params }),
+  getStats: (params?: SaleQueryParams) => api.get("/sales/stats", { params }),
   undoTransaction: (transactionId: number) => api.delete(`/sales/undo/${transactionId}`),
 };
 

@@ -180,7 +180,7 @@ import { useUsersStore } from '../stores/users.ts'
 import { useNotifications } from '@/composables/useNotifications.ts'
 import type { Transaction } from '../stores/sales.ts'
 import type { AppUser } from '../stores/users.ts'
-import type { PaginationParams } from '../services/api.ts'
+import type { SaleQueryParams } from '../services/api.ts'
 import UndoTransactionModal from '../components/UndoTransactionModal.vue'
 
 const salesStore = useSalesStore()
@@ -274,39 +274,39 @@ const totalRevenue = computed(() => {
 })
 
 const applyFilters = async () => {
-  const params: PaginationParams = {}
+  const params: SaleQueryParams = {}
 
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
-    params['userId'] = userId
+    params.userId = userId
   }
 
   if (filters.type) {
-    params['type'] = filters.type
+    params.type = filters.type
   }
 
   if (filters.startDate) {
-    params['startDate'] = filters.startDate
+    params.startDate = filters.startDate
   }
 
   if (filters.endDate) {
-    params['endDate'] = filters.endDate
+    params.endDate = filters.endDate
   }
 
   await salesStore.fetchTransactionHistory(params)
 }
 
 const changePage = async (page: number) => {
-  const params: PaginationParams = { page }
+  const params: SaleQueryParams = { page }
 
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
-    params['userId'] = userId
+    params.userId = userId
   }
 
-  if (filters.type) params['type'] = filters.type
-  if (filters.startDate) params['startDate'] = filters.startDate
-  if (filters.endDate) params['endDate'] = filters.endDate
+  if (filters.type) params.type = filters.type
+  if (filters.startDate) params.startDate = filters.startDate
+  if (filters.endDate) params.endDate = filters.endDate
 
   await salesStore.fetchTransactionHistory(params)
 }

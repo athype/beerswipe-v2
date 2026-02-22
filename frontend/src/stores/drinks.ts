@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { drinksAPI } from "../services/api.ts";
-import type { DrinkData, PaginationParams } from "../services/api.ts";
+import type { DrinkData, DrinkQueryParams, DrinkCsvExportParams } from "../services/api.ts";
 
 export interface Drink {
   id: number;
@@ -52,7 +52,7 @@ export const useDrinksStore = defineStore("drinks", {
   },
 
   actions: {
-    async fetchDrinks(params: PaginationParams = {}): Promise<ActionResult> {
+    async fetchDrinks(params: DrinkQueryParams = {}): Promise<ActionResult> {
       this.loading = true;
       this.error = null;
 
@@ -176,7 +176,7 @@ export const useDrinksStore = defineStore("drinks", {
       }
     },
 
-    async exportCSV(params: PaginationParams = {}): Promise<ActionResult> {
+    async exportCSV(params: DrinkCsvExportParams = {}): Promise<ActionResult> {
       this.loading = true;
       this.error = null;
 

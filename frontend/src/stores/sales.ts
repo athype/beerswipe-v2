@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { salesAPI } from "../services/api.ts";
-import type { SaleData, PaginationParams } from "../services/api.ts";
+import type { SaleData, SaleQueryParams } from "../services/api.ts";
 
 export interface Transaction {
   id: number;
@@ -82,7 +82,7 @@ export const useSalesStore = defineStore("sales", {
       }
     },
 
-    async fetchTransactionHistory(params: PaginationParams = {}): Promise<ActionResult> {
+    async fetchTransactionHistory(params: SaleQueryParams = {}): Promise<ActionResult> {
       this.loading = true;
       this.error = null;
 
@@ -101,7 +101,7 @@ export const useSalesStore = defineStore("sales", {
       }
     },
 
-    async fetchStats(params: PaginationParams = {}): Promise<ActionResult> {
+    async fetchStats(params: SaleQueryParams = {}): Promise<ActionResult> {
       this.loading = true;
       this.error = null;
 

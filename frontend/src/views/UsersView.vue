@@ -148,7 +148,7 @@ import { ref, onMounted } from 'vue'
 import { useUsersStore } from '../stores/users.ts'
 import { useNotifications } from '@/composables/useNotifications.ts'
 import type { AppUser } from '../stores/users.ts'
-import type { PaginationParams } from '../services/api.ts'
+import type { UserQueryParams, UserCsvExportParams } from '../services/api.ts'
 import CreateUserModal from '../components/CreateUserModal.vue'
 import EditUserModal from '../components/EditUserModal.vue'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
@@ -168,17 +168,17 @@ const showExportModal = ref(false)
 const selectedUser = ref<AppUser | null>(null)
 
 const searchUsers = async () => {
-  const params: PaginationParams = {}
-  if (searchQuery.value) params['search'] = searchQuery.value
-  if (filterType.value) params['type'] = filterType.value
+  const params: UserQueryParams = {}
+  if (searchQuery.value) params.search = searchQuery.value
+  if (filterType.value) params.type = filterType.value
 
   await usersStore.fetchUsers(params)
 }
 
 const changePage = async (page: number) => {
-  const params: PaginationParams = { page }
-  if (searchQuery.value) params['search'] = searchQuery.value
-  if (filterType.value) params['type'] = filterType.value
+  const params: UserQueryParams = { page }
+  if (searchQuery.value) params.search = searchQuery.value
+  if (filterType.value) params.type = filterType.value
 
   await usersStore.fetchUsers(params)
 }
@@ -239,7 +239,7 @@ const handleImportCSV = async (file: File) => {
   }
 }
 
-const exportCSV = async (params: PaginationParams = {}) => {
+const exportCSV = async (params: UserCsvExportParams = {}) => {
   const result = await usersStore.exportCSV(params)
   if (result.success) {
     showExportModal.value = false

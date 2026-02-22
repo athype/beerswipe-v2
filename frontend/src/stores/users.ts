@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { usersAPI } from "../services/api.ts";
-import type { UserData, PaginationParams } from "../services/api.ts";
+import type { UserData, UserQueryParams, UserCsvExportParams } from "../services/api.ts";
 
 export interface AppUser {
   id: number;
@@ -49,7 +49,7 @@ export const useUsersStore = defineStore("users", {
   }),
 
   actions: {
-    async fetchUsers(params: PaginationParams = {}): Promise<ActionResult> {
+    async fetchUsers(params: UserQueryParams = {}): Promise<ActionResult> {
       this.loading = true;
       this.error = null;
 
@@ -125,7 +125,7 @@ export const useUsersStore = defineStore("users", {
       }
     },
 
-    async exportCSV(params: PaginationParams = {}): Promise<ActionResult> {
+    async exportCSV(params: UserCsvExportParams = {}): Promise<ActionResult> {
       this.loading = true;
       this.error = null;
 
