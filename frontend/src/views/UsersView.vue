@@ -149,6 +149,8 @@ import { useUsersStore } from '../stores/users.ts'
 import { useNotifications } from '@/composables/useNotifications.ts'
 import type { AppUser } from '../stores/users.ts'
 import type { UserQueryParams, UserCsvExportParams } from '../services/api.ts'
+import type { EditUserFormData } from '../components/EditUserModal.vue'
+import type { CreateUserFormData } from '../components/CreateUserModal.vue'
 import CreateUserModal from '../components/CreateUserModal.vue'
 import EditUserModal from '../components/EditUserModal.vue'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
@@ -183,7 +185,7 @@ const changePage = async (page: number) => {
   await usersStore.fetchUsers(params)
 }
 
-const handleCreateUser = async (userData: Record<string, unknown>) => {
+const handleCreateUser = async (userData: CreateUserFormData) => {
   const result = await usersStore.createUser(userData)
   if (result.success) {
     showCreateModal.value = false
@@ -208,13 +210,13 @@ const openEditModal = (user: AppUser) => {
   showEditModal.value = true
 }
 
-const handleUpdateUser = async (userData: Record<string, unknown>) => {
+const handleUpdateUser = async (userData: EditUserFormData) => {
   if (!selectedUser.value) return
   const result = await usersStore.updateUser(selectedUser.value.id, {
-    username: userData['username'] as string | undefined,
-    userType: userData['userType'] as string | undefined,
-    dateOfBirth: (userData['dateOfBirth'] as string | undefined) || null,
-    isActive: userData['isActive'] as boolean | undefined,
+    username: userData.username,
+    userType: userData.userType,
+    dateOfBirth: userData.dateOfBirth || null,
+    isActive: userData.isActive,
   })
 
   if (result.success) {

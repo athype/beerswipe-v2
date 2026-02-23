@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth.ts'
 import { usePasskeyStore } from '../stores/passkey.ts'
 import { useNotifications } from '../composables/useNotifications.ts'
 import type { Admin } from '../stores/admin.ts'
+import type { AdminFormData } from '../components/AdminForm.vue'
 import AdminForm from '../components/AdminForm.vue'
 import AdminList from '../components/AdminList.vue'
 import PasskeyList from '../components/PasskeyList.vue'
@@ -44,18 +45,13 @@ const loadData = async () => {
 }
 
 // Profile Management
-const handleProfileUpdate = async (data: Record<string, string>) => {
+const handleProfileUpdate = async (data: AdminFormData) => {
   profileLoading.value = true
   try {
-    const response = await adminStore.updateProfile(data)
-    const responseData = response as { token?: string } | undefined
+    await adminStore.updateProfile(data)
 
-    if (data['username'] && authStore.user && data['username'] !== authStore.user.username) {
-      authStore.updateUsername(data['username'])
-    }
-
-    if (responseData?.token) {
-      // updateToken is not yet defined; skip silently until implemented
+    if (data.username && authStore.user && data.username !== authStore.user.username) {
+      authStore.updateUsername(data.username)
     }
 
     showSuccess('Profile updated successfully')
@@ -72,7 +68,7 @@ const openCreateModal = () => {
   showCreateModal.value = true
 }
 
-const handleCreateAdmin = async (data: Record<string, string>) => {
+const handleCreateAdmin = async (data: AdminFormData) => {
   try {
     await adminStore.createAdmin(data)
     showCreateModal.value = false
@@ -89,7 +85,7 @@ const openEditModal = (admin: Admin) => {
   showEditModal.value = true
 }
 
-const handleEditAdmin = async (data: Record<string, string>) => {
+const handleEditAdmin = async (data: AdminFormData) => {
   if (!selectedAdmin.value) return
   try {
     await adminStore.updateAdmin(selectedAdmin.value.id, data)

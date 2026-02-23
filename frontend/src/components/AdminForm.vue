@@ -2,13 +2,20 @@
 import { ref } from 'vue'
 import type { Admin } from '../stores/admin.ts'
 
+export interface AdminFormData {
+  username: string;
+  userType: string;
+  password?: string;
+  currentPassword?: string;
+}
+
 const props = defineProps<{
   admin?: Admin | null
   isProfile?: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'submit', data: Record<string, string>): void
+  (e: 'submit', data: AdminFormData): void
   (e: 'cancel'): void
 }>()
 
@@ -53,15 +60,15 @@ const validate = () => {
 const handleSubmit = () => {
   if (!validate()) return
 
-  const data: Record<string, string> = {
+  const data: AdminFormData = {
     username: formData.value.username,
     userType: formData.value.userType,
   }
 
   if (formData.value.password) {
-    data["password"] = formData.value.password
+    data.password = formData.value.password
     if (props.isProfile) {
-      data["currentPassword"] = formData.value.currentPassword
+      data.currentPassword = formData.value.currentPassword
     }
   }
 

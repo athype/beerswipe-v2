@@ -72,6 +72,14 @@ import { reactive, watch } from 'vue'
 import Modal from './Modal.vue'
 import type { AppUser } from '../stores/users.ts'
 
+export interface EditUserFormData {
+  username: string;
+  userType: string;
+  credits: number;
+  dateOfBirth: string;
+  isActive: boolean;
+}
+
 const props = defineProps<{
   show?: boolean
   user?: AppUser | null
@@ -79,7 +87,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'submit', data: Record<string, unknown>): void
+  (e: 'submit', data: EditUserFormData): void
 }>()
 
 const userData = reactive({
