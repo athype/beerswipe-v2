@@ -27,31 +27,38 @@ const formData = ref({
   userType: props.admin?.userType || 'admin'
 })
 
-const errors = ref<Record<string, string>>({})
+interface FormErrors {
+  username?: string;
+  password?: string;
+  confirmPassword?: string;
+  currentPassword?: string;
+}
+
+const errors = ref<FormErrors>({})
 
 const validate = () => {
   errors.value = {}
 
   if (!formData.value.username.trim()) {
-    errors.value["username"] = "Username is required";
+    errors.value.username = "Username is required";
   }
 
   if (formData.value.password) {
     if (formData.value.password.length < 6) {
-      errors.value["password"] = "Password must be at least 6 characters";
+      errors.value.password = "Password must be at least 6 characters";
     }
 
     if (formData.value.password !== formData.value.confirmPassword) {
-      errors.value["confirmPassword"] = "Passwords do not match";
+      errors.value.confirmPassword = "Passwords do not match";
     }
 
     if (props.isProfile && !formData.value.currentPassword) {
-      errors.value["currentPassword"] = "Current password required to change password";
+      errors.value.currentPassword = "Current password required to change password";
     }
   }
 
   if (!props.admin && !formData.value.password) {
-    errors.value["password"] = "Password is required";
+    errors.value.password = "Password is required";
   }
 
   return Object.keys(errors.value).length === 0
