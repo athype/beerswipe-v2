@@ -35,24 +35,22 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
-import { useUsersStore } from '../stores/users.js'
+import { useNotifications } from '@/composables/useNotifications.ts'
+import { useUsersStore } from '../stores/users.ts'
+import type { AppUser } from '../stores/users.ts'
 import Modal from './Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  user: {
-    type: Object,
-    default: null
-  }
-})
+const props = defineProps<{
+  show?: boolean
+  user?: AppUser | null
+}>()
 
-const emit = defineEmits(['close', 'success'])
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'success'): void
+}>()
 
 const { showSuccess, showError } = useNotifications()
 const usersStore = useUsersStore()

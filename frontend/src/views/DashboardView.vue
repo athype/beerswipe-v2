@@ -153,12 +153,12 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useAuthStore } from '@/stores/auth.js'
-import { useSalesStore } from '@/stores/sales.js'
-import { useDrinksStore } from '@/stores/drinks.js'
+import { useAuthStore } from '@/stores/auth.ts'
+import { useSalesStore } from '@/stores/sales.ts'
+import { useDrinksStore } from '@/stores/drinks.ts'
 import CountUp from '@/vue-bits-animations/CountUp/CountUp.vue'
 
 const authStore = useAuthStore()
@@ -173,7 +173,8 @@ const lowStockDrinks = computed(() =>
   drinksStore.drinks.filter(drink => drink.isActive && drink.stock <= 5)
 )
 
-const formatDate = (date) => {
+const formatDate = (date: string | undefined) => {
+  if (!date) return "";
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',

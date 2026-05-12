@@ -56,9 +56,16 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, watch } from 'vue'
 import Modal from './Modal.vue'
+
+export interface CreateUserFormData {
+  username: string;
+  userType: string;
+  credits: number;
+  dateOfBirth: string;
+}
 
 const props = defineProps({
   show: {
@@ -67,9 +74,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'submit'])
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'submit', data: CreateUserFormData): void
+}>()
 
-const userData = reactive({
+const userData = reactive<CreateUserFormData>({
   username: '',
   userType: 'member',
   credits: 0,

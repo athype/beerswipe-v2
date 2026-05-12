@@ -143,10 +143,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useUsersStore } from '../stores/users.js'
-import { useNotifications } from '@/composables/useNotifications.js'
+import { useUsersStore } from '../stores/users.ts'
+import { useNotifications } from '@/composables/useNotifications.ts'
+import type { AppUser } from '../stores/users.ts'
+import type { UserQueryParams, UserCsvExportParams } from '../services/api.ts'
+import type { EditUserFormData } from '../components/EditUserModal.vue'
+import type { CreateUserFormData } from '../components/CreateUserModal.vue'
 import CreateUserModal from '../components/CreateUserModal.vue'
 import EditUserModal from '../components/EditUserModal.vue'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
@@ -163,85 +167,87 @@ const showEditModal = ref(false)
 const showCreditsModal = ref(false)
 const showCSVModal = ref(false)
 const showExportModal = ref(false)
-const selectedUser = ref(null)
+const selectedUser = ref<AppUser | null>(null)
 
 const searchUsers = async () => {
-  const params = {}
+  const params: UserQueryParams = {}
   if (searchQuery.value) params.search = searchQuery.value
   if (filterType.value) params.type = filterType.value
-  
+
   await usersStore.fetchUsers(params)
 }
 
-const changePage = async (page) => {
-  const params = { page }
+const changePage = async (page: number) => {
+  const params: UserQueryParams = { page }
   if (searchQuery.value) params.search = searchQuery.value
   if (filterType.value) params.type = filterType.value
-  
+
   await usersStore.fetchUsers(params)
 }
 
-const handleCreateUser = async (userData) => {
+const handleCreateUser = async (userData: CreateUserFormData) => {
   const result = await usersStore.createUser(userData)
   if (result.success) {
     showCreateModal.value = false
     showSuccess('User created successfully!')
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Failed to create user')
   }
 }
 
-const openAddCreditsModal = (user) => {
+const openAddCreditsModal = (user: AppUser) => {
   selectedUser.value = user
   showCreditsModal.value = true
 }
 
-const openEditModal = (user) => {
+const openEditModal = (user: AppUser) => {
   if (user.userType === 'admin') {
     showError('Admin users cannot be edited')
     return
   }
-  
+
   selectedUser.value = user
   showEditModal.value = true
 }
 
-const handleUpdateUser = async (userData) => {
+const handleUpdateUser = async (userData: EditUserFormData) => {
+  if (!selectedUser.value) return
   const result = await usersStore.updateUser(selectedUser.value.id, {
     username: userData.username,
     userType: userData.userType,
     dateOfBirth: userData.dateOfBirth || null,
-    isActive: userData.isActive
+    isActive: userData.isActive,
   })
-  
+
   if (result.success) {
     closeEditModal()
     showSuccess('User updated successfully!')
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Failed to update user')
   }
 }
 
-const handleImportCSV = async (file) => {
+const handleImportCSV = async (file: File) => {
   const formData = new FormData()
   formData.append('csvFile', file)
 
   const result = await usersStore.importCSV(formData)
   if (result.success) {
     showCSVModal.value = false
-    showSuccess(`Import completed. ${result.data.imported} users imported, ${result.data.errors} errors.`)
+    const data = result.data as { imported: number; errors: number } | undefined
+    showSuccess(`Import completed. ${data?.imported ?? 0} users imported, ${data?.errors ?? 0} errors.`)
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Import failed')
   }
 }
 
-const exportCSV = async (params = {}) => {
+const exportCSV = async (params: UserCsvExportParams = {}) => {
   const result = await usersStore.exportCSV(params)
   if (result.success) {
     showExportModal.value = false
     showSuccess('Users exported successfully!')
   } else {
-    showError(result.error)
+    showError(result.error ?? 'Export failed')
   }
 }
 
@@ -259,7 +265,7 @@ const closeExportModal = () => {
   showExportModal.value = false
 }
 
-const formatDate = (date) => {
+const formatDate = (date: string | undefined) => {
   if (!date) return 'N/A'
   return new Date(date).toLocaleDateString()
 }

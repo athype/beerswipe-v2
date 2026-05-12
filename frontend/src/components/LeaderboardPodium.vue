@@ -1,22 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { LeaderboardEntry } from '../stores/leaderboard.ts'
 
-const props = defineProps({
-  entries: {
-    type: Array,
-    required: true,
-    default: () => []
-  }
-})
+const props = defineProps<{
+  entries: LeaderboardEntry[]
+}>()
 
 const topThree = computed(() => props.entries.slice(0, 3))
 
-const getPodiumPosition = (rank) => {
-  // Order for visual podium: 2nd (left), 1st (center, tallest), 3rd (right)
-  return rank
-}
-
-const getPodiumHeight = (rank) => {
+const getPodiumHeight = (rank: number) => {
   switch (rank) {
     case 1: return '180px'
     case 2: return '140px'
@@ -25,7 +17,7 @@ const getPodiumHeight = (rank) => {
   }
 }
 
-const getMedalColor = (rank) => {
+const getMedalColor = (rank: number) => {
   switch (rank) {
     case 1: return 'gold'
     case 2: return 'silver'

@@ -57,7 +57,7 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import Modal from './Modal.vue'
 
@@ -70,8 +70,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'import'])
 
-const fileInput = ref(null)
-const selectedFile = ref(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
 const fileName = ref('')
 const error = ref('')
 const isLoading = ref(false)
@@ -87,8 +87,8 @@ const close = () => {
   emit('close')
 }
 
-const handleFileChange = (event) => {
-  const file = event.target.files[0]
+const handleFileChange = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
   if (file) {
     if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
       error.value = 'Please select a valid CSV file'
