@@ -36,6 +36,6 @@
     "@antfu/eslint-config": "^4.16.2",
     "eslint-plugin-format": "^1.0.1",
     "supertest": "^7.1.1",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.6"
   }
 }
