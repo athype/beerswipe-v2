@@ -44,7 +44,7 @@
 
 # Future: API subdomain (uncomment when ready)
 # api.{$DOMAIN:localhost} {
-#     reverse_proxy backend:{$BEPORT:6969}
+#     reverse_proxy backend:{$BEPORT:8080}
 # }
 
 # Future: Admin subdomain (uncomment when ready)
