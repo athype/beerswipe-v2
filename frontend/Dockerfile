@@ -29,7 +29,7 @@ RUN pnpm build
 FROM nginx:alpine
 
 # Default target for /api proxy when no runtime value is provided
-ENV API_UPSTREAM=http://backend:6969
+ENV API_UPSTREAM=http://backend:8080
 
 # Copy built files to nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
