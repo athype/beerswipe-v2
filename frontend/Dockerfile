@@ -1,5 +1,5 @@
 # Frontend Dockerfile
-FROM node:20-alpine as builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -28,11 +28,14 @@ RUN pnpm build
 # Production stage
 FROM nginx:alpine
 
+# Default target for /api proxy when no runtime value is provided
+ENV API_UPSTREAM=http://backend:8080
+
 # Copy built files to nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx template (rendered by nginx entrypoint with envsubst)
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Expose port
 EXPOSE 80

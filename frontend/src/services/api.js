@@ -4,7 +4,7 @@ import axios from 'axios';
 // In development, use full URL with port
 const API_URL = import.meta.env.PROD 
   ? '/api/v1' 
-  : `${import.meta.env.VITE_API_URL || 'http://localhost'}:${import.meta.env.VITE_API_PORT || 6969}/api/v1`;
+  : `${import.meta.env.VITE_API_URL || 'http://localhost'}:${import.meta.env.VITE_API_PORT || 8080}/api/v1`;
 
 const api = axios.create({
   baseURL: API_URL,

@@ -88,6 +88,8 @@ services:
       args:
         VITE_API_URL: ${BEURL}
         VITE_API_PORT: ${BEPORT}
+    environment:
+      API_UPSTREAM: ${API_UPSTREAM:-http://backend:8080}
     container_name: beermachine_frontend
     depends_on:
       - backend
