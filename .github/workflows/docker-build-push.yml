@@ -52,10 +52,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Validate custom registry credentials
-        if: ${{ steps.image_settings.outputs.registry != 'ghcr.io' && (secrets.DOCKER_REGISTRY_USERNAME == '' || secrets.DOCKER_REGISTRY_PASSWORD == '') }}
+        if: ${{ steps.image_settings.outputs.registry != 'ghcr.io' }}
+        env:
+          DOCKER_REGISTRY_USERNAME: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
         run: |
-          echo "DOCKER_REGISTRY_USERNAME and DOCKER_REGISTRY_PASSWORD are required for non-GHCR registries."
-          exit 1
+          if [ -z "$DOCKER_REGISTRY_USERNAME" ] || [ -z "$DOCKER_REGISTRY_PASSWORD" ]; then
+            echo "DOCKER_REGISTRY_USERNAME and DOCKER_REGISTRY_PASSWORD are required for non-GHCR registries."
+            exit 1
+          fi
 
       - name: Log in to GHCR
         if: ${{ steps.image_settings.outputs.registry == 'ghcr.io' }}
