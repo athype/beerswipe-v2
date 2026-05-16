@@ -151,6 +151,7 @@ DB_PASSWORD=password
 NODE_ENV=production
 BEPORT=6969
 BEURL=https://beer.sv-ada.nl
+API_UPSTREAM=http://backend:8080
 JWT_SECRET=your-super-secret-jwt-key-change-this
 
 FEURL=https://beer.sv-ada.nl
@@ -174,12 +175,47 @@ DB_PASSWORD=your-secure-password-here
 - `NODE_ENV`: Environment (development/production)
 - `BEPORT`: Backend server port
 - `BEURL`: Backend API URL for frontend
+- `API_UPSTREAM`: Upstream URL used by frontend nginx for `/api/*` proxying (default: `http://backend:6969`)
 - `JWT_SECRET`: Secret key for JWT token generation (change in production!)
 - `DOMAIN`: Your domain name for HTTPS (production only)
 - `RP_NAME`: WebAuthn Relying Party name (displayed during passkey registration)
 - `RP_ID`: WebAuthn Relying Party ID (must match your domain)
 - `ORIGIN`: Expected origin for WebAuthn challenges (must match frontend URL)
 - `DB_*`: Database connection settings
+
+## Docker Image CI/CD (GitHub Actions)
+
+This repository includes a workflow at `.github/workflows/docker-build-push.yml` that:
+- runs on every push to `main` (including merge commits)
+- builds backend and frontend Docker images
+- pushes images to your registry
+
+**Repository Variables (optional):**
+- `DOCKER_REGISTRY`: Registry hostname (default: `ghcr.io`)
+- `DOCKER_IMAGE_NAMESPACE`: Registry namespace/org (default: GitHub repository owner)
+
+**Repository Secrets:**
+- `DOCKER_REGISTRY_USERNAME`: Required only for non-GHCR registries
+- `DOCKER_REGISTRY_PASSWORD`: Required only for non-GHCR registries
+
+Image names produced by the workflow:
+- `<registry>/<namespace>/beerswipe-backend`
+- `<registry>/<namespace>/beerswipe-frontend`
+
+Tags produced:
+- `latest` on default branch
+- branch tag (for example `main`)
+- commit SHA tag
+
+## Frontend Container Runtime (Compose + Coolify)
+
+The frontend production container now uses nginx template rendering at startup, so no custom entrypoint script is needed.
+
+Set `API_UPSTREAM` based on your deployment target:
+- Docker Compose (same network): `http://backend:6969`
+- Coolify with separate backend container/domain: use a reachable backend URL, for example `https://api.your-domain.tld`
+
+This keeps browser requests same-origin (`/api/v1/...`) while nginx proxies to the configured backend.
 
 ## HTTPS Configuration
 
