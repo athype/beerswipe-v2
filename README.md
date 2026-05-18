@@ -30,6 +30,12 @@ A modern drink selling and management system for student associations. Features 
 git clone <repository-url>
 cd beerswipe-v2
 
+# Install all workspace dependencies (backend, frontend, shared types)
+pnpm install
+
+# Workspace uses a single lockfile at repository root
+# Do not maintain per-package pnpm-lock.yaml files
+
 # Copy and configure environment variables
 cp .env.example .env
 # Edit .env with your settings (see Environment Variables section)
@@ -51,15 +57,14 @@ docker-compose -f docker-compose.dev.yml up --build
 # Start PostgreSQL only
 docker-compose -f docker-compose.dev.yml up postgres -d
 
-# Start backend
-cd backend
+# Install dependencies once at repository root (workspace)
 pnpm install
-pnpm start
 
-# Start frontend (in another terminal)
-cd frontend
-pnpm install
-pnpm run dev
+# Start backend (from repo root)
+pnpm --filter backend start
+
+# Start frontend (in another terminal, from repo root)
+pnpm --filter frontend run dev
 
 # Access the application:
 # Frontend: http://localhost:5173
@@ -358,21 +363,20 @@ Chips,Potato chips snack,2,50,snack,true
 
 ### Local Development (without Docker)
 ```bash
-# Backend
-cd backend
+# Install dependencies once at repository root
 pnpm install
-pnpm dev
+
+# Backend
+pnpm --filter backend run dev
 
 # Frontend (in another terminal)
-cd frontend  
-pnpm install
-pnpm dev
+pnpm --filter frontend run dev
 ```
 
 ### Testing
 ```bash
-cd backend && pnpm test  # Backend tests
-cd frontend && pnpm test:unit  # Frontend tests
+pnpm --filter backend test      # Backend tests
+pnpm --filter frontend test:unit # Frontend tests
 ```
 
 ## Troubleshooting

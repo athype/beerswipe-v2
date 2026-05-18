@@ -1,19 +1,24 @@
 import express from "express";
-import { authenticateToken, requireAdmin, generateToken } from "../middleware/auth.js";
+import { env } from "../env.js";
+import { authenticateToken, generateToken, requireAdmin } from "../middleware/auth.js";
 import { Passkey, User } from "../models/index.js";
 import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-  rpName,
-  rpID,
-  origin,
-  storeChallenge,
-  getChallenge,
   clearChallenge,
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  getChallenge,
+  origin,
+  rpID,
+  rpName,
+  storeChallenge,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
 } from "../utils/webauthn.js";
-import { env } from "../env.js";
+import {
+  passkeyLoginOptionsSchema,
+  passkeyLoginVerifySchema,
+  passkeyRegisterVerifySchema,
+} from "../validation/contracts.js";
 
 const router = express.Router();
 
@@ -54,7 +59,12 @@ router.post("/register-options", authenticateToken, requireAdmin, async (req, re
 router.post("/register-verify", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const user = req.user;
-    const { credential, deviceName } = req.body;
+    const parsedBody = passkeyRegisterVerifySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({ error: "Invalid passkey registration payload" });
+    }
+
+    const { credential, deviceName } = parsedBody.data;
 
     const expectedChallenge = getChallenge(`reg-${user.id}`);
     if (!expectedChallenge) {
@@ -77,7 +87,7 @@ router.post("/register-verify", authenticateToken, requireAdmin, async (req, res
     // credential.id from browser is already base64url
     // credentialData.id is Uint8Array which would need conversion, but not necessary
     const credentialIdToStore = credential.id;
-  if (env.NODE_ENV !== "production") {
+    if (env.NODE_ENV !== "production") {
       console.log("Registration - Browser credential.id:", credential.id);
       console.log("Registration - Storing credentialId:", credentialIdToStore);
       console.log("Registration - Match:", credential.id === credentialIdToStore);
@@ -103,7 +113,12 @@ router.post("/register-verify", authenticateToken, requireAdmin, async (req, res
 
 router.post("/login-options", async (req, res) => {
   try {
-    const { username } = req.body;
+    const parsedBody = passkeyLoginOptionsSchema.safeParse(req.body ?? {});
+    if (!parsedBody.success) {
+      return res.status(400).json({ error: "Invalid passkey login options payload" });
+    }
+
+    const { username } = parsedBody.data;
 
     // To prevent user enumeration, we always return a challenge with empty allowCredentials
     // The authenticator will present all available credentials for this RP
@@ -129,15 +144,20 @@ router.post("/login-options", async (req, res) => {
     storeChallenge(`auth-${options.challenge}`, options.challenge);
     res.json(options);
   }
-  catch (error) {
+  catch {
     res.status(500).json({ error: "Failed to generate authentication options" });
   }
 });
 
 router.post("/login-verify", async (req, res) => {
   try {
-    const { credential } = req.body;
-    
+    const parsedBody = passkeyLoginVerifySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return res.status(400).json({ error: "Invalid passkey authentication payload" });
+    }
+
+    const { credential } = parsedBody.data;
+
     const credentialId = credential.rawId || credential.id;
 
     const passkey = await Passkey.findOne({
@@ -154,9 +174,9 @@ router.post("/login-verify", async (req, res) => {
     if (!user.isActive || !user.canLogin()) {
       return res.status(401).json({ error: "User cannot login" });
     }
-    
+
     const actualChallenge = JSON.parse(
-      Buffer.from(credential.response.clientDataJSON, "base64url").toString()
+      Buffer.from(credential.response.clientDataJSON, "base64url").toString(),
     ).challenge;
 
     const storedChallenge = getChallenge(`auth-${actualChallenge}`);

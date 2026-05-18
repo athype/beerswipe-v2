@@ -1,0 +1,9 @@
+{
+  "name": "beerswipe-v2",
+  "private": true,
+  "packageManager": "pnpm@10.18.1",
+  "scripts": {
+    "build:types": "pnpm --filter @beerswipe/types build",
+    "typecheck:types": "pnpm --filter @beerswipe/types typecheck"
+  }
+}
