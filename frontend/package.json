@@ -17,6 +17,7 @@
     "test:unit": "vitest"
   },
   "dependencies": {
+    "@beerswipe/types": "workspace:*",
     "@simplewebauthn/browser": "^13.2.2",
     "@vueuse/core": "^14.3.0",
     "axios": "^1.15.2",

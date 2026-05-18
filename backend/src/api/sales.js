@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
 import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { Drink, Transaction, User } from "../models/index.js";
+import { sellRequestSchema } from "../validation/contracts.js";
 
 const router = express.Router();
 
@@ -11,12 +12,18 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
   const transaction = await sequelize.transaction();
 
   try {
-    const { userId, drinkId, quantity = 1 } = req.body;
-
-    if (!userId || !drinkId) {
+    const parsedBody = sellRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      const hasQuantityError = parsedBody.error.issues.some(issue => issue.path[0] === "quantity");
       await transaction.rollback();
-      return res.status(400).json({ error: "User ID and Drink ID are required" });
+      return res.status(400).json({
+        error: hasQuantityError
+          ? "Quantity must be a positive integer"
+          : "User ID and Drink ID are required",
+      });
     }
+
+    const { userId, drinkId, quantity } = parsedBody.data;
 
     const user = await User.findByPk(userId, { transaction });
     const drink = await Drink.findByPk(drinkId, { transaction });
