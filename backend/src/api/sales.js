@@ -14,12 +14,29 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
   try {
     const parsedBody = sellRequestSchema.safeParse(req.body);
     if (!parsedBody.success) {
-      const hasQuantityError = parsedBody.error.issues.some(issue => issue.path[0] === "quantity");
+      const { issues } = parsedBody.error;
+      const hasUserIdError = issues.some(issue => issue.path[0] === "userId");
+      const hasDrinkIdError = issues.some(issue => issue.path[0] === "drinkId");
+      const hasQuantityError = issues.some(issue => issue.path[0] === "quantity");
+
+      const isMissingField = field => req.body?.[field] === undefined || req.body?.[field] === null || req.body?.[field] === "";
+      const mappedErrors = [];
+
+      if (hasUserIdError) {
+        mappedErrors.push(isMissingField("userId") ? "User ID is required" : "User ID must be a positive integer");
+      }
+      if (hasDrinkIdError) {
+        mappedErrors.push(isMissingField("drinkId") ? "Drink ID is required" : "Drink ID must be a positive integer");
+      }
+      if (hasQuantityError) {
+        mappedErrors.push("Quantity must be a positive integer");
+      }
+
       await transaction.rollback();
       return res.status(400).json({
-        error: hasQuantityError
-          ? "Quantity must be a positive integer"
-          : parsedBody.error.issues.map(issue => `${issue.path.join(".")} ${issue.message}`).join("; "),
+        error: mappedErrors.length > 0
+          ? mappedErrors.join("; ")
+          : issues.map(issue => `${issue.path.join(".")} ${issue.message}`).join("; "),
       });
     }
 

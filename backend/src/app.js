@@ -1,8 +1,8 @@
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import cookieParser from "cookie-parser";
 
 import api from "./api/index.js";
 import { initializeDatabase } from "./config/database.js";

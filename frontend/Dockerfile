@@ -12,7 +12,7 @@ COPY types/package.json /workspace/types/package.json
 
 # Install pnpm and dependencies
 RUN npm install -g pnpm
-RUN cd /workspace; pnpm install --frozen-lockfile --filter beer-system-frontend...
+RUN cd /workspace; pnpm install --frozen-lockfile --filter @beerswipe/frontend...
 
 # Copy package sources
 COPY frontend /workspace/frontend
@@ -30,7 +30,7 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_API_PORT=$VITE_API_PORT
 
 # Build the application
-RUN cd /workspace; pnpm --filter beer-system-frontend build
+RUN cd /workspace; pnpm --filter @beerswipe/frontend build
 
 # Production stage
 FROM nginx:alpine

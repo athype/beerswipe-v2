@@ -1,4 +1,4 @@
-# frontend
+# @beerswipe/frontend
 
 This template should help get you started developing with Vue 3 in Vite.
 
@@ -20,21 +20,22 @@ pnpm install
 This repository is a pnpm workspace monorepo.
 - Use the root `pnpm-lock.yaml` as the single lockfile.
 - Do not create or maintain `frontend/pnpm-lock.yaml`.
+- Frontend package name: `@beerswipe/frontend`.
 
 ### Compile and Hot-Reload for Development
 
 ```sh
-pnpm --filter frontend run dev
+pnpm --filter @beerswipe/frontend run dev
 ```
 
 ### Compile and Minify for Production
 
 ```sh
-pnpm --filter frontend run build
+pnpm --filter @beerswipe/frontend run build
 ```
 
 ### Run Unit Tests with [Vitest](https://vitest.dev/)
 
 ```sh
-pnpm --filter frontend run test:unit
+pnpm --filter @beerswipe/frontend run test:unit
 ```

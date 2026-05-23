@@ -63,19 +63,19 @@ Read these before major changes:
 - build shared contracts: `pnpm run build:types`
 - typecheck shared contracts: `pnpm run typecheck:types`
 
-### Backend (`backend/package.json`)
-- local dev watch: `pnpm --filter backend run dev`
-- local run with env file: `pnpm --filter backend run start:local`
-- production run: `pnpm --filter backend start`
-- lint and fix: `pnpm --filter backend run lint`
-- tests: `pnpm --filter backend test`
-- seed: `pnpm --filter backend run seed`
+### Backend (`@beerswipe/backend` in `backend/package.json`)
+- local dev watch: `pnpm --filter @beerswipe/backend run dev`
+- local run with env file: `pnpm --filter @beerswipe/backend run start:local`
+- production run: `pnpm --filter @beerswipe/backend start`
+- lint and fix: `pnpm --filter @beerswipe/backend run lint`
+- tests: `pnpm --filter @beerswipe/backend test`
+- seed: `pnpm --filter @beerswipe/backend run seed`
 
-### Frontend (`frontend/package.json`)
-- dev server: `pnpm --filter frontend run dev`
-- production build: `pnpm --filter frontend run build`
-- preview build: `pnpm --filter frontend run preview`
-- unit tests: `pnpm --filter frontend run test:unit`
+### Frontend (`@beerswipe/frontend` in `frontend/package.json`)
+- dev server: `pnpm --filter @beerswipe/frontend run dev`
+- production build: `pnpm --filter @beerswipe/frontend run build`
+- preview build: `pnpm --filter @beerswipe/frontend run preview`
+- unit tests: `pnpm --filter @beerswipe/frontend run test:unit`
 
 ### Docker workflows
 - full local stack: `docker-compose -f docker-compose.dev.yml up --build`
@@ -199,8 +199,8 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 ## Verification Checklist
 
 ### Minimum checks before merging
-- backend changes: run `pnpm --filter backend test` and `pnpm --filter backend run lint` from repo root
-- frontend changes: run `pnpm --filter frontend run test:unit` and `pnpm --filter frontend run build` from repo root
+- backend changes: run `pnpm --filter @beerswipe/backend test` and `pnpm --filter @beerswipe/backend run lint` from repo root
+- frontend changes: run `pnpm --filter @beerswipe/frontend run test:unit` and `pnpm --filter @beerswipe/frontend run build` from repo root
 - integration touching auth/sales/passkeys: manual smoke test across frontend + backend
 
 ### Manual smoke tests for high risk changes

@@ -61,10 +61,10 @@ docker-compose -f docker-compose.dev.yml up postgres -d
 pnpm install
 
 # Start backend (from repo root)
-pnpm --filter backend start
+pnpm --filter @beerswipe/backend start
 
 # Start frontend (in another terminal, from repo root)
-pnpm --filter frontend run dev
+pnpm --filter @beerswipe/frontend run dev
 
 # Access the application:
 # Frontend: http://localhost:5173
@@ -367,16 +367,16 @@ Chips,Potato chips snack,2,50,snack,true
 pnpm install
 
 # Backend
-pnpm --filter backend run dev
+pnpm --filter @beerswipe/backend run dev
 
 # Frontend (in another terminal)
-pnpm --filter frontend run dev
+pnpm --filter @beerswipe/frontend run dev
 ```
 
 ### Testing
 ```bash
-pnpm --filter backend test      # Backend tests
-pnpm --filter frontend test:unit # Frontend tests
+pnpm --filter @beerswipe/backend test      # Backend tests
+pnpm --filter @beerswipe/frontend test:unit # Frontend tests
 ```
 
 ## Troubleshooting

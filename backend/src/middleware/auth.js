@@ -5,7 +5,7 @@ import { User } from "../models/index.js";
 export async function authenticateToken(req, res, next) {
   // Try to get token from cookie first (most secure)
   let token = req.cookies?.authToken;
-  
+
   // Fallback to Authorization header for backward compatibility
   if (!token) {
     const authHeader = req.headers.authorization;

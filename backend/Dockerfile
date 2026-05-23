@@ -12,7 +12,7 @@ COPY types/package.json /workspace/types/package.json
 
 # Install pnpm and dependencies
 RUN npm install -g pnpm
-RUN cd /workspace; pnpm install --frozen-lockfile --filter beer-system-backend...
+RUN cd /workspace; pnpm install --frozen-lockfile --filter @beerswipe/backend...
 
 # Copy package sources required at runtime
 COPY backend /workspace/backend
