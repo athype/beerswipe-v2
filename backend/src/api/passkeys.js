@@ -144,7 +144,8 @@ router.post("/login-options", async (req, res) => {
     storeChallenge(`auth-${options.challenge}`, options.challenge);
     res.json(options);
   }
-  catch {
+  catch (error) {
+    console.error("Generate authentication options error:", error);
     res.status(500).json({ error: "Failed to generate authentication options" });
   }
 });

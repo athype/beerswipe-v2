@@ -15,8 +15,8 @@ const registrationCredentialSchema = z.object({
   id: z.string().min(1),
   rawId: z.string().min(1),
   response: z.object({
-    clientDataJSON: z.string().optional(),
-    attestationObject: z.string().optional(),
+    clientDataJSON: z.string().min(1),
+    attestationObject: z.string().min(1),
     transports: z.array(z.string()).optional(),
   }).passthrough(),
 }).passthrough();
@@ -26,6 +26,9 @@ const authenticationCredentialSchema = z.object({
   rawId: z.string().min(1).optional(),
   response: z.object({
     clientDataJSON: z.string().min(1),
+    authenticatorData: z.string().min(1).optional(),
+    signature: z.string().min(1).optional(),
+    userHandle: z.union([z.string().min(1), z.null().nullish()]).optional(),
   }).passthrough(),
 }).passthrough().refine(
   credential => Boolean(credential.id || credential.rawId),

@@ -19,7 +19,7 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       return res.status(400).json({
         error: hasQuantityError
           ? "Quantity must be a positive integer"
-          : "User ID and Drink ID are required",
+          : parsedBody.error.issues.map(issue => `${issue.path.join(".")} ${issue.message}`).join("; "),
       });
     }
 
