@@ -24,10 +24,11 @@ const registrationCredentialSchema = z.object({
 const authenticationCredentialSchema = z.object({
   id: z.string().min(1).optional(),
   rawId: z.string().min(1).optional(),
+  type: z.literal("public-key"),
   response: z.object({
     clientDataJSON: z.string().min(1),
-    authenticatorData: z.string().min(1).optional(),
-    signature: z.string().min(1).optional(),
+    authenticatorData: z.string().min(1),
+    signature: z.string().min(1),
     userHandle: z.union([z.string().min(1), z.null().nullish()]).optional(),
   }).passthrough(),
 }).passthrough().refine(

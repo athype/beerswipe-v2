@@ -137,9 +137,16 @@ export const passkeysAPI = {
 };
 
 export const leaderboardAPI = {
-  /** @param {MonthlyLeaderboardQuery['year']} year @param {MonthlyLeaderboardQuery['month']} month */
+  /**
+   * @param {MonthlyLeaderboardQuery['year']} year
+   * @param {MonthlyLeaderboardQuery['month']} month
+   */
   getMonthly: (year, month) => api.get('/leaderboard/monthly', { params: { year, month } }),
-  /** @param {number} userId @param {UserRankQuery['year']} year @param {UserRankQuery['month']} month */
+  /**
+   * @param {number} userId
+   * @param {UserRankQuery['year']} year
+   * @param {UserRankQuery['month']} month
+   */
   getUserRank: (userId, year, month) => api.get(`/leaderboard/rank/${userId}`, { params: { year, month } }),
 };
 
