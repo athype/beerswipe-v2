@@ -15,7 +15,6 @@
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "noEmit": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]

@@ -59,8 +59,8 @@ export interface WebAuthnRegistrationCredentialJSON {
   rawId: string;
   type: "public-key";
   response: {
-    clientDataJSON?: string;
-    attestationObject?: string;
+    clientDataJSON: string;
+    attestationObject: string;
     transports?: AuthenticatorTransport[];
     [key: string]: unknown;
   };
