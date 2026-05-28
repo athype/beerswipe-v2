@@ -176,9 +176,23 @@ router.post("/login-verify", async (req, res) => {
       return res.status(401).json({ error: "User cannot login" });
     }
 
-    const actualChallenge = JSON.parse(
-      Buffer.from(credential.response.clientDataJSON, "base64url").toString(),
-    ).challenge;
+    let actualChallenge;
+    try {
+      const clientDataJSON = Buffer.from(
+        credential.response.clientDataJSON,
+        "base64url",
+      ).toString("utf8");
+      const parsedClientData = JSON.parse(clientDataJSON);
+
+      if (typeof parsedClientData.challenge !== "string" || parsedClientData.challenge.length === 0) {
+        return res.status(400).json({ error: "Invalid credential payload" });
+      }
+
+      actualChallenge = parsedClientData.challenge;
+    }
+    catch {
+      return res.status(400).json({ error: "Invalid credential payload" });
+    }
 
     const storedChallenge = getChallenge(`auth-${actualChallenge}`);
 

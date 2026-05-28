@@ -9,7 +9,7 @@ const router = express.Router();
 
 // Make a sale (admin or seller)
 router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
-  const transaction = await sequelize.transaction();
+  let transaction;
 
   try {
     const parsedBody = sellRequestSchema.safeParse(req.body);
@@ -32,7 +32,6 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
         mappedErrors.push("Quantity must be a positive integer");
       }
 
-      await transaction.rollback();
       return res.status(400).json({
         error: mappedErrors.length > 0
           ? mappedErrors.join("; ")
@@ -41,6 +40,8 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
     }
 
     const { userId, drinkId, quantity } = parsedBody.data;
+
+    transaction = await sequelize.transaction();
 
     const user = await User.findByPk(userId, { transaction });
     const drink = await Drink.findByPk(drinkId, { transaction });
@@ -110,7 +111,9 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
     });
   }
   catch (error) {
-    await transaction.rollback();
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     console.error("Sale error:", error);
     res.status(500).json({ error: error.message || "Internal server error" });
   }
