@@ -1,8 +1,8 @@
 import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
   generateAuthenticationOptions,
+  generateRegistrationOptions,
   verifyAuthenticationResponse,
+  verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 import { env } from "../env.js";
 
@@ -25,7 +25,8 @@ export function storeChallenge(identifier, challenge) {
 
 export function getChallenge(identifier) {
   const data = challengeStore.get(identifier);
-  if (!data) return null;
+  if (!data)
+    return null;
 
   if (Date.now() - data.timestamp > 5 * 60 * 1000) {
     challengeStore.delete(identifier);
@@ -40,8 +41,8 @@ export function clearChallenge(identifier) {
 }
 
 export {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
   generateAuthenticationOptions,
+  generateRegistrationOptions,
   verifyAuthenticationResponse,
+  verifyRegistrationResponse,
 };

@@ -3,20 +3,45 @@ import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
 import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { Drink, Transaction, User } from "../models/index.js";
+import { sellRequestSchema } from "../validation/contracts.js";
 
 const router = express.Router();
 
 // Make a sale (admin or seller)
 router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
-  const transaction = await sequelize.transaction();
+  let transaction;
 
   try {
-    const { userId, drinkId, quantity = 1 } = req.body;
+    const parsedBody = sellRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      const { issues } = parsedBody.error;
+      const hasUserIdError = issues.some(issue => issue.path[0] === "userId");
+      const hasDrinkIdError = issues.some(issue => issue.path[0] === "drinkId");
+      const hasQuantityError = issues.some(issue => issue.path[0] === "quantity");
 
-    if (!userId || !drinkId) {
-      await transaction.rollback();
-      return res.status(400).json({ error: "User ID and Drink ID are required" });
+      const isMissingField = field => req.body?.[field] === undefined || req.body?.[field] === null || req.body?.[field] === "";
+      const mappedErrors = [];
+
+      if (hasUserIdError) {
+        mappedErrors.push(isMissingField("userId") ? "User ID is required" : "User ID must be a positive integer");
+      }
+      if (hasDrinkIdError) {
+        mappedErrors.push(isMissingField("drinkId") ? "Drink ID is required" : "Drink ID must be a positive integer");
+      }
+      if (hasQuantityError) {
+        mappedErrors.push("Quantity must be a positive integer");
+      }
+
+      return res.status(400).json({
+        error: mappedErrors.length > 0
+          ? mappedErrors.join("; ")
+          : issues.map(issue => `${issue.path.join(".")} ${issue.message}`).join("; "),
+      });
     }
+
+    const { userId, drinkId, quantity } = parsedBody.data;
+
+    transaction = await sequelize.transaction();
 
     const user = await User.findByPk(userId, { transaction });
     const drink = await Drink.findByPk(drinkId, { transaction });
@@ -86,7 +111,9 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
     });
   }
   catch (error) {
-    await transaction.rollback();
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     console.error("Sale error:", error);
     res.status(500).json({ error: error.message || "Internal server error" });
   }

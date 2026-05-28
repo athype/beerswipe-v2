@@ -15,8 +15,17 @@ A drink management system API for SV ADA, built with Express.js and PostgreSQL.
 ## Setup
 
 ```
+# Install dependencies once from repository root
 pnpm install
+
+# Run backend from repository root
+pnpm --filter @beerswipe/backend run dev
 ```
+
+This repository is a pnpm workspace monorepo.
+- Use the root `pnpm-lock.yaml` as the single lockfile.
+- Do not create or maintain `backend/pnpm-lock.yaml`.
+- Backend package name: `@beerswipe/backend`.
 
 ## Environment Variables
 
@@ -49,31 +58,31 @@ The application automatically creates a default admin user on first startup:
 To manually run database seeds:
 
 ```
-pnpm run seed
+pnpm --filter @beerswipe/backend run seed
 ```
 
 ## Development
 
 ```
-pnpm run dev
+pnpm --filter @beerswipe/backend run dev
 ```
 
 ## Production
 
 ```
-pnpm start
+pnpm --filter @beerswipe/backend start
 ```
 
 ## Lint
 
 ```
-pnpm run lint
+pnpm --filter @beerswipe/backend run lint
 ```
 
 ## Test
 
 ```
-pnpm test
+pnpm --filter @beerswipe/backend test
 ```
 
 ## API Endpoints

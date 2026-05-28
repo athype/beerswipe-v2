@@ -47,8 +47,8 @@ services:
   # Backend API
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: beermachine_backend
     environment:
       NODE_ENV: ${NODE_ENV}
@@ -72,7 +72,7 @@ services:
       - beermachine-network
     restart: unless-stopped
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ./backend/uploads:/workspace/backend/uploads
     labels:
       # Labels for future Traefik migration
       - "app.service=backend"
@@ -83,8 +83,8 @@ services:
   # Frontend Web App
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         VITE_API_URL: ${BEURL}
         VITE_API_PORT: ${BEPORT}

@@ -1,6 +1,6 @@
 import express from "express";
 import { Op } from "sequelize";
-import { authenticateToken, requireAdmin, generateToken } from "../middleware/auth.js";
+import { authenticateToken, generateToken, requireAdmin } from "../middleware/auth.js";
 import { User } from "../models/index.js";
 
 const router = express.Router();
@@ -83,8 +83,10 @@ router.put("/profile", authenticateToken, requireAdmin, async (req, res) => {
     }
 
     const updates = {};
-    if (username) updates.username = username;
-    if (password) updates.password = password;
+    if (username)
+      updates.username = username;
+    if (password)
+      updates.password = password;
 
     await admin.update(updates);
 
@@ -192,9 +194,12 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     }
 
     const updates = {};
-    if (username) updates.username = username;
-    if (password) updates.password = password;
-    if (userType) updates.userType = userType;
+    if (username)
+      updates.username = username;
+    if (password)
+      updates.password = password;
+    if (userType)
+      updates.userType = userType;
 
     await admin.update(updates);
 

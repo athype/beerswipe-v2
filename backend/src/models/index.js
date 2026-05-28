@@ -1,7 +1,7 @@
 import Drink from "./Drink.js";
+import Passkey from "./Passkey.js";
 import Transaction from "./Transaction.js";
 import User from "./User.js";
-import Passkey from "./Passkey.js";
 
 // Define associations
 User.hasMany(Transaction, {

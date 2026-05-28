@@ -1,18 +1,20 @@
 import express from "express";
+import { env } from "../env.js";
 import { authenticateToken, generateToken } from "../middleware/auth.js";
 import { User } from "../models/index.js";
-import { env } from "../env.js";
+import { loginRequestSchema } from "../validation/contracts.js";
 
 const router = express.Router();
 
 // Admin login
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
+    const parsedBody = loginRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
       return res.status(400).json({ error: "Username and password required" });
     }
+
+    const { username, password } = parsedBody.data;
 
     const user = await User.findOne({ where: { username } });
 

@@ -20,8 +20,8 @@ services:
   # Backend API (Development with PostgreSQL)
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: beermachine_dev_backend
     environment:
       NODE_ENV: development
@@ -45,16 +45,16 @@ services:
       - beermachine-network
     restart: unless-stopped
     volumes:
-      - ./backend:/app
-      - /app/node_modules
-      - ./backend/uploads:/app/uploads
+      - ./backend:/workspace/backend
+      - /workspace/backend/node_modules
+      - ./backend/uploads:/workspace/backend/uploads
     command: ["pnpm", "dev"]
 
   # Frontend Web App (Development)
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: frontend/Dockerfile.dev
     container_name: beermachine_dev_frontend
     environment:
       VITE_API_URL: ${BEURL:-http://localhost:8080/api/v1}
@@ -67,8 +67,8 @@ services:
       - beermachine-network
     restart: unless-stopped
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend:/workspace/frontend
+      - /workspace/frontend/node_modules
     command: ["pnpm", "dev", "--host"]
 
 volumes:
