@@ -146,7 +146,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useUsersStore } from '../stores/users.js'
-import { useNotifications } from '@/composables/useNotifications.js'
+import { useNotifications } from '@/composables/useNotifications'
 import CreateUserModal from '../components/CreateUserModal.vue'
 import EditUserModal from '../components/EditUserModal.vue'
 import AddCreditsModal from '../components/AddCreditsModal.vue'

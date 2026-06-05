@@ -2,30 +2,6 @@ import axios from 'axios';
 
 import type * as types from '@beerswipe/types';
 
-/**
- * @typedef {import('@beerswipe/types').CreateBootstrapAdminRequest} CreateBootstrapAdminRequest
- * @typedef {import('@beerswipe/types').CreateDrinkRequest} CreateDrinkRequest
- * @typedef {import('@beerswipe/types').CreateUserRequest} CreateUserRequest
- * @typedef {import('@beerswipe/types').DrinkCsvExportParams} DrinkCsvExportParams
- * @typedef {import('@beerswipe/types').ListDrinksQuery} ListDrinksQuery
- * @typedef {import('@beerswipe/types').ListUsersQuery} ListUsersQuery
- * @typedef {import('@beerswipe/types').LoginPasskeyOptionsRequest} LoginPasskeyOptionsRequest
- * @typedef {import('@beerswipe/types').LoginPasskeyVerifyRequest} LoginPasskeyVerifyRequest
- * @typedef {import('@beerswipe/types').LoginRequest} LoginRequest
- * @typedef {import('@beerswipe/types').MonthlyLeaderboardQuery} MonthlyLeaderboardQuery
- * @typedef {import('@beerswipe/types').RegisterPasskeyVerifyRequest} RegisterPasskeyVerifyRequest
- * @typedef {import('@beerswipe/types').SalesStatsQuery} SalesStatsQuery
- * @typedef {import('@beerswipe/types').SellRequest} SellRequest
- * @typedef {import('@beerswipe/types').TransactionHistoryQuery} TransactionHistoryQuery
- * @typedef {import('@beerswipe/types').UpdateDrinkRequest} UpdateDrinkRequest
- * @typedef {import('@beerswipe/types').UpdatePasskeyRequest} UpdatePasskeyRequest
- * @typedef {import('@beerswipe/types').UpdateUserRequest} UpdateUserRequest
- * @typedef {import('@beerswipe/types').UserCsvExportParams} UserCsvExportParams
- * @typedef {import('@beerswipe/types').UserRankQuery} UserRankQuery
- * @typedef {import('@beerswipe/types').WebAuthnAuthenticationCredentialJSON} WebAuthnAuthenticationCredentialJSON
- * @typedef {import('@beerswipe/types').WebAuthnRegistrationCredentialJSON} WebAuthnRegistrationCredentialJSON
- */
-
 // In production, use relative URL that nginx will proxy to backend
 // In development, use full URL with port
 const API_URL = import.meta.env.PROD 
@@ -70,11 +46,11 @@ export const authAPI = {
   login: (credentials: types.LoginRequest) => 
     api.post<types.LoginResponse>('/auth/login', credentials),
   
-  logout: () => api.post('/auth/logout'),
+  logout: () => api.post<types.LogoutResponse>('/auth/logout'),
 
-  getCurrentUser: () => api.get('/auth/me'),
+  getCurrentUser: () => api.get<types.CurrentUserResponse>('/auth/me'),
 
-  createAdmin: (adminData: types.CreateBootstrapAdminRequest) => api.post('/auth/create-admin', adminData),
+  createAdmin: (adminData: types.CreateBootstrapAdminRequest) => api.post<types.CreateBootstrapAdminResponse>('/auth/create-admin', adminData),
 };
 
 export const usersAPI = {
@@ -83,13 +59,13 @@ export const usersAPI = {
 
   getById: (id: number) => api.get<types.User>(`/users/${id}`),
 
-  create: (userData: types.CreateUserRequest) => api.post<types.User>('/users', userData),
+  create: (userData: types.CreateUserRequest) => api.post<types.CreateUserResponse>('/users', userData),
 
-  update: (id: number, userData: types.UpdateUserRequest) => api.put<types.User>(`/users/${id}`, userData),
+  update: (id: number, userData: types.UpdateUserRequest) => api.put<types.UpdateUserResponse>(`/users/${id}`, userData),
 
-  addCredits: (id: number, amount: number) => api.post(`/users/${id}/add-credits`, { amount }),
+  addCredits: (id: number, amount: number) => api.post<types.AddCreditsResponse>(`/users/${id}/add-credits`, { amount }),
 
-  importCSV: (formData: FormData) => api.post('/users/import-csv', formData, {
+  importCSV: (formData: FormData) => api.post<types.ImportUsersCsvResponse>('/users/import-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
 
@@ -104,15 +80,15 @@ export const drinksAPI = {
   
   getById: (id: number) => api.get<types.Drink>(`/drinks/${id}`),
   
-  create: (drinkData: types.CreateDrinkRequest) => api.post<types.Drink>('/drinks', drinkData),
+  create: (drinkData: types.CreateDrinkRequest) => api.post<types.CreateDrinkResponse>('/drinks', drinkData),
   
-  update: (id: number, drinkData: types.UpdateDrinkRequest) => api.put<types.Drink>(`/drinks/${id}`, drinkData),
+  update: (id: number, drinkData: types.UpdateDrinkRequest) => api.put<types.UpdateDrinkResponse>(`/drinks/${id}`, drinkData),
   
-  addStock: (id: number, quantity: number) => api.post(`/drinks/${id}/add-stock`, { quantity }),
+  addStock: (id: number, quantity: number) => api.post<types.AddStockResponse>(`/drinks/${id}/add-stock`, { quantity }),
   
-  delete: (id: number) => api.delete(`/drinks/${id}`),
+  delete: (id: number) => api.delete<types.DeleteDrinkResponse>(`/drinks/${id}`),
   
-  importCSV: (formData: FormData) => api.post('/drinks/import-csv', formData, {
+  importCSV: (formData: FormData) => api.post<types.ImportDrinksCsvResponse>('/drinks/import-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   
@@ -123,35 +99,35 @@ export const drinksAPI = {
 };
 
 export const salesAPI = {
-  makeSale: (saleData: types.SellRequest) => api.post('/sales/sell', saleData),
+  makeSale: (saleData: types.SellRequest) => api.post<types.SellResponse>('/sales/sell', saleData),
   
-  getHistory: (params: types.TransactionHistoryQuery) => api.get('/sales/history', { params }),
+  getHistory: (params: types.TransactionHistoryQuery) => api.get<types.TransactionHistoryResponse>('/sales/history', { params }),
   
-  getStats: (params: types.SalesStatsQuery) => api.get('/sales/stats', { params }),
+  getStats: (params: types.SalesStatsQuery) => api.get<types.SalesStatsResponse>('/sales/stats', { params }),
   
-  undoTransaction: (transactionId: number) => api.delete(`/sales/undo/${transactionId}`),
+  undoTransaction: (transactionId: number) => api.delete<types.UndoTransactionResponse>(`/sales/undo/${transactionId}`),
 };
 
 export const passkeysAPI = {
-  getRegistrationOptions: () => api.post('/passkeys/register-options'),
+  getRegistrationOptions: () => api.post<types.WebAuthnRegistrationOptions>('/passkeys/register-options'),
   
-  verifyRegistration: (credential: types.WebAuthnRegistrationCredentialJSON, deviceName: string) => api.post('/passkeys/register-verify', { credential, deviceName }),
+  verifyRegistration: (credential: types.WebAuthnRegistrationCredentialJSON, deviceName: string) => api.post<types.RegisterPasskeyVerifyResponse>('/passkeys/register-verify', { credential, deviceName }),
   
-  getLoginOptions: (username: types.LoginPasskeyOptionsRequest['username']) => api.post('/passkeys/login-options', { username }),
+  getLoginOptions: (username: types.LoginPasskeyOptionsRequest['username']) => api.post<types.WebAuthnAuthenticationOptions>('/passkeys/login-options', { username }),
   
-  verifyLogin: (credential: types.WebAuthnAuthenticationCredentialJSON) => api.post('/passkeys/login-verify', { credential }),
+  verifyLogin: (credential: types.WebAuthnAuthenticationCredentialJSON) => api.post<types.LoginPasskeyVerifyResponse>('/passkeys/login-verify', { credential }),
 
-  getAll: () => api.get('/passkeys'),
+  getAll: () => api.get<types.ListPasskeysResponse>('/passkeys'),
 
-  delete: (id: number) => api.delete(`/passkeys/${id}`),
+  delete: (id: number) => api.delete<types.DeletePasskeyResponse>(`/passkeys/${id}`),
 
-  update: (id: number, deviceName: types.UpdatePasskeyRequest['deviceName']) => api.put(`/passkeys/${id}`, { deviceName }),
+  update: (id: number, deviceName: types.UpdatePasskeyRequest['deviceName']) => api.put<types.UpdatePasskeyResponse>(`/passkeys/${id}`, { deviceName }),
 };
 
 export const leaderboardAPI = {
-  getMonthly: (year: types.MonthlyLeaderboardQuery['year'], month: types.MonthlyLeaderboardQuery['month']) => api.get('/leaderboard/monthly', { params: { year, month } }),
+  getMonthly: (year: types.MonthlyLeaderboardQuery['year'], month: types.MonthlyLeaderboardQuery['month']) => api.get<types.MonthlyLeaderboardResponse>('/leaderboard/monthly', { params: { year, month } }),
 
-  getUserRank: (userId: number, year: types.UserRankQuery['year'], month: types.UserRankQuery['month']) => api.get(`/leaderboard/rank/${userId}`, { params: { year, month } }),
+  getUserRank: (userId: number, year: types.UserRankQuery['year'], month: types.UserRankQuery['month']) => api.get<types.UserRankResponse>(`/leaderboard/rank/${userId}`, { params: { year, month } }),
 };
 
 export default api;

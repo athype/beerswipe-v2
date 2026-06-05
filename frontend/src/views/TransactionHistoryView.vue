@@ -177,7 +177,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useSalesStore } from '../stores/sales.js'
 import { useUsersStore } from '../stores/users.js'
-import { useNotifications } from '@/composables/useNotifications.js'
+import { useNotifications } from '@/composables/useNotifications'
 import UndoTransactionModal from '../components/UndoTransactionModal.vue'
 
 const salesStore = useSalesStore()

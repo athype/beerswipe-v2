@@ -1,8 +1,28 @@
 import { defineStore } from 'pinia';
+import type {
+  PaginationMeta,
+  SalesStatsQuery,
+  SalesStatsResponse,
+  SellRequest,
+  SellResponse,
+  StoreActionResult,
+  TransactionHistoryItem,
+  TransactionHistoryQuery,
+  TransactionHistoryResponse,
+  UndoTransactionResponse,
+} from '@beerswipe/types';
 import { salesAPI } from '../services/api.js';
 
+interface SalesState {
+  transactions: TransactionHistoryItem[];
+  stats: SalesStatsResponse | null;
+  loading: boolean;
+  error: string | null;
+  pagination: PaginationMeta;
+}
+
 export const useSalesStore = defineStore('sales', {
-  state: () => ({
+  state: (): SalesState => ({
     transactions: [],
     stats: null,
     loading: false,
@@ -16,22 +36,23 @@ export const useSalesStore = defineStore('sales', {
   }),
 
   actions: {
-    async makeSale(saleData) {
+    async makeSale(saleData: SellRequest): Promise<StoreActionResult<SellResponse>> {
       this.loading = true;
       this.error = null;
       
       try {
         const response = await salesAPI.makeSale(saleData);
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to process sale';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to process sale';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async fetchTransactionHistory(params = {}) {
+    async fetchTransactionHistory(params: TransactionHistoryQuery = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -40,15 +61,16 @@ export const useSalesStore = defineStore('sales', {
         this.transactions = response.data.transactions;
         this.pagination = response.data.pagination;
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to fetch transaction history';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to fetch transaction history';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async fetchStats(params = {}) {
+    async fetchStats(params: SalesStatsQuery = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -56,15 +78,16 @@ export const useSalesStore = defineStore('sales', {
         const response = await salesAPI.getStats(params);
         this.stats = response.data;
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to fetch stats';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to fetch stats';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async undoTransaction(transactionId) {
+    async undoTransaction(transactionId: number): Promise<StoreActionResult<UndoTransactionResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -75,8 +98,9 @@ export const useSalesStore = defineStore('sales', {
         this.pagination.total = Math.max(0, this.pagination.total - 1);
         
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to undo transaction';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to undo transaction';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;

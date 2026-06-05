@@ -167,7 +167,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications.js'
+import { useNotifications } from '@/composables/useNotifications'
 import { useUsersStore } from '../stores/users.js'
 import { useDrinksStore } from '../stores/drinks.js'
 import { useSalesStore } from '../stores/sales.js'
