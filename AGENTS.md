@@ -24,7 +24,10 @@ Out of scope:
 
 ## Repository Map
 - `backend/`: Express API, Sequelize models, migrations, seeds, tests
+- `backend/src/validation/`: Zod request/response validation schemas
 - `frontend/`: Vue 3 app, Pinia stores, router, API client, components
+- `frontend/src/composables/`: shared Vue composables (notifications, etc.)
+- `frontend/src/components/modals/`: reusable modal components (AddStock, CreateEditDrink, CsvExport)
 - `types/`: shared TypeScript contracts package used by backend and frontend
 - `docker-compose.dev.yml`: local dev topology
 - `docker-compose.yml`: production topology
@@ -38,11 +41,15 @@ Read these before major changes:
 - `backend/src/app.js`
 - `backend/src/api/index.js`
 - `backend/src/middleware/auth.js`
+- `backend/src/middlewares.js`
 - `backend/src/api/auth.js`
 - `backend/src/api/sales.js`
 - `backend/src/api/users.js`
 - `backend/src/api/passkeys.js`
+- `backend/src/api/admin.js`
+- `backend/src/api/leaderboard.js`
 - `backend/src/utils/webauthn.js`
+- `backend/src/validation/contracts.js`
 - `frontend/src/main.js`
 - `frontend/src/router/index.js`
 - `frontend/src/services/api.js`
@@ -164,7 +171,8 @@ Do not bypass stores with ad hoc axios calls in components.
 - Keep `/api/` proxy behavior aligned with backend route prefix `/api/v1`.
 
 ### Shared contract status
-`types/` now contains shared TypeScript contracts for domain and API payloads.
+`types/` contains shared TypeScript contracts for domain and API payloads. The package is consumed as `@beerswipe/types` (workspace dependency) by both backend and frontend.
+Modules: `admin.ts`, `auth.ts`, `common.ts`, `domain.ts`, `drinks.ts`, `leaderboard.ts`, `passkeys.ts`, `sales.ts`, `users.ts` — all re-exported from `types/src/index.ts`.
 Treat backend route responses as the runtime source of truth and keep `types/` aligned when routes change.
 
 ## Task Playbooks
@@ -214,6 +222,7 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 - `backend/test/api.test.js` and `backend/test/app.test.js` appear to contain legacy expectations that may not reflect current route responses.
 - Do not treat those two tests as canonical API behavior without reviewing current route code.
 - If you update API response shapes, align frontend store expectations immediately.
+- `backend/README.md` is stale: its endpoint list references old routes (e.g. `/sales/purchase` instead of `/sales/sell`) and is incomplete. Always consult `backend/src/api/index.js` and the route modules for the current API surface.
 
 ## Pull Request Expectations
 - Keep changes focused and minimal.

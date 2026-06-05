@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import type * as types from '@beerswipe/types';
+
 /**
  * @typedef {import('@beerswipe/types').CreateBootstrapAdminRequest} CreateBootstrapAdminRequest
  * @typedef {import('@beerswipe/types').CreateDrinkRequest} CreateDrinkRequest
@@ -65,89 +67,91 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-  /** @param {LoginRequest} credentials */
-  login: (credentials) => api.post('/auth/login', credentials),
+  login: (credentials: types.LoginRequest) => 
+    api.post<types.LoginResponse>('/auth/login', credentials),
+  
   logout: () => api.post('/auth/logout'),
+
   getCurrentUser: () => api.get('/auth/me'),
-  /** @param {CreateBootstrapAdminRequest} adminData */
-  createAdmin: (adminData) => api.post('/auth/create-admin', adminData),
+
+  createAdmin: (adminData: types.CreateBootstrapAdminRequest) => api.post('/auth/create-admin', adminData),
 };
 
 export const usersAPI = {
-  /** @param {ListUsersQuery} params */
-  getAll: (params) => api.get('/users', { params }),
-  getById: (id) => api.get(`/users/${id}`),
-  /** @param {CreateUserRequest} userData */
-  create: (userData) => api.post('/users', userData),
-  /** @param {UpdateUserRequest} userData */
-  update: (id, userData) => api.put(`/users/${id}`, userData),
-  addCredits: (id, amount) => api.post(`/users/${id}/add-credits`, { amount }),
-  importCSV: (formData) => api.post('/users/import-csv', formData, {
+  getAll: (params: types.ListUsersQuery) => 
+    api.get<types.ListUsersResponse>('/users', { params }),
+
+  getById: (id: number) => api.get<types.User>(`/users/${id}`),
+
+  create: (userData: types.CreateUserRequest) => api.post<types.User>('/users', userData),
+
+  update: (id: number, userData: types.UpdateUserRequest) => api.put<types.User>(`/users/${id}`, userData),
+
+  addCredits: (id: number, amount: number) => api.post(`/users/${id}/add-credits`, { amount }),
+
+  importCSV: (formData: FormData) => api.post('/users/import-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  /** @param {UserCsvExportParams} params */
-  exportCSV: (params) => api.get('/users/export-csv', { 
+
+  exportCSV: (params: types.UserCsvExportParams) => api.get('/users/export-csv', { 
     params, 
     responseType: 'blob' 
   }),
 };
 
 export const drinksAPI = {
-  /** @param {ListDrinksQuery} params */
-  getAll: (params) => api.get('/drinks', { params }),
-  getById: (id) => api.get(`/drinks/${id}`),
-  /** @param {CreateDrinkRequest} drinkData */
-  create: (drinkData) => api.post('/drinks', drinkData),
-  /** @param {UpdateDrinkRequest} drinkData */
-  update: (id, drinkData) => api.put(`/drinks/${id}`, drinkData),
-  addStock: (id, quantity) => api.post(`/drinks/${id}/add-stock`, { quantity }),
-  delete: (id) => api.delete(`/drinks/${id}`),
-  importCSV: (formData) => api.post('/drinks/import-csv', formData, {
+  getAll: (params: types.ListDrinksQuery) => api.get<types.ListDrinksResponse>('/drinks', { params }),
+  
+  getById: (id: number) => api.get<types.Drink>(`/drinks/${id}`),
+  
+  create: (drinkData: types.CreateDrinkRequest) => api.post<types.Drink>('/drinks', drinkData),
+  
+  update: (id: number, drinkData: types.UpdateDrinkRequest) => api.put<types.Drink>(`/drinks/${id}`, drinkData),
+  
+  addStock: (id: number, quantity: number) => api.post(`/drinks/${id}/add-stock`, { quantity }),
+  
+  delete: (id: number) => api.delete(`/drinks/${id}`),
+  
+  importCSV: (formData: FormData) => api.post('/drinks/import-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  /** @param {DrinkCsvExportParams} params */
-  exportCSV: (params) => api.get('/drinks/export-csv', { 
+  
+  exportCSV: (params: types.DrinkCsvExportParams) => api.get('/drinks/export-csv', { 
     params, 
     responseType: 'blob' 
   }),
 };
 
 export const salesAPI = {
-  /** @param {SellRequest} saleData */
-  makeSale: (saleData) => api.post('/sales/sell', saleData),
-  /** @param {TransactionHistoryQuery} params */
-  getHistory: (params) => api.get('/sales/history', { params }),
-  /** @param {SalesStatsQuery} params */
-  getStats: (params) => api.get('/sales/stats', { params }),
-  undoTransaction: (transactionId) => api.delete(`/sales/undo/${transactionId}`),
+  makeSale: (saleData: types.SellRequest) => api.post('/sales/sell', saleData),
+  
+  getHistory: (params: types.TransactionHistoryQuery) => api.get('/sales/history', { params }),
+  
+  getStats: (params: types.SalesStatsQuery) => api.get('/sales/stats', { params }),
+  
+  undoTransaction: (transactionId: number) => api.delete(`/sales/undo/${transactionId}`),
 };
 
 export const passkeysAPI = {
   getRegistrationOptions: () => api.post('/passkeys/register-options'),
-  /** @param {WebAuthnRegistrationCredentialJSON} credential */
-  verifyRegistration: (credential, deviceName) => api.post('/passkeys/register-verify', { credential, deviceName }),
-  /** @param {LoginPasskeyOptionsRequest['username']} username */
-  getLoginOptions: (username) => api.post('/passkeys/login-options', { username }),
-  /** @param {WebAuthnAuthenticationCredentialJSON} credential */
-  verifyLogin: (credential) => api.post('/passkeys/login-verify', { credential }),
+  
+  verifyRegistration: (credential: types.WebAuthnRegistrationCredentialJSON, deviceName: string) => api.post('/passkeys/register-verify', { credential, deviceName }),
+  
+  getLoginOptions: (username: types.LoginPasskeyOptionsRequest['username']) => api.post('/passkeys/login-options', { username }),
+  
+  verifyLogin: (credential: types.WebAuthnAuthenticationCredentialJSON) => api.post('/passkeys/login-verify', { credential }),
+
   getAll: () => api.get('/passkeys'),
-  delete: (id) => api.delete(`/passkeys/${id}`),
-  /** @param {UpdatePasskeyRequest['deviceName']} deviceName */
-  update: (id, deviceName) => api.put(`/passkeys/${id}`, { deviceName }),
+
+  delete: (id: number) => api.delete(`/passkeys/${id}`),
+
+  update: (id: number, deviceName: types.UpdatePasskeyRequest['deviceName']) => api.put(`/passkeys/${id}`, { deviceName }),
 };
 
 export const leaderboardAPI = {
-  /**
-   * @param {MonthlyLeaderboardQuery['year']} year
-   * @param {MonthlyLeaderboardQuery['month']} month
-   */
-  getMonthly: (year, month) => api.get('/leaderboard/monthly', { params: { year, month } }),
-  /**
-   * @param {number} userId
-   * @param {UserRankQuery['year']} year
-   * @param {UserRankQuery['month']} month
-   */
-  getUserRank: (userId, year, month) => api.get(`/leaderboard/rank/${userId}`, { params: { year, month } }),
+  getMonthly: (year: types.MonthlyLeaderboardQuery['year'], month: types.MonthlyLeaderboardQuery['month']) => api.get('/leaderboard/monthly', { params: { year, month } }),
+
+  getUserRank: (userId: number, year: types.UserRankQuery['year'], month: types.UserRankQuery['month']) => api.get(`/leaderboard/rank/${userId}`, { params: { year, month } }),
 };
 
 export default api;
