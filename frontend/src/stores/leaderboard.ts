@@ -6,7 +6,7 @@ import type {
   StoreActionResult,
   UserRankResponse,
 } from '@beerswipe/types';
-import { leaderboardAPI } from '../services/api.js';
+import { leaderboardAPI } from '../services/api';
 
 interface LeaderboardState {
   leaderboard: LeaderboardEntry[];

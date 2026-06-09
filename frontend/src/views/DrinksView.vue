@@ -152,7 +152,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
-import { useDrinksStore } from '../stores/drinks.js'
+import { useDrinksStore } from '../stores/drinks'
 import StockCsvImportModal from '../components/StockCsvImportModal.vue'
 import StockCsvExportModal from '../components/StockCsvExportModal.vue'
 import AddStockModal from '../components/modals/AddStockModal.vue'

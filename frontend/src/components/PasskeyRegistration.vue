@@ -31,7 +31,7 @@
 
 <script setup>
 import { ref, onMounted, defineEmits } from 'vue'
-import { usePasskeyStore } from '../stores/passkey.js'
+import { usePasskeyStore } from '../stores/passkey'
 import { useNotifications } from '../composables/useNotifications'
 
 const emit = defineEmits(['registered'])

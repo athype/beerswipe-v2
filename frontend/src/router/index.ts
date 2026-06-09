@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { useAuthStore } from '../stores/auth.js'
+import { useAuthStore } from '../stores/auth'
 
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -85,12 +85,17 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
   
   const requiresAuth = to.meta.requiresAuth
   const requiresAdmin = to.meta.requiresAdmin
   const requiresAdminOrSeller = to.meta.requiresAdminOrSeller
+
+  // Ensure auth state is initialized before access-control decisions on a hard refresh/deep link
+  if (requiresAuth && !authStore.isAuthenticated) {
+    await authStore.initializeAuth()
+  }
 
   if (requiresAuth && !authStore.isAuthenticated) {
     return next('/login')
