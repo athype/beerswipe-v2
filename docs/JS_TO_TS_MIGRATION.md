@@ -516,7 +516,7 @@ const envSchema = z.object({
   DB_PORT: z.coerce.number().default(5432),
   DB_NAME: z.string().default("beermachine"),
   DB_USER: z.string().default("postgres"),
-  DB_PASSWORD: z.string().default("hd?m6&p$KG$Sbg7T"),
+  DB_PASSWORD: z.string().default("your-secure-password-here"),
   RP_NAME: z.string().default("Beer-Machine"),
   RP_ID: z.string().optional(),
   DOMAIN: z.string().optional(),
