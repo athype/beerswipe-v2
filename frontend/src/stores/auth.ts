@@ -1,8 +1,16 @@
 import { defineStore } from 'pinia';
+import type { AuthUser, CreateBootstrapAdminRequest, CreateBootstrapAdminResponse, LoginRequest, StoreActionResult } from '@beerswipe/types';
 import { authAPI } from '../services/api.js';
 
+interface AuthState {
+  user: AuthUser | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  error: string | null;
+}
+
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
+  state: (): AuthState => ({
     user: null,
     isAuthenticated: false,
     loading: false,
@@ -10,13 +18,14 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAdmin: (state) => state.user?.userType === 'admin',
-    isSeller: (state) => state.user?.userType === 'seller',
-    isAdminOrSeller: (state) => state.user?.userType === 'admin' || state.user?.userType === 'seller',
+    isAdmin: (state: AuthState): boolean => state.user?.userType === 'admin',
+    isSeller: (state: AuthState): boolean => state.user?.userType === 'seller',
+    isAdminOrSeller: (state: AuthState): boolean =>
+      state.user?.userType === 'admin' || state.user?.userType === 'seller',
   },
 
   actions: {
-    async login(credentials) {
+    async login(credentials: LoginRequest): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -32,23 +41,23 @@ export const useAuthStore = defineStore('auth', {
         this.isAuthenticated = true;
         
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Login failed';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Login failed';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async logout() {
+    async logout(): Promise<void> {
       try {
         // Call backend to clear cookie
         await authAPI.logout();
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Logout error:', error);
       } finally {
         this.user = null;
-        this.token = null;
         this.isAuthenticated = false;
         
         // Clean up old storage just in case
@@ -58,7 +67,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async initializeAuth() {
+    async initializeAuth(): Promise<void> {
       // Clean up old storage-based tokens
       sessionStorage.removeItem('authToken');
       localStorage.removeItem('authToken');
@@ -68,47 +77,49 @@ export const useAuthStore = defineStore('auth', {
         const response = await authAPI.getCurrentUser();
         this.user = response.data.user;
         this.isAuthenticated = true;
-      } catch (error) {
+      } catch (_error: unknown) {
         this.user = null;
         this.isAuthenticated = false;
       }
     },
 
-    async fetchUser() {
+    async fetchUser(): Promise<StoreActionResult> {
       try {
         const response = await authAPI.getCurrentUser();
         this.user = response.data.user;
         this.isAuthenticated = true;
         return { success: true };
-      } catch (error) {
+      } catch (error: unknown) {
         this.user = null;
         this.isAuthenticated = false;
-        return { success: false, error: error.response?.data?.error || 'Failed to fetch user' };
+        const err = error as { response?: { data?: { error?: string } } };
+        return { success: false, error: err.response?.data?.error || 'Failed to fetch user' };
       }
     },
 
-    async createAdmin(adminData) {
+    async createAdmin(adminData: CreateBootstrapAdminRequest): Promise<StoreActionResult<CreateBootstrapAdminResponse>> {
       this.loading = true;
       this.error = null;
       
       try {
         const response = await authAPI.createAdmin(adminData);
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to create admin';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to create admin';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    updateUsername(newUsername) {
+    updateUsername(newUsername: string): void {
       if (this.user) {
         this.user.username = newUsername;
       }
     },
 
-    updateUserData(userData) {
+    updateUserData(userData: Partial<AuthUser>): void {
       if (this.user) {
         this.user = { ...this.user, ...userData };
       }

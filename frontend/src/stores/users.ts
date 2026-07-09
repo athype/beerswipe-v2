@@ -1,8 +1,28 @@
 import { defineStore } from 'pinia';
+import type {
+  AddCreditsResponse,
+  CreateUserRequest,
+  CreateUserResponse,
+  ImportUsersCsvResponse,
+  ListUsersQuery,
+  PaginationMeta,
+  StoreActionResult,
+  UpdateUserRequest,
+  UpdateUserResponse,
+  User,
+} from '@beerswipe/types';
 import { usersAPI } from '../services/api.js';
 
+interface UsersState {
+  users: User[];
+  currentUser: User | null;
+  loading: boolean;
+  error: string | null;
+  pagination: PaginationMeta;
+}
+
 export const useUsersStore = defineStore('users', {
-  state: () => ({
+  state: (): UsersState => ({
     users: [],
     currentUser: null,
     loading: false,
@@ -16,7 +36,7 @@ export const useUsersStore = defineStore('users', {
   }),
 
   actions: {
-    async fetchUsers(params = {}) {
+    async fetchUsers(params: ListUsersQuery = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -25,15 +45,16 @@ export const useUsersStore = defineStore('users', {
         this.users = response.data.users;
         this.pagination = response.data.pagination;
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to fetch users';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to fetch users';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async createUser(userData) {
+    async createUser(userData: CreateUserRequest): Promise<StoreActionResult<CreateUserResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -41,15 +62,16 @@ export const useUsersStore = defineStore('users', {
         const response = await usersAPI.create(userData);
         await this.fetchUsers(); // Refresh the list
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to create user';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to create user';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async addCredits(userId, amount) {
+    async addCredits(userId: number, amount: number): Promise<StoreActionResult<AddCreditsResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -62,15 +84,16 @@ export const useUsersStore = defineStore('users', {
         }
         
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to add credits';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to add credits';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async importCSV(formData) {
+    async importCSV(formData: FormData): Promise<StoreActionResult<ImportUsersCsvResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -78,15 +101,16 @@ export const useUsersStore = defineStore('users', {
         const response = await usersAPI.importCSV(formData);
         await this.fetchUsers(); // Refresh the list
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to import CSV';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to import CSV';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async exportCSV(params = {}) {
+    async exportCSV(params: Record<string, unknown> = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -110,15 +134,16 @@ export const useUsersStore = defineStore('users', {
         window.URL.revokeObjectURL(url);
         
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to export CSV';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to export CSV';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async updateUser(userId, userData) {
+    async updateUser(userId: number, userData: UpdateUserRequest): Promise<StoreActionResult<UpdateUserResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -132,8 +157,9 @@ export const useUsersStore = defineStore('users', {
         }
         
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to update user';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to update user';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;

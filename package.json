@@ -5,6 +5,7 @@
   "scripts": {
     "build:types": "pnpm --filter @beerswipe/types run build",
     "build": "pnpm --filter @beerswipe/types run build",
+    "typecheck": "pnpm -r run typecheck",
     "typecheck:types": "pnpm --filter @beerswipe/types run typecheck"
   }
 }

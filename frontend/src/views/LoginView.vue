@@ -71,9 +71,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth.js'
-import { usePasskeyStore } from '@/stores/passkey.js'
-import { useNotifications } from '@/composables/useNotifications.js'
+import { useAuthStore } from '@/stores/auth'
+import { usePasskeyStore } from '@/stores/passkey'
+import { useNotifications } from '@/composables/useNotifications'
 
 const router = useRouter()
 const authStore = useAuthStore()

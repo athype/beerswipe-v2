@@ -1,8 +1,29 @@
 import { defineStore } from 'pinia';
+import type {
+  AddStockResponse,
+  CreateDrinkRequest,
+  CreateDrinkResponse,
+  DeleteDrinkResponse,
+  Drink,
+  ImportDrinksCsvResponse,
+  ListDrinksQuery,
+  PaginationMeta,
+  StoreActionResult,
+  UpdateDrinkRequest,
+  UpdateDrinkResponse,
+} from '@beerswipe/types';
 import { drinksAPI } from '../services/api.js';
 
+interface DrinksState {
+  drinks: Drink[];
+  currentDrink: Drink | null;
+  loading: boolean;
+  error: string | null;
+  pagination: PaginationMeta;
+}
+
 export const useDrinksStore = defineStore('drinks', {
-  state: () => ({
+  state: (): DrinksState => ({
     drinks: [],
     currentDrink: null,
     loading: false,
@@ -16,11 +37,12 @@ export const useDrinksStore = defineStore('drinks', {
   }),
 
   getters: {
-    availableDrinks: (state) => state.drinks.filter(drink => drink.isActive && drink.stock > 0),
+    availableDrinks: (state: DrinksState): Drink[] =>
+      state.drinks.filter(drink => drink.isActive && drink.stock > 0),
   },
 
   actions: {
-    async fetchDrinks(params = {}) {
+    async fetchDrinks(params: ListDrinksQuery = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -29,15 +51,16 @@ export const useDrinksStore = defineStore('drinks', {
         this.drinks = response.data.drinks;
         this.pagination = response.data.pagination;
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to fetch drinks';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to fetch drinks';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async createDrink(drinkData) {
+    async createDrink(drinkData: CreateDrinkRequest): Promise<StoreActionResult<CreateDrinkResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -45,15 +68,16 @@ export const useDrinksStore = defineStore('drinks', {
         const response = await drinksAPI.create(drinkData);
         await this.fetchDrinks(); // Refresh the list
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to create drink';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to create drink';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async updateDrink(drinkId, drinkData) {
+    async updateDrink(drinkId: number, drinkData: UpdateDrinkRequest): Promise<StoreActionResult<UpdateDrinkResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -67,15 +91,16 @@ export const useDrinksStore = defineStore('drinks', {
         }
         
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to update drink';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to update drink';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async addStock(drinkId, quantity) {
+    async addStock(drinkId: number, quantity: number): Promise<StoreActionResult<AddStockResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -89,15 +114,16 @@ export const useDrinksStore = defineStore('drinks', {
         }
         
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to add stock';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to add stock';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async deleteDrink(drinkId) {
+    async deleteDrink(drinkId: number): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -111,15 +137,16 @@ export const useDrinksStore = defineStore('drinks', {
         }
         
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to delete drink';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to delete drink';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async importCSV(formData) {
+    async importCSV(formData: FormData): Promise<StoreActionResult<ImportDrinksCsvResponse>> {
       this.loading = true;
       this.error = null;
       
@@ -127,15 +154,16 @@ export const useDrinksStore = defineStore('drinks', {
         const response = await drinksAPI.importCSV(formData);
         await this.fetchDrinks(); // Refresh the list
         return { success: true, data: response.data };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to import CSV';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to import CSV';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
       }
     },
 
-    async exportCSV(params = {}) {
+    async exportCSV(params: Record<string, unknown> = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
       
@@ -159,8 +187,9 @@ export const useDrinksStore = defineStore('drinks', {
         window.URL.revokeObjectURL(url);
         
         return { success: true };
-      } catch (error) {
-        this.error = error.response?.data?.error || 'Failed to export CSV';
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to export CSV';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
