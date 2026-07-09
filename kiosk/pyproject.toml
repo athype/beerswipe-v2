@@ -1,0 +1,17 @@
+[project]
+name = "beerswipe-kiosk"
+version = "0.1.0"
+description = "A kiosk application for the Beerswipe system for the raspberry Pi"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "kivy>=2.3.1",
+    "pydantic>=2.13.4",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.2.0",
+    "ruff>=0.15.21",
+]
