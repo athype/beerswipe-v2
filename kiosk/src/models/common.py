@@ -24,6 +24,10 @@ class KioskResult(BaseModel, Generic[T]):
     data: T | None = None
     error: str | None = None
 
+    def model_post_init(self, __context: object) -> None:
+        if self.error is not None and self.data is not None:
+            raise ValueError("data must be None when error is set")
+
     @property
     def success(self) -> bool:
         return self.error is None

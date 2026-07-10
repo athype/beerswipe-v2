@@ -9,5 +9,7 @@ class LeaderboardEntry(BaseModel):
     rank: int
     userId: int
     username: str
+    userType: str
+    transactionCount: int
     totalDrinks: int
     totalSpent: float

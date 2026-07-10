@@ -11,5 +11,5 @@ class Drink(BaseModel):
     price: float
     stock: int
     category: str
-    isActive: bool = True
-    description: str | None = None
+    isActive: bool
+    description: str | None
