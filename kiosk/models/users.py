@@ -1,4 +1,4 @@
-"""User models for NFC card lookup — mirrors types/src/domain.ts User interface."""
+"""User models for NFC card lookup."""
 
 from pydantic import BaseModel
 
