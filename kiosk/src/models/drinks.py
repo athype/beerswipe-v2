@@ -11,5 +11,21 @@ class Drink(BaseModel):
     price: float
     stock: int
     category: str
-    isActive: bool
-    description: str | None
+    isActive: bool = True
+    description: str | None = None
+
+
+class Pagination(BaseModel):
+    """Pagination metadata returned by list endpoints."""
+
+    total: int
+    page: int
+    pages: int
+    limit: int
+
+
+class DrinkListResponse(BaseModel):
+    """Response from GET /api/v1/drinks."""
+
+    drinks: list[Drink]
+    pagination: Pagination

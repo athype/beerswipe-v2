@@ -1,14 +1,14 @@
 """Sale models — mirrors types/src/sales.ts SellRequest / SellResponse."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 
 
 class SellRequest(BaseModel):
     """What the kiosk sends to POST /api/v1/sales/sell."""
 
-    userId: int
-    drinkId: int
-    quantity: int = 1
+    userId: PositiveInt
+    drinkId: PositiveInt
+    quantity: PositiveInt = 1
 
 
 class _TransactionUser(BaseModel):
