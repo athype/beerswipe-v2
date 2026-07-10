@@ -4,6 +4,7 @@ Handles auth, error wrapping, and response validation so domain clients
 only deal with typed KioskResult values.
 """
 
+from types import TracebackType
 from typing import Any, TypeVar
 
 import httpx
@@ -30,7 +31,10 @@ class KioskClientError(Exception):
 class BeerswipeClient:
     """Low-level HTTP client that every domain client wraps.
 
-    Auth is set once at construction and attached to every request.
+    Keeps a single ``httpx.AsyncClient`` for the lifetime of the instance
+    so connections are pooled and reused across requests.  Call
+    ``await client.aclose()`` (or use as an async context manager) to shut
+    it down cleanly.
     """
 
     def __init__(
@@ -45,16 +49,40 @@ class BeerswipeClient:
             raise KioskClientError("base_url is required")
 
         self._base_url = base_url.rstrip("/")
-        self._timeout = timeout
 
         # Auth: API key takes precedence over JWT.  If neither is provided
         # the client can still hit public endpoints (e.g. GET /drinks).
         if api_key:
-            self._headers: dict[str, str] = {"X-API-Key": api_key}
+            headers: dict[str, str] = {"X-API-Key": api_key}
         elif jwt_token:
-            self._headers = {"Authorization": f"Bearer {jwt_token}"}
+            headers = {"Authorization": f"Bearer {jwt_token}"}
         else:
-            self._headers = {}
+            headers = {}
+
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(timeout),
+            headers=headers,
+            base_url=self._base_url,
+        )
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client and release connections."""
+        await self._client.aclose()
+
+    async def __aenter__(self) -> "BeerswipeClient":
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        await self.aclose()
 
     # ------------------------------------------------------------------
     # Public API used by domain clients
@@ -85,11 +113,7 @@ class BeerswipeClient:
     async def _request(
         self, method: str, path: str, **kwargs: Any,
     ) -> httpx.Response:
-        url = f"{self._base_url}{path}"
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            return await client.request(
-                method, url, headers=self._headers, **kwargs,
-            )
+        return await self._client.request(method, path, **kwargs)
 
     async def _request_model(
         self,
