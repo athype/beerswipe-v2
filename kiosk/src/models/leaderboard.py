@@ -26,6 +26,7 @@ class LeaderboardPeriod(BaseModel):
     startDate: datetime
     endDate: datetime
 
+
 class LeaderboardResponse(BaseModel):
     """Response from GET /api/v1/leaderboard/monthly."""
 
