@@ -13,3 +13,18 @@ class LeaderboardEntry(BaseModel):
     transactionCount: int
     totalDrinks: int
     totalSpent: float
+
+
+class LeaderboardPeriod(BaseModel):
+    """Period info returned alongside the leaderboard."""
+
+    year: int
+    month: int
+    monthName: str
+
+
+class LeaderboardResponse(BaseModel):
+    """Response from GET /api/v1/leaderboard/monthly."""
+
+    leaderboard: list[LeaderboardEntry]
+    period: LeaderboardPeriod
