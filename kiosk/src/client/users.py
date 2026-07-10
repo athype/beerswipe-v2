@@ -25,9 +25,8 @@ class UsersClient:
         """Look up a user by their NFC card UID.
 
         NOTE: the backend endpoint (GET /api/v1/nfc/lookup/:cardUid)
-        does not exist yet.  This method will return a connection error
-        (404 from the API router) until the route is implemented.
-
+        does not exist yet. This method will return an API error
+        (typically a 404 Not Found response) until the route is implemented.
         Once the backend route exists the call will be:
             GET /api/v1/nfc/lookup/{card_uid}
             → { user: { id, username, credits } }

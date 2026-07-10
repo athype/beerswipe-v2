@@ -2,7 +2,7 @@
 
 Usage::
 
-    from kiosk.client import KioskApi
+    from src.client import KioskApi
 
     api = KioskApi(base_url="http://localhost:8080/api/v1", api_key="...")
 

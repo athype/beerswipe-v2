@@ -1,5 +1,7 @@
 """Leaderboard models — mirrors types/src/leaderboard.ts LeaderboardEntry."""
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -21,7 +23,8 @@ class LeaderboardPeriod(BaseModel):
     year: int
     month: int
     monthName: str
-
+    startDate: datetime
+    endDate: datetime
 
 class LeaderboardResponse(BaseModel):
     """Response from GET /api/v1/leaderboard/monthly."""

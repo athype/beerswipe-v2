@@ -4,12 +4,14 @@ Handles auth, error wrapping, and response validation so domain clients
 only deal with typed KioskResult values.
 """
 
-from typing import Any
+from typing import Any, TypeVar
 
 import httpx
 from pydantic import BaseModel
 
 from ..models.common import ApiError, KioskResult
+
+TModel = TypeVar("TModel", bound=BaseModel)
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -61,18 +63,18 @@ class BeerswipeClient:
     async def get_model(
         self,
         path: str,
-        model_cls: type[BaseModel],
+        model_cls: type[TModel],
         **kwargs: Any,
-    ) -> KioskResult:
+    ) -> KioskResult[TModel]:
         """GET + validate the JSON body into *model_cls*."""
         return await self._request_model("GET", path, model_cls, **kwargs)
 
     async def post_model(
         self,
         path: str,
-        model_cls: type[BaseModel],
+        model_cls: type[TModel],
         **kwargs: Any,
-    ) -> KioskResult:
+    ) -> KioskResult[TModel]:
         """POST + validate the JSON body into *model_cls*."""
         return await self._request_model("POST", path, model_cls, **kwargs)
 
@@ -93,9 +95,9 @@ class BeerswipeClient:
         self,
         method: str,
         path: str,
-        model_cls: type[BaseModel],
+        model_cls: type[TModel],
         **kwargs: Any,
-    ) -> KioskResult:
+    ) -> KioskResult[TModel]:
         """Make a request and wrap the outcome in a KioskResult.
 
         Three paths:
