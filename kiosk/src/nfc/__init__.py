@@ -1,7 +1,7 @@
 """NFC reader abstraction for the Beerswipe kiosk.
 
 Provides a pluggable NFC reader interface so the Kivy app works on both
-desktop (keyboard fallback) and the Raspberry Pi (PN532 hardware).
+desktop (keyboard fallback) and the Raspberry Pi (ACR1552U USB reader).
 
 Usage::
 
@@ -17,13 +17,13 @@ Usage::
     reader.stop()
 """
 
-from .hardware import PiNfcReader
+from .acr1552u import Acr1552uReader
 from .keyboard import KeyboardNfcReader
 from .protocol import NfcReader, OnCardTap
 
 __all__ = [
+    "Acr1552uReader",
     "KeyboardNfcReader",
     "NfcReader",
     "OnCardTap",
-    "PiNfcReader",
 ]
