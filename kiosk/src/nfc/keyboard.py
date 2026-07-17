@@ -5,6 +5,8 @@ a UID (e.g. ``04:AB:CD:EF:12:34``), press Enter, and the callback fires
 as if a physical card were tapped.
 """
 
+import select
+import sys
 import threading
 
 from .protocol import NfcReader, OnCardTap
@@ -13,8 +15,9 @@ from .protocol import NfcReader, OnCardTap
 class KeyboardNfcReader(NfcReader):
     """Reads card UIDs from stdin — no hardware needed.
 
-    The reader runs a daemon thread that blocks on ``input()``.  Each
-    line typed is treated as a card UID.  Blank lines are ignored.
+    The reader runs a daemon thread that polls stdin via ``select`` so
+    ``stop()`` returns promptly instead of being blocked on ``input()``.
+    Each non-empty line is treated as a card UID.
     """
 
     def __init__(self) -> None:
@@ -47,15 +50,28 @@ class KeyboardNfcReader(NfcReader):
 
     @staticmethod
     def _normalize(uid: str) -> str:
-        """Strip whitespace and lowercase so lookups are canonical."""
+        """Strip whitespace and uppercase so lookups are canonical."""
         return uid.strip().upper()
 
     def _read_loop(self, on_card: OnCardTap) -> None:
+        """Poll stdin with a short timeout so we can check ``_stop_event``.
+
+        ``select`` tells us when data is available without blocking.
+        Between polls we check the stop flag — worst-case shutdown
+        latency is the select timeout (0.5 s).
+        """
         while not self._stop_event.is_set():
+            ready, _, _ = select.select([sys.stdin], [], [], 0.5)
+            if not ready:
+                continue  # timeout — loop back to check _stop_event
+
             try:
-                line = input()
-            except EOFError:
+                line = sys.stdin.readline()
+            except (EOFError, OSError):
                 break
+            if not line:  # EOF
+                break
+
             uid = self._normalize(line)
             if uid:
                 on_card(uid)
