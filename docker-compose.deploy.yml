@@ -53,7 +53,9 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      DOMAIN: ${DOMAIN:-beer.sv-ada.nl}
+      # localhost default: safe on any remote (Caddy serves plain HTTP for
+      # localhost, no ACME attempts). Set your real domain in .env.
+      DOMAIN: ${DOMAIN:-localhost}
     depends_on:
       - frontend
     networks:
@@ -95,11 +97,13 @@ services:
       DB_NAME: ${DB_NAME:-beermachine}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-change-me}
-      FEURL: ${FEURL:-https://beer.sv-ada.nl}
+      # localhost-safe defaults; set FEURL/RP_ID/DOMAIN in .env for production
+      # (passkeys require RP_ID to match the site origin).
+      FEURL: ${FEURL:-http://localhost}
       FEPORT: ${FEPORT:-443}
       RP_NAME: ${RP_NAME:-Beer-Machine}
-      RP_ID: ${RP_ID:-beer.sv-ada.nl}
-      DOMAIN: ${DOMAIN:-beer.sv-ada.nl}
+      RP_ID: ${RP_ID:-${DOMAIN:-localhost}}
+      DOMAIN: ${DOMAIN:-localhost}
     depends_on:
       postgres:
         condition: service_healthy
