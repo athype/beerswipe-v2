@@ -212,6 +212,35 @@ Tags produced:
 - branch tag (for example `main`)
 - commit SHA tag
 
+## Remote Deployment (Copy-Paste, Prebuilt Images)
+
+`docker-compose.deploy.yml` deploys the prebuilt GHCR images without needing the source repo or a build toolchain on the target host. Only the compose file, `Caddyfile` and `.env` are needed:
+
+```bash
+# On any remote with Docker + Compose v2
+mkdir -p /opt/beerswipe && cd /opt/beerswipe
+# copy docker-compose.deploy.yml, Caddyfile and .env.example from this repo
+
+cp .env.example .env
+nano .env  # set JWT_SECRET, DB_PASSWORD, DOMAIN, RP_ID, FEURL for production
+
+docker compose -f docker-compose.deploy.yml up -d
+docker compose -f docker-compose.deploy.yml logs -f caddy
+```
+
+Update an existing deployment:
+
+```bash
+docker compose -f docker-compose.deploy.yml pull
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+Notes:
+- Images: `ghcr.io/athype/beerswipe-backend` and `ghcr.io/athype/beerswipe-frontend` (tag `latest`; pin a `sha-*` tag for reproducible rollouts).
+- The production frontend uses a relative `/api/v1` path and nginx proxies to the backend via `API_UPSTREAM` at startup, so no URL is baked into the image.
+- Backend uploads go to the named `backend_uploads` volume (no host path needed).
+- The backend waits for Postgres to report healthy before starting, so first boot on a fresh remote is reliable.
+
 ## Frontend Container Runtime (Compose + Coolify)
 
 The frontend production container now uses nginx template rendering at startup, so no custom entrypoint script is needed.
