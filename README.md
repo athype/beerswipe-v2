@@ -238,6 +238,7 @@ docker compose -f docker-compose.deploy.yml up -d
 Notes:
 - Images: `ghcr.io/athype/beerswipe-backend` and `ghcr.io/athype/beerswipe-frontend` (tag `latest`; pin a `sha-*` tag for reproducible rollouts).
 - The production frontend uses a relative `/api/v1` path and nginx proxies to the backend via `API_UPSTREAM` at startup, so no URL is baked into the image.
+- `API_UPSTREAM` defaults to `http://backend:${BEPORT}`, so it stays consistent when only `BEPORT` is changed; set it explicitly only for an external/custom backend target.
 - Backend uploads go to the named `backend_uploads` volume (no host path needed).
 - The backend waits for Postgres to report healthy before starting, so first boot on a fresh remote is reliable.
 

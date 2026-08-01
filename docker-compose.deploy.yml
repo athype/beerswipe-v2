@@ -114,7 +114,9 @@ services:
     restart: unless-stopped
     environment:
       # Target of the /api/ proxy inside nginx (injected at container start).
-      API_UPSTREAM: ${API_UPSTREAM:-http://backend:8080}
+      # Defaults to backend:<BEPORT> so it stays in sync when only BEPORT is
+      # changed. Override only when proxying to an external/custom backend.
+      API_UPSTREAM: ${API_UPSTREAM:-http://backend:${BEPORT:-8080}}
     depends_on:
       - backend
     expose:
