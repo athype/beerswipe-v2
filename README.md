@@ -236,7 +236,7 @@ docker compose -f docker-compose.deploy.yml up -d
 ```
 
 Notes:
-- Images: `ghcr.io/athype/beerswipe-backend` and `ghcr.io/athype/beerswipe-frontend` (tag `latest`; pin a `sha-*` tag for reproducible rollouts).
+- Images: `${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-{backend,frontend}`. The variables mirror the build workflow's `DOCKER_REGISTRY` / `DOCKER_IMAGE_NAMESPACE` (see "Docker Image CI/CD" above), so forks and custom registries work without YAML edits. Tag is set via `IMAGE_TAG` (default `latest`; e.g. `IMAGE_TAG=sha-XXXXXXX` to pin a rollout).
 - The production frontend uses a relative `/api/v1` path and nginx proxies to the backend via `API_UPSTREAM` at startup, so no URL is baked into the image.
 - `API_UPSTREAM` defaults to `http://backend:${BEPORT}`, so it stays consistent when only `BEPORT` is changed; set it explicitly only for an external/custom backend target.
 - Backend uploads go to the named `backend_uploads` volume (no host path needed).

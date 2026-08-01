@@ -1,9 +1,14 @@
-# Copy-paste production deployment for beerswipe-v2 using prebuilt GHCR images.
+# Copy-paste production deployment for beerswipe-v2 using prebuilt images.
 #
 # Unlike docker-compose.yml (which builds images from source), this file pulls
 # the images published by .github/workflows/docker-build-push.yml:
-#   - ghcr.io/athype/beerswipe-backend
-#   - ghcr.io/athype/beerswipe-frontend
+#   - ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-backend
+#   - ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-frontend
+#
+# The image location uses the same variables the build workflow honors
+# (DOCKER_REGISTRY, DOCKER_IMAGE_NAMESPACE), so forks and custom registries
+# work without editing YAML:
+#   DOCKER_REGISTRY=registry.example.com DOCKER_IMAGE_NAMESPACE=myorg
 #
 # No source checkout, Node toolchain or build step is needed on the target host.
 #
@@ -21,8 +26,8 @@
 #   docker compose -f docker-compose.deploy.yml pull
 #   docker compose -f docker-compose.deploy.yml up -d
 #
-# Reproducible rollouts: pin images to a commit tag instead of latest, e.g.
-#   ghcr.io/athype/beerswipe-backend:sha-bb04677
+# Reproducible rollouts: pin images to a commit tag instead of latest via the
+# IMAGE_TAG variable, e.g. IMAGE_TAG=sha-bb04677 in .env (no YAML edits).
 #
 # Requirements on the remote:
 #   - Docker Engine + Docker Compose v2
@@ -78,7 +83,7 @@ services:
 
   # Backend API (prebuilt image from GHCR)
   backend:
-    image: ghcr.io/athype/beerswipe-backend:latest
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-backend:${IMAGE_TAG:-latest}
     container_name: beermachine_backend
     restart: unless-stopped
     environment:
@@ -109,7 +114,7 @@ services:
 
   # Frontend Web App (prebuilt image from GHCR, nginx + SPA)
   frontend:
-    image: ghcr.io/athype/beerswipe-frontend:latest
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-frontend:${IMAGE_TAG:-latest}
     container_name: beermachine_frontend
     restart: unless-stopped
     environment:
