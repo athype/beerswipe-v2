@@ -1,0 +1,147 @@
+# Copy-paste production deployment for beerswipe-v2 using prebuilt images.
+#
+# Unlike docker-compose.yml (which builds images from source), this file pulls
+# the images published by .github/workflows/docker-build-push.yml:
+#   - ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-backend
+#   - ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-frontend
+#
+# The image location uses the same variables the build workflow honors
+# (DOCKER_REGISTRY, DOCKER_IMAGE_NAMESPACE), so forks and custom registries
+# work without editing YAML:
+#   DOCKER_REGISTRY=registry.example.com DOCKER_IMAGE_NAMESPACE=myorg
+#
+# No source checkout, Node toolchain or build step is needed on the target host.
+#
+# Deploy on any remote with Docker + Compose v2 (>= 2.23):
+#   1. Put this file, the Caddyfile and a .env next to each other, e.g.:
+#        mkdir -p /opt/beerswipe && cd /opt/beerswipe
+#        # copy docker-compose.deploy.yml + Caddyfile + .env.example from this repo
+#   2. cp .env.example .env && nano .env
+#      -> MUST set JWT_SECRET, DB_PASSWORD, DOMAIN, RP_ID and FEURL for production.
+#      -> The defaults in this file let the stack boot, but are NOT secure.
+#   3. docker compose -f docker-compose.deploy.yml up -d
+#   4. docker compose -f docker-compose.deploy.yml logs -f caddy
+#
+# Update an existing deployment (pulls new images and recreates changed services):
+#   docker compose -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.deploy.yml up -d
+#
+# Reproducible rollouts: pin images to a commit tag instead of latest via the
+# IMAGE_TAG variable, e.g. IMAGE_TAG=sha-bb04677 in .env (no YAML edits).
+#
+# Host already has its own reverse proxy (Coolify, Traefik, nginx)? Use
+# docker-compose.deploy-host-proxy.yml instead: same stack without Caddy.
+#
+# Requirements on the remote:
+#   - Docker Engine + Docker Compose v2
+#   - Ports 80 and 443 reachable (Caddy does automatic HTTPS via Let's Encrypt)
+#   - DNS A record for your domain pointing at the server (unless DOMAIN=localhost)
+#
+# Note: the production frontend build uses a relative /api/v1 path and nginx
+# proxies to the backend via API_UPSTREAM at container start, so no URL is
+# baked into the GHCR image. One image works on any remote.
+
+services:
+  # Caddy Reverse Proxy (automatic HTTPS)
+  caddy:
+    image: caddy:2-alpine
+    container_name: beermachine_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 support
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      # localhost default: safe on any remote (Caddy serves plain HTTP for
+      # localhost, no ACME attempts). Set your real domain in .env.
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      - frontend
+    networks:
+      - beermachine-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: beermachine_prod_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-beermachine}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-beermachine}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - beermachine-network
+
+  # Backend API (prebuilt image from GHCR)
+  backend:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-backend:${IMAGE_TAG:-latest}
+    container_name: beermachine_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${BEPORT:-8080}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-beermachine}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      # localhost-safe defaults; set FEURL/RP_ID/DOMAIN in .env for production
+      # (passkeys require RP_ID to match the site origin).
+      FEURL: ${FEURL:-http://localhost}
+      FEPORT: ${FEPORT:-443}
+      RP_NAME: ${RP_NAME:-Beer-Machine}
+      RP_ID: ${RP_ID:-${DOMAIN:-localhost}}
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Named volume instead of a host bind mount, so no repo checkout is required
+      # and the path is the same on every remote.
+      - backend_uploads:/workspace/backend/uploads
+    expose:
+      - "${BEPORT:-8080}"
+    networks:
+      - beermachine-network
+
+  # Frontend Web App (prebuilt image from GHCR, nginx + SPA)
+  frontend:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-frontend:${IMAGE_TAG:-latest}
+    container_name: beermachine_frontend
+    restart: unless-stopped
+    environment:
+      # Target of the /api/ proxy inside nginx (injected at container start).
+      # Defaults to backend:<BEPORT> so it stays in sync when only BEPORT is
+      # changed. Override only when proxying to an external/custom backend.
+      API_UPSTREAM: ${API_UPSTREAM:-http://backend:${BEPORT:-8080}}
+    depends_on:
+      - backend
+    expose:
+      - "80"
+    networks:
+      - beermachine-network
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  backend_uploads:
+
+networks:
+  beermachine-network:
+    driver: bridge

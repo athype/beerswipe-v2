@@ -1,0 +1,123 @@
+# Copy-paste production deployment for beerswipe-v2 on hosts that ALREADY
+# have a reverse proxy (Coolify, Traefik, nginx, host Caddy, ...).
+#
+# Same stack as docker-compose.deploy.yml, but WITHOUT the built-in Caddy
+# service: this stack does not bind ports 80/443. TLS termination and routing
+# are the host's job. Only one upstream is needed on the host proxy:
+#
+#   - container-based proxy on the same Docker network (Coolify/Traefik):
+#       http://frontend:80
+#   - host-level proxy (nginx on the host, other compose stacks):
+#       http://127.0.0.1:${WEBPORT:-8080}
+#
+# The frontend nginx proxies /api/v1 to the backend internally (API_UPSTREAM,
+# injected at container start), so the proxy never needs to know about the
+# backend or postgres services.
+#
+# Images are pulled from the registry published by
+# .github/workflows/docker-build-push.yml, using the same variables as
+# docker-compose.deploy.yml:
+#   - ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-backend
+#   - ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-frontend
+# Pin a rollout with IMAGE_TAG (e.g. IMAGE_TAG=sha-bb04677), no YAML edits.
+#
+# Deploy on any host with Docker + Compose v2 (>= 2.23):
+#   1. Put this file and a .env next to each other, e.g.:
+#        mkdir -p /opt/beerswipe && cd /opt/beerswipe
+#        # copy docker-compose.deploy-host-proxy.yml + .env.example from this repo
+#   2. cp .env.example .env && nano .env
+#      -> MUST set JWT_SECRET, DB_PASSWORD, DOMAIN, RP_ID and FEURL for production.
+#      -> The defaults in this file let the stack boot, but are NOT secure.
+#   3. docker compose -f docker-compose.deploy-host-proxy.yml up -d
+#
+# Update an existing deployment (pulls new images and recreates changed services):
+#   docker compose -f docker-compose.deploy-host-proxy.yml pull
+#   docker compose -f docker-compose.deploy-host-proxy.yml up -d
+#
+# Note: the production frontend build uses a relative /api/v1 path, so no URL
+# is baked into the GHCR image. One image works on any host.
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: beermachine_prod_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-beermachine}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-beermachine}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - beermachine-network
+
+  # Backend API (prebuilt image from GHCR)
+  backend:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-backend:${IMAGE_TAG:-latest}
+    container_name: beermachine_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${BEPORT:-8080}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-beermachine}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      # localhost-safe defaults; set FEURL/RP_ID/DOMAIN in .env for production
+      # (passkeys require RP_ID to match the site origin).
+      FEURL: ${FEURL:-http://localhost}
+      FEPORT: ${FEPORT:-443}
+      RP_NAME: ${RP_NAME:-Beer-Machine}
+      RP_ID: ${RP_ID:-${DOMAIN:-localhost}}
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Named volume instead of a host bind mount, so no repo checkout is required
+      # and the path is the same on every host.
+      - backend_uploads:/workspace/backend/uploads
+    expose:
+      - "${BEPORT:-8080}"
+    networks:
+      - beermachine-network
+
+  # Frontend Web App (prebuilt image from GHCR, nginx + SPA)
+  frontend:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-frontend:${IMAGE_TAG:-latest}
+    container_name: beermachine_frontend
+    restart: unless-stopped
+    environment:
+      # Target of the /api/ proxy inside nginx (injected at container start).
+      # Defaults to backend:<BEPORT> so it stays in sync when only BEPORT is
+      # changed. Override only when proxying to an external/custom backend.
+      API_UPSTREAM: ${API_UPSTREAM:-http://backend:${BEPORT:-8080}}
+    depends_on:
+      - backend
+    ports:
+      # For host-level proxies that cannot reach Docker-internal networks.
+      # Container-based proxies (Coolify/Traefik) use frontend:80 directly.
+      - "${WEBPORT:-8080}:80"
+    expose:
+      - "80"
+    networks:
+      - beermachine-network
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  beermachine-network:
+    driver: bridge

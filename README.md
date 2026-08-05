@@ -212,6 +212,45 @@ Tags produced:
 - branch tag (for example `main`)
 - commit SHA tag
 
+## Remote Deployment (Copy-Paste, Prebuilt Images)
+
+`docker-compose.deploy.yml` deploys the prebuilt GHCR images without needing the source repo or a build toolchain on the target host. Only the compose file, `Caddyfile` and `.env` are needed:
+
+```bash
+# On any remote with Docker + Compose v2
+mkdir -p /opt/beerswipe && cd /opt/beerswipe
+# copy docker-compose.deploy.yml, Caddyfile and .env.example from this repo
+
+cp .env.example .env
+nano .env  # set JWT_SECRET, DB_PASSWORD, DOMAIN, RP_ID, FEURL for production
+
+docker compose -f docker-compose.deploy.yml up -d
+docker compose -f docker-compose.deploy.yml logs -f caddy
+```
+
+Update an existing deployment:
+
+```bash
+docker compose -f docker-compose.deploy.yml pull
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+Notes:
+- Images: `${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-athype}/beerswipe-{backend,frontend}`. The variables mirror the build workflow's `DOCKER_REGISTRY` / `DOCKER_IMAGE_NAMESPACE` (see "Docker Image CI/CD" above), so forks and custom registries work without YAML edits. Tag is set via `IMAGE_TAG` (default `latest`; e.g. `IMAGE_TAG=sha-XXXXXXX` to pin a rollout).
+- The production frontend uses a relative `/api/v1` path and nginx proxies to the backend via `API_UPSTREAM` at startup, so no URL is baked into the image.
+- `API_UPSTREAM` defaults to `http://backend:${BEPORT}`, so it stays consistent when only `BEPORT` is changed; set it explicitly only for an external/custom backend target.
+- Backend uploads go to the named `backend_uploads` volume (no host path needed).
+- The backend waits for Postgres to report healthy before starting, so first boot on a fresh remote is reliable.
+
+### Variant: host with its own reverse proxy (Coolify, Traefik, nginx)
+
+On hosts that already terminate TLS and route traffic (Coolify, a shared Traefik/nginx, ...), use `docker-compose.deploy-host-proxy.yml` instead: the same stack without the built-in Caddy service, and it does not bind ports 80/443. Point the host proxy at the frontend service:
+
+- container-based proxy on the same Docker network (Coolify/Traefik): `http://frontend:80`
+- host-level proxy (nginx on the host): `http://127.0.0.1:${WEBPORT:-8080}`
+
+The frontend nginx proxies `/api/v1` to the backend internally, so a single upstream is enough. Deploy and update commands are the same as above with `-f docker-compose.deploy-host-proxy.yml`.
+
 ## Frontend Container Runtime (Compose + Coolify)
 
 The frontend production container now uses nginx template rendering at startup, so no custom entrypoint script is needed.
