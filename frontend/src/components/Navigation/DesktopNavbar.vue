@@ -13,6 +13,7 @@ const handleLogout = () => {
 
 <template>
   <header>
+
     <nav class="navbar">
       <div class="container">
         <div class="navbar-content">
@@ -43,6 +44,7 @@ const handleLogout = () => {
         </div>
       </div>
     </nav>
+
   </header>
 </template>
 
@@ -107,11 +109,13 @@ header {
   position: absolute;
   bottom: 0;
   left: 50%;
-  transform: translateX(-50%);
-  width: 0;
+  width: 80%;
   height: 2px;
+  margin-left: -40%;
   background: var(--green-5);
-  transition: width 0.3s ease;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.3s ease;
 }
 
 .navbar-link:hover {
@@ -120,7 +124,7 @@ header {
 }
 
 .navbar-link:hover::before {
-  width: 80%;
+  transform: scaleX(1);
 }
 
 .navbar-link.router-link-active {
@@ -132,7 +136,7 @@ header {
 }
 
 .navbar-link.router-link-active::before {
-  width: 80%;
+  transform: scaleX(1);
 }
 
 .navbar-user {

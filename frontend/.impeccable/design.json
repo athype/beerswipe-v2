@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-09T00:00:00Z",
+  "title": "Design System: Beer Machine",
+  "extensions": {
+    "colorMeta": {
+      "night-black": { "role": "neutral", "displayName": "Night Black", "canonical": "#101211", "tonalRamp": ["#101211", "#171918", "#202322", "#272a29", "#2e3130", "#373b39", "#444947", "#5b625f", "#63706b", "#717d79", "#adb5b2", "#eceeed"] },
+      "coal": { "role": "neutral", "displayName": "Coal", "canonical": "#222222", "tonalRamp": ["#101211", "#171918", "#202322", "#272a29", "#2e3130", "#373b39", "#444947", "#5b625f", "#63706b", "#717d79", "#adb5b2", "#eceeed"] },
+      "charcoal": { "role": "neutral", "displayName": "Charcoal", "canonical": "#343434", "tonalRamp": ["#101211", "#171918", "#202322", "#272a29", "#2e3130", "#373b39", "#444947", "#5b625f", "#63706b", "#717d79", "#adb5b2", "#eceeed"] },
+      "gunmetal": { "role": "neutral", "displayName": "Gunmetal", "canonical": "#444947", "tonalRamp": ["#101211", "#171918", "#202322", "#272a29", "#2e3130", "#373b39", "#444947", "#5b625f", "#63706b", "#717d79", "#adb5b2", "#eceeed"] },
+      "accent-teal": { "role": "secondary", "displayName": "Accent Teal", "canonical": "#055E68", "tonalRamp": ["oklch(15% 0.02 205)", "oklch(25% 0.04 205)", "oklch(35% 0.05 205)", "oklch(45% 0.07 205)", "oklch(55% 0.08 205)", "oklch(65% 0.07 205)", "oklch(75% 0.05 205)", "oklch(90% 0.02 205)"] },
+      "teal-deep": { "role": "secondary", "displayName": "Teal Deep", "canonical": "#044D56", "tonalRamp": ["oklch(12% 0.015 202)", "oklch(22% 0.03 202)", "oklch(32% 0.04 202)", "oklch(42% 0.05 202)", "oklch(52% 0.06 202)", "oklch(62% 0.05 202)", "oklch(74% 0.04 202)", "oklch(90% 0.02 202)"] },
+      "forest-green": { "role": "primary", "displayName": "Forest Green", "canonical": "#152C1F", "tonalRamp": ["#0d130f", "#121b16", "#152c1f", "#143b27", "#1b4930", "#23573b", "#2b6848", "#327c55", "#30a46c", "#1d9760", "#63d196", "#b2f1cb"] },
+      "bottle-green": { "role": "primary", "displayName": "Bottle Green", "canonical": "#2B6848", "tonalRamp": ["#0d130f", "#121b16", "#152c1f", "#143b27", "#1b4930", "#23573b", "#2b6848", "#327c55", "#30a46c", "#1d9760", "#63d196", "#b2f1cb"] },
+      "deep-green": { "role": "primary", "displayName": "Deep Green", "canonical": "#327C55", "tonalRamp": ["#0d130f", "#121b16", "#152c1f", "#143b27", "#1b4930", "#23573b", "#2b6848", "#327c55", "#30a46c", "#1d9760", "#63d196", "#b2f1cb"] },
+      "signal-green": { "role": "primary", "displayName": "Signal Green", "canonical": "#30A46C", "tonalRamp": ["#0d130f", "#121b16", "#152c1f", "#143b27", "#1b4930", "#23573b", "#2b6848", "#327c55", "#30a46c", "#1d9760", "#63d196", "#b2f1cb"] },
+      "mint-bright": { "role": "primary", "displayName": "Mint Bright", "canonical": "#63D196", "tonalRamp": ["#0d130f", "#121b16", "#152c1f", "#143b27", "#1b4930", "#23573b", "#2b6848", "#327c55", "#30a46c", "#1d9760", "#63d196", "#b2f1cb"] },
+      "mint-pale": { "role": "primary", "displayName": "Mint Pale", "canonical": "#B2F1CB", "tonalRamp": ["#0d130f", "#121b16", "#152c1f", "#143b27", "#1b4930", "#23573b", "#2b6848", "#327c55", "#30a46c", "#1d9760", "#63d196", "#b2f1cb"] },
+      "slate-soft": { "role": "neutral", "displayName": "Slate Soft", "canonical": "#F8F9FA", "tonalRamp": ["oklch(40% 0.01 200)", "oklch(50% 0.01 200)", "oklch(60% 0.01 200)", "oklch(70% 0.01 200)", "oklch(80% 0.01 200)", "oklch(86% 0.01 200)", "oklch(93% 0.005 200)", "oklch(98% 0.003 200)"] },
+      "slate-dim": { "role": "neutral", "displayName": "Slate Dim", "canonical": "#6C757D", "tonalRamp": ["oklch(30% 0.01 210)", "oklch(40% 0.01 210)", "oklch(48% 0.015 210)", "oklch(55% 0.015 210)", "oklch(62% 0.015 210)", "oklch(70% 0.01 210)", "oklch(80% 0.01 210)", "oklch(92% 0.005 210)"] },
+      "mist": { "role": "neutral", "displayName": "Mist", "canonical": "#B9D2D2", "tonalRamp": ["oklch(35% 0.03 195)", "oklch(45% 0.03 195)", "oklch(55% 0.03 195)", "oklch(62% 0.03 195)", "oklch(70% 0.03 195)", "oklch(78% 0.025 195)", "oklch(86% 0.02 195)", "oklch(94% 0.01 195)"] },
+      "success-green": { "role": "status", "displayName": "Success Green", "canonical": "#28A745", "tonalRamp": ["oklch(20% 0.08 150)", "oklch(30% 0.09 150)", "oklch(40% 0.1 150)", "oklch(50% 0.11 150)", "oklch(60% 0.1 150)", "oklch(70% 0.09 150)", "oklch(80% 0.06 150)", "oklch(92% 0.03 150)"] },
+      "error-red": { "role": "status", "displayName": "Error Red", "canonical": "#DC3545", "tonalRamp": ["oklch(22% 0.07 25)", "oklch(32% 0.09 25)", "oklch(42% 0.11 25)", "oklch(52% 0.13 25)", "oklch(62% 0.12 25)", "oklch(72% 0.1 25)", "oklch(82% 0.07 25)", "oklch(93% 0.03 25)"] },
+      "signal-red": { "role": "status", "displayName": "Signal Red", "canonical": "#E5484D", "tonalRamp": ["oklch(22% 0.07 25)", "oklch(32% 0.09 25)", "oklch(42% 0.11 25)", "oklch(52% 0.13 25)", "oklch(62% 0.12 25)", "oklch(72% 0.1 25)", "oklch(82% 0.07 25)", "oklch(93% 0.03 25)"] },
+      "warning-amber": { "role": "status", "displayName": "Warning Amber", "canonical": "#F76B15", "tonalRamp": ["oklch(22% 0.06 55)", "oklch(32% 0.08 55)", "oklch(42% 0.1 55)", "oklch(52% 0.12 55)", "oklch(62% 0.13 55)", "oklch(72% 0.11 55)", "oklch(82% 0.08 55)", "oklch(93% 0.04 55)"] },
+      "info-sky": { "role": "status", "displayName": "Info Sky", "canonical": "#00A2C7", "tonalRamp": ["oklch(20% 0.06 195)", "oklch(30% 0.07 195)", "oklch(40% 0.09 195)", "oklch(50% 0.1 195)", "oklch(60% 0.09 195)", "oklch(70% 0.08 195)", "oklch(80% 0.06 195)", "oklch(92% 0.03 195)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles only — Dashboard, Sales Terminal. 600 weight, subtle text shadow for bar-distance legibility." },
+      "headline": { "displayName": "Headline", "purpose": "Default h1 and section statements." },
+      "title": { "displayName": "Title", "purpose": "Card titles (set in Mint Pale), panel headings." },
+      "body": { "displayName": "Body", "purpose": "Paragraphs, descriptions, table cells. Slate Soft on glass." },
+      "label": { "displayName": "Label", "purpose": "Form labels, meta text, timestamps." }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 1px 2px 0 rgba(0, 0, 0, 0.05)", "purpose": "Hairline depth for the smallest elements." },
+      { "name": "shadow-md", "value": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)", "purpose": "Resting elevation — navbar, buttons." },
+      { "name": "shadow-lg", "value": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)", "purpose": "Hover lift — buttons raise, notifications float." },
+      { "name": "shadow-xl", "value": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)", "purpose": "Deepest utility shadow." },
+      { "name": "shadow-glass", "value": "0 8px 32px 0 rgba(0, 0, 0, 0.37)", "purpose": "The signature panel shadow — every glass card, table, and modal." }
+    ],
+    "motion": [
+      { "name": "ease-state", "value": "all 0.3s ease", "purpose": "Default transition for buttons, cards, inputs, nav states." },
+      { "name": "ease-quick", "value": "all 0.2s ease", "purpose": "Table row hovers, link color fades." },
+      { "name": "orb-drift", "value": "18s-26s ease-in-out infinite alternate", "purpose": "The three background orbs drift on staggered loops; the system's heartbeat." },
+      { "name": "fade-in", "value": "opacity 0.2s ease", "purpose": "Modal overlay appearance." },
+      { "name": "slide-up", "value": "translateY(20px) + opacity 0.3s ease", "purpose": "Modal panel entrance." },
+      { "name": "slide-in", "value": "translateX(100%) + opacity 0.3s ease", "purpose": "Notification toasts from the right edge." },
+      { "name": "count-up", "value": "1s numeric count", "purpose": "Dashboard stat figures; the only content-layer motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action in every flow — Process Sale, Login, Save.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Process Sale</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 24px; border: 1px solid transparent; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.3s ease; color: #f8f9fa; } .ds-btn-primary { background: rgba(50, 124, 85, 0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); } .ds-btn-primary:hover { background: #327c55; border-color: #2b6848; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Quiet alternative actions — View History, Manage Users, Clear Cart.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Manage Users</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 24px; border: 1px solid transparent; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.3s ease; color: #f8f9fa; } .ds-btn-secondary { background: #444947; color: #f8f9fa; } .ds-btn-secondary:hover { background: #63706b; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2); } .ds-btn-secondary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive actions — delete drink, remove user.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Delete</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 24px; border: 1px solid transparent; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.3s ease; color: #f8f9fa; } .ds-btn-danger { background: rgba(220, 53, 69, 0.8); border-color: rgba(220, 53, 69, 0.4); } .ds-btn-danger:hover { background: #e5484d; border-color: #dc3545; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); } .ds-btn-danger:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.3); } .ds-btn-danger:active { transform: translateY(0); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Search fields (customers, drinks) and form inputs — coal glass that rises on focus.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search users by username...\">",
+      "css": ".ds-input { width: 100%; padding: 16px 24px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; font-size: 1rem; color: #f8f9fa; background: rgba(34, 34, 34, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; } .ds-input::placeholder { color: #6c757d; } .ds-input:focus { outline: none; border-color: #2b6848; background: rgba(34, 34, 34, 0.7); box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1); transform: translateY(-1px); } .ds-input.error { border-color: #dc3545; }"
+    },
+    {
+      "name": "Glass Card",
+      "kind": "card",
+      "refersTo": "card-glass",
+      "description": "The fundamental panel — charcoal glass over the orb layer, bottle-green rim.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><h3 class=\"ds-card-title\">Quick Actions</h3></div><p class=\"ds-card-body\">Content sits on frosted glass with the glow showing through.</p></div>",
+      "css": ".ds-card { background: rgba(52, 52, 52, 0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid #2b6848; border-radius: 12px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); padding: 32px; transition: all 0.3s ease; color: #f8f9fa; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-card:hover { background: rgba(52, 52, 52, 0.7); border-color: #327c55; box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45); } .ds-card-header { border-bottom: 1px solid #2b6848; padding-bottom: 24px; margin-bottom: 32px; } .ds-card-title { font-size: 1.25rem; font-weight: 600; margin: 0; color: #b2f1cb; } .ds-card-body { margin: 0; line-height: 1.6; }"
+    },
+    {
+      "name": "Navigation Link",
+      "kind": "nav",
+      "refersTo": "nav-link-active",
+      "description": "Navbar links with the sweeping underline; the active link is a forest-green pill.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" class=\"ds-nav-link\">Dashboard</a><a href=\"#\" class=\"ds-nav-link ds-nav-link-active\">Sales</a><a href=\"#\" class=\"ds-nav-link\">History</a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 8px; padding: 8px 16px; } .ds-nav-link { position: relative; color: rgba(255, 255, 255, 0.8); text-decoration: none; padding: 8px 16px; border-radius: 8px; font-weight: 500; font-size: 1rem; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; transition: all 0.3s ease; } .ds-nav-link::before { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 0; height: 2px; background: #1b4930; transition: width 0.3s ease; } .ds-nav-link:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); } .ds-nav-link:hover::before { width: 80%; } .ds-nav-link-active { color: #ffffff; background: #152c1f; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid #2b6848; } .ds-nav-link-active::before { width: 80%; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2); }"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Admin tables — forest-green glass header, hairline dividers, teal hover rows.",
+      "html": "<div class=\"ds-table-wrap\"><table class=\"ds-table\"><thead><tr><th>Name</th><th>Credits</th></tr></thead><tbody><tr><td>513286</td><td class=\"ds-credits\">120</td></tr><tr><td>john_doe</td><td class=\"ds-credits\">45</td></tr></tbody></table></div>",
+      "css": ".ds-table-wrap { overflow-x: auto; border-radius: 12px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); background: rgba(52, 52, 52, 0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.18); font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-table { width: 100%; border-collapse: collapse; } .ds-table th, .ds-table td { padding: 24px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.18); color: #f8f9fa; } .ds-table th { background: #152c1f; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-weight: 600; border-bottom: 2px solid #2b6848; } .ds-table tbody tr { transition: all 0.2s ease; } .ds-table tbody tr:hover { background: rgba(5, 94, 104, 0.15); } .ds-credits { color: #63d196; font-weight: 700; }"
+    },
+    {
+      "name": "Notification Toast",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Global toasts top-right — success in Signal Green, error in Signal Red.",
+      "html": "<div class=\"ds-toast ds-toast-success\">Sale processed successfully!</div>",
+      "css": ".ds-toast { position: fixed; top: 24px; right: 24px; min-width: 300px; padding: 16px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 1100; color: #ffffff; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 500; animation: ds-slide-in 0.3s ease; } .ds-toast-success { background: #30a46c; } .ds-toast-error { background: #e5484d; } .ds-toast-warning { background: #f76b15; color: #343434; } .ds-toast-info { background: #00a2c7; } @keyframes ds-slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }"
+    },
+    {
+      "name": "Modal Panel",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Deep-glass modal over a blurred dim — add credits, create user, undo transaction.",
+      "html": "<div class=\"ds-overlay\"><div class=\"ds-modal\"><div class=\"ds-modal-header\"><h3 class=\"ds-modal-title\">Add Credits</h3><button class=\"ds-modal-close\" aria-label=\"Close\">×</button></div><div class=\"ds-modal-body\"><p style=\"margin:0; color:#f8f9fa;\">Enter the credit amount for this member.</p></div><div class=\"ds-modal-footer\"><button class=\"ds-modal-btn\">Cancel</button><button class=\"ds-modal-btn ds-modal-btn-primary\">Save</button></div></div></div>",
+      "css": ".ds-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; animation: ds-fade-in 0.2s ease; } .ds-modal { background: rgba(52, 52, 52, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid #2b6848; border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; animation: ds-slide-up 0.3s ease; } .ds-modal-header { padding: 32px; border-bottom: 1px solid rgba(255, 255, 255, 0.18); display: flex; justify-content: space-between; align-items: center; } .ds-modal-title { font-size: 1.125rem; font-weight: 600; margin: 0; color: #f8f9fa; } .ds-modal-close { background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #6c757d; padding: 4px; } .ds-modal-close:hover { color: #b2f1cb; } .ds-modal-body { padding: 32px; } .ds-modal-footer { padding: 32px; border-top: 1px solid rgba(255, 255, 255, 0.18); display: flex; justify-content: flex-end; gap: 16px; } .ds-modal-btn { padding: 8px 24px; border-radius: 8px; border: 1px solid transparent; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; color: #f8f9fa; } .ds-modal-btn { background: #444947; } .ds-modal-btn:hover { background: #63706b; } .ds-modal-btn-primary { background: rgba(50, 124, 85, 0.8); } .ds-modal-btn-primary:hover { background: #327c55; } @keyframes ds-fade-in { from { opacity: 0; } to { opacity: 1; } } @keyframes ds-slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Dashboard figures — teal-edged glass card, 900-weight number, mint for credit totals.",
+      "html": "<div class=\"ds-stat\"><p class=\"ds-stat-label\">Revenue</p><p class=\"ds-stat-number\">128.50</p><p class=\"ds-stat-sub\">credits earned</p></div>",
+      "css": ".ds-stat { background: rgba(52, 52, 52, 0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid #2b6848; border-left: 4px solid #055e68; border-radius: 12px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); padding: 32px; text-align: center; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-stat-label { margin: 0 0 8px; font-size: 1.125rem; font-weight: 600; color: #f8f9fa; } .ds-stat-number { margin: 4px 0; font-size: 2.5rem; font-weight: 900; color: #f8f9fa; } .ds-stat-sub { margin: 0; font-size: 0.875rem; color: #6c757d; } .ds-stat.credits .ds-stat-number { color: #63d196; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Bottle Glow",
+    "overview": "Beer Machine lives in a dark cellar bar lit by backlit bottles. The canvas is near-black — #101211, the color of a bar after closing — and the green-and-teal accent family enters as light: bleeding through frosted glass panels, edging every surface, glowing where it means something. The signature of the system is that its background is alive: three huge blurred orbs in the green scale drift slowly behind translucent panels, and a fine noise texture keeps the dark from ever going flat.\n\nThe mood is steady and warm: a serious tool with a late-night soul. The glass keeps it calm, the glow keeps it alive. Content sits in soft slate text on frosted surfaces; interactivity is signaled by green light. This is an Operate-first system — the sales terminal is used at a busy bar by volunteers — so hierarchy is quiet until the moment an action matters, and then the glow is unambiguous. Confirmed anti-references: no club-night neon, no sterile enterprise SaaS.",
+    "keyCharacteristics": [
+      "Dark glass panels floating over a living background (drifting blurred orbs + noise texture)",
+      "A single accent family of beer-glass greens and teals on near-black",
+      "Frosted and tactile: translucent surfaces, solid pressable controls",
+      "Numbers move (CountUp stat animation); transactions, credits, and stock are the stars",
+      "Green 1px edges on every surface, catching the backlight like a bottle rim"
+    ],
+    "rules": [
+      { "name": "The Bottle-Glow Rule", "body": "Accent color is light, not paint: greens and teals appear as glows, edges, and fills on glass — never as large solid walls of color on inner pages. The hero gradient on the landing page is the one sanctioned exception.", "section": "colors" },
+      { "name": "The Night-Bar Rule", "body": "The canvas stays near-black. Pure white is reserved for the brightest text emphasis and is never a background.", "section": "colors" },
+      { "name": "The Mint-Is-Money Rule", "body": "Credit figures — balances, prices, totals — use Mint Bright (#63D196). If a number represents credits, it is mint.", "section": "colors" },
+      { "name": "The Read-Across-The-Room Rule", "body": "Page titles are 600 weight at 2.25rem in Slate Soft with a 2px black text shadow — legible at bar distance without shouting.", "section": "typography" },
+      { "name": "The Never-Opaque Rule", "body": "Surfaces are translucent glass (rgba(52,52,52,0.5) + blur(10px), modals at 0.7 + blur(16px)) — the orb layer must always show through. Opaque fills are only allowed on legacy landing elements.", "section": "elevation" },
+      { "name": "The Edge-Glow Rule", "body": "Every glass surface carries a 1px green-tinted border. A panel with no visible edge is not part of the system.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do keep surfaces translucent — the orb layer must show through every panel.",
+      "Do rim every glass surface with a 1px Bottle Green (#2B6848) or translucent-white border.",
+      "Do use Signal Green (#30A46C) for interactive signals only (hover, success) — its rarity is the signal.",
+      "Do set credit figures — balances, prices, totals — in Mint Bright (#63D196).",
+      "Do use 600-weight titles at 2.25rem with the subtle text shadow for page heroes.",
+      "Do pair every glass panel with its shadow-glass; shadows and glass travel together."
+    ],
+    "donts": [
+      "Don't use bright accents as large flat fills — no solid teal or green walls on inner pages (the hero gradient is the one exception).",
+      "Don't use pure white backgrounds or light mode; the night bar is the system.",
+      "Don't introduce new hues — the world is greens and teals on near-black, status colors excepted.",
+      "Don't let panels go edgeless or shadows appear without glass beneath.",
+      "Don't animate anything in the content layer except CountUp numbers and state transitions; the orbs are the motion."
+    ]
+  }
+}
