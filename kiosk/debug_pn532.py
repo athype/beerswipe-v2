@@ -71,6 +71,32 @@ def main() -> int:
     ser.flush()
     dump("4. after RTS pulse + probe", ser)
 
+    # 5. baud sweep: a vendor-flashed chip may run HSU at a nonstandard
+    # speed, in which case 115200 commands get nothing while the chip
+    # waits at its own baud. Listen passively, then probe, at each rate.
+    for baud in (9600, 19200, 57600, 230400):
+        try:
+            ser.baudrate = baud
+            ser.reset_input_buffer()
+            time.sleep(0.2)
+
+            ser.timeout = 0.5
+            data = ser.read(32)
+            passive = data.hex() if data else "<nothing>"
+
+            ser.write(WAKEUP)
+            time.sleep(0.2)
+            ser.write(FW_CMD)
+            ser.flush()
+            ser.timeout = 1.0
+            data = ser.read(64)
+            print(
+                f"5. @{baud}: passive={passive} "
+                f"probe={data.hex() if data else '<nothing>'}",
+            )
+        except serial.SerialException as exc:
+            print(f"5. @{baud}: skipped ({exc})")
+
     ser.close()
     print("done")
     return 0
