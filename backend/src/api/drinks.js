@@ -26,16 +26,16 @@ router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
     const drinks = await Drink.findAll({
       where: whereClause,
       order: [["name", "ASC"]],
-      attributes: ["name", "description", "price", "stock", "category", "isActive"],
+      attributes: ["name", "description", "price", "stock", "category", "isActive", "isAlcohol"],
     });
 
     const csvRows = drinks.map((drink) => {
       const escapedName = (drink.name || "").replace(/"/g, "\"\"");
       const escapedDescription = (drink.description || "").replace(/"/g, "\"\"");
-      return `"${escapedName}","${escapedDescription}",${drink.price},${drink.stock},"${drink.category}",${drink.isActive}`;
+      return `"${escapedName}","${escapedDescription}",${drink.price},${drink.stock},"${drink.category}",${drink.isActive},${drink.isAlcohol}`;
     });
 
-    const header = "name,description,price,stock,category,isActive";
+    const header = "name,description,price,stock,category,isActive,isAlcohol";
     const csvContent = [header, ...csvRows].join("\n");
 
     res.setHeader("Content-Type", "text/csv");
@@ -110,7 +110,7 @@ router.get("/:id", async (req, res) => {
 // Create new drink (admin only)
 router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, description, price, stock = 0, category = "beverage" } = req.body;
+    const { name, description, price, stock = 0, category = "beverage", isAlcohol = false } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ error: "Name and price are required" });
@@ -131,6 +131,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
       price: Number.parseInt(price),
       stock: Number.parseInt(stock),
       category,
+      isAlcohol: isAlcohol === true || isAlcohol === "true",
     });
 
     res.status(201).json({
@@ -147,7 +148,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 // Update drink (admin only)
 router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, description, price, stock, category, isActive } = req.body;
+    const { name, description, price, stock, category, isActive, isAlcohol } = req.body;
 
     const drink = await Drink.findByPk(req.params.id);
     if (!drink) {
@@ -161,6 +162,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
       stock: stock !== undefined ? Number.parseInt(stock) : drink.stock,
       category: category || drink.category,
       isActive: isActive !== undefined ? isActive : drink.isActive,
+      isAlcohol: isAlcohol !== undefined ? isAlcohol === true || isAlcohol === "true" : drink.isAlcohol,
     });
 
     res.json({
@@ -223,7 +225,7 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
       .on("data", async (data) => {
         lineNumber++;
         try {
-          const [name, description, price, stock, category, isActive] = Object.values(data);
+          const [name, description, price, stock, category, isActive, isAlcohol] = Object.values(data);
 
           if (!name) {
             errors.push(`Line ${lineNumber}: Name is required`);
@@ -238,6 +240,7 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
             const parsedStock = Number.parseInt(stock) || 0;
             const parsedPrice = Number.parseInt(price) || drink.price;
             const parsedIsActive = isActive === "true";
+            const hasIsAlcohol = isAlcohol !== undefined && isAlcohol !== "";
 
             await drink.update({
               description: description?.trim() || drink.description,
@@ -245,6 +248,7 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
               stock: parsedStock,
               category: category?.trim() || drink.category,
               isActive: parsedIsActive,
+              isAlcohol: hasIsAlcohol ? isAlcohol === "true" : drink.isAlcohol,
             });
 
             results.push({
@@ -267,6 +271,7 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
               stock: Number.parseInt(stock) || 0,
               category: category?.trim() || "beverage",
               isActive: isActive === "true",
+              isAlcohol: isAlcohol === "true",
             });
 
             results.push({

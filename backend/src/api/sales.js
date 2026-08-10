@@ -7,6 +7,23 @@ import { sellRequestSchema } from "../validation/contracts.js";
 
 const router = express.Router();
 
+function calculateAge(dateOfBirth) {
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+
+  return age;
+}
+
 // Make a sale (admin or seller)
 router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
   let transaction;
@@ -59,6 +76,20 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
     if (!drink.isInStock() || drink.stock < quantity) {
       await transaction.rollback();
       return res.status(400).json({ error: "Insufficient stock or drink not available" });
+    }
+
+    // Legal gate: alcohol may only be sold to customers aged 18+ (Dutch law).
+    // Never trust the client — enforce on the server.
+    if (drink.isAlcohol) {
+      const age = user.dateOfBirth ? calculateAge(user.dateOfBirth) : null;
+      if (age === null || age < 18) {
+        await transaction.rollback();
+        return res.status(403).json({
+          error: age === null
+            ? "Cannot sell alcohol: customer has no date of birth on file"
+            : "Cannot sell alcohol: customer is under 18",
+        });
+      }
     }
 
     const totalCost = drink.price * quantity;

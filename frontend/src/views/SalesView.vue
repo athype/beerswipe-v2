@@ -16,14 +16,23 @@
             placeholder="Search users by username..."
             @input="searchUsers"
           />
+          <p v-if="searchQuery.length > 0 && searchQuery.length <= 2" class="search-hint">
+            Type at least 3 characters to search
+          </p>
           <div v-if="usersStore.loading" class="loading">Searching...</div>
-          <div v-if="filteredUsers.length > 0" class="user-list">
+          <p v-else-if="usersStore.error" class="list-error">{{ usersStore.error }}</p>
+          <div v-else-if="filteredUsers.length > 0" class="user-list">
             <div
               v-for="user in filteredUsers"
               :key="user.id"
               class="user-item"
               :class="{ selected: selectedUser?.id === user.id }"
+              role="button"
+              tabindex="0"
+              :aria-pressed="selectedUser?.id === user.id ? 'true' : 'false'"
               @click="selectUser(user)"
+              @keydown.enter="selectUser(user)"
+              @keydown.space.prevent="selectUser(user)"
             >
               <div class="user-info">
                 <span class="username">{{ user.username }}</span>
@@ -32,6 +41,9 @@
               <div class="user-credits">{{ user.credits }} credits</div>
             </div>
           </div>
+          <p v-else-if="searchQuery.length > 2" class="search-hint">
+            No users found for "{{ searchQuery }}"
+          </p>
         </div>
 
         <div v-if="selectedUser" class="selected-customer">
@@ -46,7 +58,31 @@
                   Age: {{ userAge }} years old
                 </p>
                 <div class="alcohol-status" :class="{ 'can-serve': canServeAlcohol, 'cannot-serve': !canServeAlcohol }">
-                  <span class="status-icon">{{ canServeAlcohol ? '✅' : '🚫' }}</span>
+                  <svg
+                    v-if="canServeAlcohol"
+                    class="status-icon"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 8.5l3.2 3.2L13 4.5"/>
+                  </svg>
+                  <svg
+                    v-else
+                    class="status-icon"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 4l8 8M12 4l-8 8"/>
+                  </svg>
                   <span class="status-text">
                     {{ canServeAlcohol ? 'Can serve alcohol' : 'Cannot serve alcohol (under 18)' }}
                   </span>
@@ -54,7 +90,19 @@
               </div>
               <div class="customer-actions">
                 <button @click="openAddCreditsModal" class="btn add-credits-btn">
-                  💰 Add Credits
+                  <svg
+                    class="btn-icon"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="8" cy="8" r="6.25"/>
+                    <path d="M8 5v6M5 8h6"/>
+                  </svg>
+                  Add Credits
                 </button>
               </div>
             </div>
@@ -73,16 +121,28 @@
             @input="searchDrinks"
           />
         </div>
-        
-        <div class="drinks-grid">
+
+        <p v-if="drinksStore.loading && availableDrinks.length === 0" class="loading">Loading drinks...</p>
+        <p v-else-if="drinksStore.error" class="list-error">{{ drinksStore.error }}</p>
+        <p v-else-if="availableDrinks.length === 0" class="list-empty">No drinks found</p>
+        <div v-else class="drinks-grid">
           <div
             v-for="drink in availableDrinks"
             :key="drink.id"
             class="drink-card"
+            :class="{ blocked: isAlcoholBlocked(drink) }"
+            role="button"
+            tabindex="0"
+            :aria-label="`Add ${drink.name} to cart`"
             @click="addToCart(drink)"
+            @keydown.enter="addToCart(drink)"
+            @keydown.space.prevent="addToCart(drink)"
           >
             <div class="drink-info">
-              <h4>{{ drink.name }}</h4>
+              <h4>
+                {{ drink.name }}
+                <span v-if="drink.isAlcohol" class="alcohol-tag">18+</span>
+              </h4>
               <p class="drink-price">{{ drink.price }} credits</p>
               <p class="drink-stock">{{ drink.stock }} in stock</p>
             </div>
@@ -107,10 +167,23 @@
               <span class="item-price">{{ item.drink.price }} credits each</span>
             </div>
             <div class="item-controls">
-              <button @click="decreaseQuantity(item)" class="qty-btn">-</button>
+              <button
+                @click="decreaseQuantity(item)"
+                class="qty-btn"
+                :disabled="item.quantity <= 1"
+                :aria-label="`Decrease ${item.drink.name} quantity`"
+              >−</button>
               <span class="quantity">{{ item.quantity }}</span>
-              <button @click="increaseQuantity(item)" class="qty-btn">+</button>
-              <button @click="removeFromCart(item)" class="remove-btn">Remove</button>
+              <button
+                @click="increaseQuantity(item)"
+                class="qty-btn"
+                :aria-label="`Increase ${item.drink.name} quantity`"
+              >+</button>
+              <button
+                @click="removeFromCart(item)"
+                class="remove-btn"
+                :aria-label="`Remove ${item.drink.name} from cart`"
+              >Remove</button>
             </div>
           </div>
           
@@ -119,15 +192,16 @@
               <strong>Total: {{ totalCost }} credits</strong>
             </div>
             <div class="actions">
-              <button @click="clearCart" class="btn clear-btn">Clear Cart</button>
-              <button 
-                @click="processeSale" 
-                :disabled="!selectedUser || cart.length === 0 || selectedUser.credits < totalCost"
+              <button @click="clearCart" class="btn clear-btn" :disabled="processing">Clear Cart</button>
+              <button
+                @click="openConfirmModal"
+                :disabled="!selectedUser || cart.length === 0 || selectedUser.credits < totalCost || processing"
                 class="btn checkout-btn"
               >
-                Process Sale
+                {{ processing ? 'Processing…' : 'Process Sale' }}
               </button>
             </div>
+            <p v-if="checkoutHint" class="checkout-hint">{{ checkoutHint }}</p>
           </div>
         </div>
       </div>
@@ -141,10 +215,22 @@
       @success="handleCreditsSuccess"
     />
 
+    <!-- Sale Confirm Modal -->
+    <SaleConfirmModal
+      :show="showConfirmModal"
+      :user="selectedUser"
+      :items="cart"
+      :total="totalCost"
+      :processing="processing"
+      @close="closeConfirmModal"
+      @confirm="confirmSale"
+    />
+
     <!-- Recent Sales -->
     <div class="recent-sales">
       <h2>Recent Sales</h2>
-      <div v-if="recentSales.length === 0" class="no-sales">
+      <div v-if="salesStore.loading" class="loading">Loading recent sales...</div>
+      <div v-else-if="recentSales.length === 0" class="no-sales">
         No recent sales
       </div>
       <div v-else class="sales-list">
@@ -172,6 +258,7 @@ import { useUsersStore } from '../stores/users'
 import { useDrinksStore } from '../stores/drinks'
 import { useSalesStore } from '../stores/sales'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
+import SaleConfirmModal from '../components/modals/SaleConfirmModal.vue'
 
 const usersStore = useUsersStore()
 const drinksStore = useDrinksStore()
@@ -183,6 +270,8 @@ const drinkSearchQuery = ref('')
 const selectedUser = ref(null)
 const cart = ref([])
 const showCreditsModal = ref(false)
+const showConfirmModal = ref(false)
+const processing = ref(false)
 
 const filteredUsers = computed(() => {
   if (!searchQuery.value) return []
@@ -231,14 +320,51 @@ const userAge = computed(() => {
   return calculateAge(selectedUser.value?.dateOfBirth)
 })
 
-const searchUsers = async () => {
-  if (searchQuery.value.length > 2) {
-    await usersStore.fetchUsers({ search: searchQuery.value })
-  }
+const isAlcoholBlocked = (drink) => {
+  return drink.isAlcohol && !canServeAlcohol.value
 }
 
-const searchDrinks = async () => {
-  await drinksStore.fetchDrinks({ search: drinkSearchQuery.value, inStock: true })
+const alcoholRefusalReason = (drink) => {
+  if (!drink.isAlcohol) return null
+  if (!selectedUser.value) {
+    return 'Select a customer first — alcohol (18+) requires an age check'
+  }
+  if (userAge.value === null) {
+    return `${selectedUser.value.username} has no date of birth on file — cannot sell alcohol (18+)`
+  }
+  return `${selectedUser.value.username} is under 18 — cannot sell alcohol (18+)`
+}
+
+const cartHasBlockedAlcohol = computed(() => {
+  return cart.value.some(item => isAlcoholBlocked(item.drink))
+})
+
+const checkoutHint = computed(() => {
+  if (!selectedUser.value) return 'Select a customer to start a sale'
+  if (cart.value.length === 0) return 'Add drinks to the cart'
+  if (selectedUser.value.credits < totalCost.value) {
+    const missing = totalCost.value - selectedUser.value.credits
+    return `${selectedUser.value.username} has ${selectedUser.value.credits} credits — ${missing} more needed`
+  }
+  return null
+})
+
+let searchUsersTimer = null
+const searchUsers = () => {
+  clearTimeout(searchUsersTimer)
+  searchUsersTimer = setTimeout(async () => {
+    if (searchQuery.value.length > 2) {
+      await usersStore.fetchUsers({ search: searchQuery.value })
+    }
+  }, 300)
+}
+
+let searchDrinksTimer = null
+const searchDrinks = () => {
+  clearTimeout(searchDrinksTimer)
+  searchDrinksTimer = setTimeout(async () => {
+    await drinksStore.fetchDrinks({ search: drinkSearchQuery.value, inStock: true })
+  }, 300)
 }
 
 const selectUser = (user) => {
@@ -246,6 +372,11 @@ const selectUser = (user) => {
 }
 
 const addToCart = (drink) => {
+  if (processing.value) return
+  if (isAlcoholBlocked(drink)) {
+    showError(alcoholRefusalReason(drink))
+    return
+  }
   const existingItem = cart.value.find(item => item.drink.id === drink.id)
   if (existingItem) {
     if (existingItem.quantity < drink.stock) {
@@ -257,20 +388,21 @@ const addToCart = (drink) => {
 }
 
 const increaseQuantity = (item) => {
+  if (processing.value) return
   if (item.quantity < item.drink.stock) {
     item.quantity++
   }
 }
 
 const decreaseQuantity = (item) => {
+  if (processing.value) return
   if (item.quantity > 1) {
     item.quantity--
-  } else {
-    removeFromCart(item)
   }
 }
 
 const removeFromCart = (item) => {
+  if (processing.value) return
   const index = cart.value.findIndex(cartItem => cartItem.drink.id === item.drink.id)
   if (index > -1) {
     cart.value.splice(index, 1)
@@ -278,19 +410,33 @@ const removeFromCart = (item) => {
 }
 
 const clearCart = () => {
+  if (processing.value) return
   cart.value = []
 }
 
-const processeSale = async () => {
-  if (!selectedUser.value || cart.value.length === 0) return
+const openConfirmModal = () => {
+  if (processing.value || !selectedUser.value || cart.value.length === 0) return
+  if (cartHasBlockedAlcohol.value) {
+    showError('The cart contains alcohol (18+) and this customer cannot be served — remove it before charging')
+    return
+  }
+  showConfirmModal.value = true
+}
 
+const closeConfirmModal = () => {
+  if (!processing.value) {
+    showConfirmModal.value = false
+  }
+}
+
+const confirmSale = async () => {
+  if (!selectedUser.value || cart.value.length === 0 || processing.value) return
+
+  processing.value = true
   const currentUser = selectedUser.value
   const currentCart = [...cart.value]
-  const cost = totalCost.value
-
-  clearCart()
-  selectedUser.value = null
-  searchQuery.value = ''
+  const failedItems = []
+  let soldAmount = 0
 
   try {
     for (const item of currentCart) {
@@ -300,25 +446,48 @@ const processeSale = async () => {
         quantity: item.quantity
       })
 
-      if (!result.success) {
-        showError(result.error || 'Failed to process sale')
-        return
+      if (result.success) {
+        soldAmount += item.drink.price * item.quantity
+        // Remove the sold item — the cart keeps whatever failed so the sale can be retried
+        const index = cart.value.findIndex(cartItem => cartItem.drink.id === item.drink.id)
+        if (index > -1) {
+          cart.value.splice(index, 1)
+        }
+      } else {
+        failedItems.push({ name: item.drink.name, error: result.error || 'Failed to process sale' })
       }
     }
-    
-    const userIndex = usersStore.users.findIndex(u => u.id === currentUser.id)
-    if (userIndex !== -1) {
-      usersStore.users[userIndex].credits -= cost
+
+    if (failedItems.length > 0) {
+      showError(`Sale incomplete — ${failedItems.map(f => `${f.name}: ${f.error}`).join('; ')}`)
+    } else {
+      showSuccess(`Sale processed successfully — ${soldAmount} credits`)
     }
-
-    await Promise.all([
-      drinksStore.fetchDrinks(),
-      salesStore.fetchTransactionHistory({ limit: 10 })
-    ])
-
-    showSuccess('Sale processed successfully!')
   } catch (error) {
-    showError('Failed to process sale')
+    // Network-level failure: nothing was charged, keep the cart and customer so the sale can be retried
+    showError('Failed to process sale — nothing was charged, please retry')
+  } finally {
+    processing.value = false
+  }
+
+  await Promise.all([
+    drinksStore.fetchDrinks({ inStock: true }),
+    salesStore.fetchTransactionHistory({ limit: 10 })
+  ])
+
+  if (failedItems.length > 0) {
+    // Refresh balances so the remaining cart can be re-checked against authoritative credits
+    const result = await usersStore.fetchUsers({})
+    if (result.success) {
+      const refreshed = usersStore.users.find(u => u.id === currentUser.id)
+      if (refreshed) {
+        selectedUser.value = refreshed
+      }
+    }
+  } else if (soldAmount > 0) {
+    selectedUser.value = null
+    searchQuery.value = ''
+    showConfirmModal.value = false
   }
 }
 
@@ -383,9 +552,10 @@ onMounted(async () => {
 }
 
 .sales-section h2 {
-  color: var(--color-light-grey);
+  color: var(--green-12);
   margin-bottom: 1.5rem;
-  font-size: 1.5rem;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
 }
 
 .customer-search input,
@@ -441,7 +611,7 @@ onMounted(async () => {
   -webkit-backdrop-filter: blur(12px);
   color: var(--color-white);
   border-color: var(--green-7);
-  box-shadow: 0 4px 12px var(--green-3);
+  box-shadow: var(--shadow-glass);
 }
 
 .user-info {
@@ -468,7 +638,7 @@ onMounted(async () => {
 
 .customer-card {
   color: var(--color-light-grey);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(34, 34, 34, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--glass-border);
@@ -485,13 +655,13 @@ onMounted(async () => {
 .age-verification {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #e1e1e1;
+  border-top: 1px solid var(--glass-border);
 }
 
 .age-info {
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
-  color: #495057;
+  color: var(--color-grey);
 }
 
 .alcohol-status {
@@ -499,7 +669,7 @@ onMounted(async () => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -521,7 +691,9 @@ onMounted(async () => {
 }
 
 .status-icon {
-  font-size: 1rem;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .status-text {
@@ -531,124 +703,34 @@ onMounted(async () => {
 .customer-actions {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #e1e1e1;
+  border-top: 1px solid var(--glass-border);
 }
 
 .add-credits-btn {
-  background: var(--green-3);
-  color: white;
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  width: 100%;
-  transition: background 0.3s ease;
-}
-
-.add-credits-btn:hover {
-  background: var(--green-5);
-}
-
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: var(--color-card-bg);
-  padding: 2rem;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.modal h2 {
-  color: var(--color-light-grey);
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--color-light-grey);
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e1e1e1;
-  border-radius: 6px;
-  font-size: 1rem;
-  background: var(--color-input-bg);
-  color: var(--color-light-grey);
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--green-7);
-}
-
-.current-credits {
+  gap: 0.5rem;
   background: var(--green-3);
   color: white;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-  font-weight: 500;
-  text-align: center;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.btn {
   border: none;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
+  width: 100%;
   transition: background 0.3s ease;
 }
 
-.btn.primary {
-  background: var(--green-3);
-  color: white;
-  flex: 1;
-}
-
-.btn.primary:hover {
+.add-credits-btn:hover:not(:disabled) {
   background: var(--green-5);
 }
 
-.btn.secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn.secondary:hover {
-  background: #545b62;
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .drinks-grid {
@@ -681,13 +763,30 @@ onMounted(async () => {
   color: var(--color-light-grey);
 }
 
+.alcohol-tag {
+  display: inline-block;
+  margin-left: 0.375rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(220, 53, 69, 0.3);
+  border: 1px solid rgba(220, 53, 69, 0.6);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.drink-card.blocked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .drink-price {
   color: var(--green-11);
   font-weight: bold;
 }
 
 .drink-stock {
-  color: #7f8c8d;
+  color: var(--color-grey);
   font-size: 0.9rem;
 }
 
@@ -721,7 +820,7 @@ onMounted(async () => {
 
 .item-price {
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: var(--green-11);
 }
 
 .item-controls {
@@ -731,40 +830,59 @@ onMounted(async () => {
 }
 
 .qty-btn {
-  background: #e9ecef;
+  background: var(--gray-7);
+  color: var(--color-white);
   border: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: bold;
+  font-size: var(--font-size-xl);
+  transition: background 0.3s ease;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: var(--gray-9);
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .quantity {
-  min-width: 30px;
+  min-width: 40px;
   text-align: center;
   font-weight: bold;
 }
 
 .remove-btn {
-  background: #e74c3c;
+  background: rgba(220, 53, 69, 0.8);
+  border: 1px solid rgba(220, 53, 69, 0.4);
   color: white;
-  border: none;
   padding: 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
+  transition: background 0.3s ease;
+}
+
+.remove-btn:hover:not(:disabled) {
+  background: var(--red-9);
+  border-color: var(--color-error);
 }
 
 .cart-summary {
-  border-top: 1px solid #e1e1e1;
+  border-top: 1px solid var(--glass-border);
   padding-top: 1rem;
   margin-top: 1rem;
 }
 
 .total {
   margin-bottom: 1rem;
-  font-size: 1.2rem;
+  font-size: var(--font-size-xl);
+  color: var(--green-11);
 }
 
 .actions {
@@ -777,28 +895,31 @@ onMounted(async () => {
   color: white;
   border: none;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
-.clear-btn:hover {
+.clear-btn:hover:not(:disabled) {
   background: var(--gray-9);
 }
 
 .checkout-btn {
-  background: var(--green-3);
+  background: rgba(50, 124, 85, 0.8);
+  border: 1px solid var(--green-7);
   color: white;
-  border: none;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   flex: 1;
+  transition: all 0.3s ease;
 }
-.checkout-btn:hover {
-  background: var(--green-5);
+.checkout-btn:hover:not(:disabled) {
+  background: rgba(50, 124, 85, 1);
+  border-color: var(--green-9);
+  box-shadow: var(--shadow-lg);
 }
 
 .checkout-btn:disabled {
-  background: #6c757d;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -814,8 +935,10 @@ onMounted(async () => {
 }
 
 .recent-sales h2 {
-  color: var(--color-light-grey);
+  color: var(--green-12);
   margin-bottom: 1.5rem;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
 }
 
 .sale-item {
@@ -823,7 +946,7 @@ onMounted(async () => {
   grid-template-columns: 2fr 1fr 1fr;
   gap: 1rem;
   padding: 1rem;
-  border-bottom: 1px solid #e1e1e1;
+  border-bottom: 1px solid var(--glass-border);
   align-items: center;
 }
 
@@ -838,7 +961,7 @@ onMounted(async () => {
 
 .sale-user {
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: var(--color-grey);
 }
 
 .sale-amount {
@@ -859,8 +982,50 @@ onMounted(async () => {
   padding: 2rem;
 }
 
+.search-hint,
+.list-empty,
+.checkout-hint {
+  font-size: 0.9rem;
+  color: var(--color-grey);
+}
+
+.search-hint {
+  margin: -0.5rem 0 0.75rem;
+}
+
+.list-empty {
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.list-error {
+  font-size: 0.9rem;
+  color: var(--red-9);
+  margin-bottom: 0.75rem;
+}
+
+.checkout-hint {
+  margin-top: 0.75rem;
+}
+
+.user-item:focus-visible,
+.drink-card:focus-visible {
+  outline: 2px solid var(--green-9);
+  outline-offset: 2px;
+}
+
 @media (max-width: 1024px) {
   .sales-container {
+    grid-template-columns: 1fr;
+  }
+
+  .drinks-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .drinks-grid {
     grid-template-columns: 1fr;
   }
 }
