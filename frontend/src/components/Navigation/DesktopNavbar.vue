@@ -1,8 +1,13 @@
 <script setup>
+import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
+import BottleMark from './BottleMark.vue'
 
 const authStore = useAuthStore()
+
+// The brand bottle pours its glow when reached for (hover or keyboard focus)
+const brandLit = ref(false)
 
 const emit = defineEmits(['logout'])
 
@@ -17,7 +22,15 @@ const handleLogout = () => {
     <nav class="navbar">
       <div class="container">
         <div class="navbar-content">
-          <RouterLink to="/dashboard" class="navbar-brand">
+          <RouterLink
+            to="/dashboard"
+            class="navbar-brand"
+            @mouseenter="brandLit = true"
+            @mouseleave="brandLit = false"
+            @focusin="brandLit = true"
+            @focusout="brandLit = false"
+          >
+            <BottleMark :poured="brandLit" />
             Beer Machine
           </RouterLink>
 
@@ -74,6 +87,9 @@ header {
 }
 
 .navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   font-size: var(--font-size-xl);
   font-weight: 700;
   color: var(--color-white);
@@ -127,12 +143,14 @@ header {
   transform: scaleX(1);
 }
 
+/* The poured glass stays lit: brighter rim, backlight beneath, light on top */
 .navbar-link.router-link-active {
   color: var(--color-white);
   background: var(--green-5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--green-7);
+  border: 1px solid var(--green-8);
+  box-shadow: 0 4px 16px -4px rgba(48, 164, 108, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .navbar-link.router-link-active::before {
@@ -192,5 +210,14 @@ header {
 
 .navbar-user:not(:hover) {
   transition: all 0.3s ease;
+}
+
+/* Keyboard focus: the accent-teal ring, visible on the dark glass */
+.navbar-brand:focus-visible,
+.navbar-link:focus-visible,
+.username-link:focus-visible,
+.navbar-user .btn:focus-visible {
+  outline: 2px solid rgba(5, 94, 104, 0.5);
+  outline-offset: 2px;
 }
 </style>
