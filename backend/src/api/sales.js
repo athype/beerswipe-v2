@@ -7,6 +7,9 @@ import { sellRequestSchema } from "../validation/contracts.js";
 
 const router = express.Router();
 
+// Sellers may only undo their own recent sales; admins keep full undo rights.
+const SELLER_UNDO_WINDOW_MS = 15 * 60 * 1000;
+
 function calculateAge(dateOfBirth) {
   const birthDate = new Date(dateOfBirth);
   if (Number.isNaN(birthDate.getTime())) {
@@ -292,7 +295,7 @@ router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) =
   }
 });
 
-router.delete("/undo/:transactionId", authenticateToken, requireAdmin, async (req, res) => {
+router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, async (req, res) => {
   const dbTransaction = await sequelize.transaction();
 
   try {
@@ -315,6 +318,23 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdmin, async (re
     if (!transactionToUndo) {
       await dbTransaction.rollback();
       return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    // Sellers: only their own sales, only within the correction window.
+    if (req.user.userType !== "admin") {
+      if (transactionToUndo.type !== "sale") {
+        await dbTransaction.rollback();
+        return res.status(403).json({ error: "Sellers can only undo sales" });
+      }
+      if (transactionToUndo.adminId !== req.user.id) {
+        await dbTransaction.rollback();
+        return res.status(403).json({ error: "You can only undo your own sales" });
+      }
+      const ageMs = Date.now() - new Date(transactionToUndo.transactionDate).getTime();
+      if (ageMs > SELLER_UNDO_WINDOW_MS) {
+        await dbTransaction.rollback();
+        return res.status(403).json({ error: "Sales older than 15 minutes can only be undone by an admin" });
+      }
     }
 
     const user = transactionToUndo.user;

@@ -26,6 +26,12 @@
 #   docker compose -f docker-compose.deploy.yml pull
 #   docker compose -f docker-compose.deploy.yml up -d
 #
+# Schema changes: production boots with sequelize sync(alter: false), so schema
+# evolution runs from backend/src/migrate.js. The backend applies migrations
+# automatically at every container start (after sync, before listening); to run
+# them manually against the running stack:
+#   docker exec beermachine_backend node src/migrate.js
+#
 # Reproducible rollouts: pin images to a commit tag instead of latest via the
 # IMAGE_TAG variable, e.g. IMAGE_TAG=sha-bb04677 in .env (no YAML edits).
 #

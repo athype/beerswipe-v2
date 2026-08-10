@@ -10,6 +10,18 @@
       <div class="sales-section">
         <h2>Select Customer</h2>
         <div class="customer-search">
+          <div v-if="recentCustomers.length > 0 && !searchQuery" class="recent-customers">
+            <span class="recent-label">Recent</span>
+            <button
+              v-for="customer in recentCustomers"
+              :key="customer.id"
+              type="button"
+              class="recent-chip"
+              :class="{ selected: selectedUser?.id === customer.id }"
+              :aria-pressed="selectedUser?.id === customer.id ? 'true' : 'false'"
+              @click="selectRecentCustomer(customer)"
+            >{{ customer.username }}</button>
+          </div>
           <input
             v-model="searchQuery"
             type="text"
@@ -84,11 +96,29 @@
                     <path d="M4 4l8 8M12 4l-8 8"/>
                   </svg>
                   <span class="status-text">
-                    {{ canServeAlcohol ? 'Can serve alcohol' : 'Cannot serve alcohol (under 18)' }}
+                    {{ canServeAlcohol
+                      ? 'Can serve alcohol'
+                      : userAge === null ? 'Cannot serve alcohol (no date of birth)' : 'Cannot serve alcohol (under 18)' }}
                   </span>
                 </div>
               </div>
               <div class="customer-actions">
+                <button v-if="hasLastOrder" @click="repeatLastOrder" class="btn repeat-btn">
+                  <svg
+                    class="btn-icon"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M13 8a5 5 0 1 1-1.5-3.5"/>
+                    <path d="M13.5 2.5v3h-3"/>
+                  </svg>
+                  Same again
+                </button>
                 <button @click="openAddCreditsModal" class="btn add-credits-btn">
                   <svg
                     class="btn-icon"
@@ -122,31 +152,54 @@
           />
         </div>
 
+        <div v-if="drinkCategories.length > 1" class="category-chips">
+          <button
+            type="button"
+            class="category-chip"
+            :class="{ active: activeCategory === '' }"
+            :aria-pressed="activeCategory === '' ? 'true' : 'false'"
+            @click="activeCategory = ''"
+          >All</button>
+          <button
+            v-for="category in drinkCategories"
+            :key="category"
+            type="button"
+            class="category-chip"
+            :class="{ active: activeCategory === category }"
+            :aria-pressed="activeCategory === category ? 'true' : 'false'"
+            @click="activeCategory = category"
+          >{{ category }}</button>
+        </div>
+
         <p v-if="drinksStore.loading && availableDrinks.length === 0" class="loading">Loading drinks...</p>
         <p v-else-if="drinksStore.error" class="list-error">{{ drinksStore.error }}</p>
         <p v-else-if="availableDrinks.length === 0" class="list-empty">No drinks found</p>
         <div v-else class="drinks-grid">
-          <div
-            v-for="drink in availableDrinks"
-            :key="drink.id"
-            class="drink-card"
-            :class="{ blocked: isAlcoholBlocked(drink) }"
-            role="button"
-            tabindex="0"
-            :aria-label="`Add ${drink.name} to cart`"
-            @click="addToCart(drink)"
-            @keydown.enter="addToCart(drink)"
-            @keydown.space.prevent="addToCart(drink)"
-          >
-            <div class="drink-info">
-              <h4>
-                {{ drink.name }}
-                <span v-if="drink.isAlcohol" class="alcohol-tag">18+</span>
-              </h4>
-              <p class="drink-price">{{ drink.price }} credits</p>
-              <p class="drink-stock">{{ drink.stock }} in stock</p>
+          <template v-for="group in groupedDrinks" :key="group.category">
+            <h5 v-if="groupedDrinks.length > 1" class="drink-group-title">{{ group.category }}</h5>
+            <div
+              v-for="drink in group.drinks"
+              :key="drink.id"
+              class="drink-card"
+              :class="{ blocked: isAlcoholBlocked(drink) }"
+              role="button"
+              tabindex="0"
+              :aria-disabled="isAlcoholBlocked(drink) ? 'true' : 'false'"
+              :aria-label="isAlcoholBlocked(drink) ? `${drink.name} — ${alcoholRefusalReason(drink)}` : `Add ${drink.name} to cart`"
+              @click="addToCart(drink)"
+              @keydown.enter="addToCart(drink)"
+              @keydown.space.prevent="addToCart(drink)"
+            >
+              <div class="drink-info">
+                <h4 class="drink-name">
+                  {{ drink.name }}
+                  <span v-if="drink.isAlcohol" class="alcohol-tag">18+</span>
+                </h4>
+                <p class="drink-price">{{ drink.price }} credits</p>
+                <p v-if="drink.stock <= 5" class="drink-stock-low">Only {{ drink.stock }} left</p>
+              </div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
 
@@ -226,6 +279,15 @@
       @confirm="confirmSale"
     />
 
+    <!-- Undo Sale Modal -->
+    <UndoSaleConfirmModal
+      :show="showUndoModal"
+      :sale="undoTarget"
+      :loading="undoLoading"
+      @close="closeUndoModal"
+      @confirm="confirmUndo"
+    />
+
     <!-- Recent Sales -->
     <div class="recent-sales">
       <h2>Recent Sales</h2>
@@ -235,7 +297,7 @@
       </div>
       <div v-else class="sales-list">
         <div
-          v-for="sale in recentSales"
+          v-for="(sale, index) in recentSales"
           :key="sale.id"
           class="sale-item"
         >
@@ -245,6 +307,11 @@
           </div>
           <div class="sale-amount">{{ sale.amount }} credits</div>
           <div class="sale-time">{{ formatTime(sale.transactionDate) }}</div>
+          <button
+            v-if="index === 0 && canUndoLatestSale"
+            @click="openUndoModal(sale)"
+            class="undo-btn"
+          >Undo</button>
         </div>
       </div>
     </div>
@@ -254,16 +321,19 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
+import { useAuthStore } from '../stores/auth'
 import { useUsersStore } from '../stores/users'
 import { useDrinksStore } from '../stores/drinks'
 import { useSalesStore } from '../stores/sales'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
 import SaleConfirmModal from '../components/modals/SaleConfirmModal.vue'
+import UndoSaleConfirmModal from '../components/modals/UndoSaleConfirmModal.vue'
 
+const authStore = useAuthStore()
 const usersStore = useUsersStore()
 const drinksStore = useDrinksStore()
 const salesStore = useSalesStore()
-const { showSuccess, showError } = useNotifications()
+const { showSuccess, showError, showWarning } = useNotifications()
 
 const searchQuery = ref('')
 const drinkSearchQuery = ref('')
@@ -272,6 +342,14 @@ const cart = ref([])
 const showCreditsModal = ref(false)
 const showConfirmModal = ref(false)
 const processing = ref(false)
+const recentCustomers = ref([])
+const undoTarget = ref(null)
+const showUndoModal = ref(false)
+const undoLoading = ref(false)
+
+const RECENT_CUSTOMERS_KEY = 'salesTerminalRecent'
+const CART_STATE_KEY = 'salesTerminalCart'
+const lastOrderKey = (userId) => `salesTerminalLastOrder.${userId}`
 
 const filteredUsers = computed(() => {
   if (!searchQuery.value) return []
@@ -288,12 +366,58 @@ const availableDrinks = computed(() => {
   )
 })
 
+const drinkCategoryOf = (drink) => drink.category?.trim() || 'Other'
+
+const drinkCategories = computed(() => {
+  const seen = new Map()
+  for (const drink of availableDrinks.value) {
+    const category = drinkCategoryOf(drink)
+    const key = category.toLowerCase()
+    if (!seen.has(key)) seen.set(key, category)
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b))
+})
+
+const activeCategory = ref('')
+
+const filteredDrinks = computed(() => {
+  if (!activeCategory.value) return availableDrinks.value
+  const key = activeCategory.value.toLowerCase()
+  return availableDrinks.value.filter(drink => drinkCategoryOf(drink).toLowerCase() === key)
+})
+
+const groupedDrinks = computed(() => {
+  if (activeCategory.value) {
+    return [{ category: activeCategory.value, drinks: filteredDrinks.value }]
+  }
+  const groups = new Map()
+  for (const drink of filteredDrinks.value) {
+    const category = drinkCategoryOf(drink)
+    const key = category.toLowerCase()
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(drink)
+  }
+  return [...groups.values()]
+    .map(drinks => ({ category: drinkCategoryOf(drinks[0]), drinks }))
+    .sort((a, b) => a.category.localeCompare(b.category))
+})
+
 const totalCost = computed(() => {
   return cart.value.reduce((total, item) => total + (item.drink.price * item.quantity), 0)
 })
 
 const recentSales = computed(() => {
   return salesStore.transactions.filter(t => t.type === 'sale').slice(0, 10)
+})
+
+const latestSale = computed(() => recentSales.value[0] || null)
+
+const canUndoLatestSale = computed(() => {
+  const sale = latestSale.value
+  if (!sale || !authStore.user) return false
+  if (sale.adminId !== authStore.user.id) return false
+  const ageMs = Date.now() - new Date(sale.transactionDate).getTime()
+  return ageMs <= 15 * 60 * 1000
 })
 
 const calculateAge = (dateOfBirth) => {
@@ -369,6 +493,201 @@ const searchDrinks = () => {
 
 const selectUser = (user) => {
   selectedUser.value = user
+}
+
+const loadRecentCustomers = () => {
+  try {
+    const raw = localStorage.getItem(RECENT_CUSTOMERS_KEY)
+    recentCustomers.value = raw ? JSON.parse(raw) : []
+  } catch {
+    recentCustomers.value = []
+  }
+}
+
+const selectRecentCustomer = async (customer) => {
+  if (processing.value) return
+  const result = await usersStore.fetchUsers({ search: customer.username })
+  if (!result.success) {
+    showError('Could not load customer — search manually')
+    return
+  }
+  const user = usersStore.users.find(u => u.id === customer.id)
+  if (!user) {
+    showError(`${customer.username} is no longer available — removed from recent list`)
+    recentCustomers.value = recentCustomers.value.filter(c => c.id !== customer.id)
+    try {
+      localStorage.setItem(RECENT_CUSTOMERS_KEY, JSON.stringify(recentCustomers.value))
+    } catch {
+      // non-critical — recall is a convenience
+    }
+    return
+  }
+  selectUser(user)
+}
+
+const lastOrderByUser = (userId) => {
+  try {
+    const raw = localStorage.getItem(lastOrderKey(userId))
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+const hasLastOrder = computed(() => {
+  if (!selectedUser.value) return false
+  const order = lastOrderByUser(selectedUser.value.id)
+  return order !== null && order.length > 0
+})
+
+const repeatLastOrder = async () => {
+  if (processing.value || !selectedUser.value) return
+  const stored = lastOrderByUser(selectedUser.value.id)
+  if (!stored || stored.length === 0) return
+
+  await drinksStore.fetchDrinks({ inStock: true })
+
+  const available = new Map(drinksStore.availableDrinks.map(drink => [drink.id, drink]))
+  const rebuilt = []
+  let blockedCount = 0
+  let skippedCount = 0
+
+  for (const line of stored) {
+    const drink = available.get(line.drinkId)
+    if (!drink) {
+      skippedCount++
+      continue
+    }
+    if (isAlcoholBlocked(drink)) {
+      blockedCount++
+      continue
+    }
+    const existing = rebuilt.find(item => item.drink.id === drink.id)
+    if (existing) {
+      existing.quantity = Math.min(existing.quantity + line.quantity, drink.stock)
+    } else {
+      rebuilt.push({ drink, quantity: Math.min(line.quantity, drink.stock) })
+    }
+  }
+
+  if (rebuilt.length === 0) {
+    showError(blockedCount > 0
+      ? 'Same again — the round contains alcohol (18+) and this customer cannot be served'
+      : 'Same again — the previous round is no longer available (out of stock or inactive)')
+    return
+  }
+  if (blockedCount > 0 || skippedCount > 0) {
+    showWarning('Same again — some items were skipped (18+ blocked or out of stock)')
+  }
+
+  cart.value = rebuilt
+  showConfirmModal.value = true
+}
+
+const rememberSale = (user, items) => {
+  try {
+    const entry = { id: user.id, username: user.username, userType: user.userType }
+    recentCustomers.value = [entry, ...recentCustomers.value.filter(c => c.id !== user.id)].slice(0, 5)
+    localStorage.setItem(RECENT_CUSTOMERS_KEY, JSON.stringify(recentCustomers.value))
+    localStorage.setItem(lastOrderKey(user.id), JSON.stringify(items.map(item => ({
+      drinkId: item.drink.id,
+      quantity: item.quantity,
+    }))))
+  } catch {
+    // non-critical — recall is a convenience
+  }
+}
+
+const saveTerminalState = () => {
+  try {
+    const state = {
+      cart: cart.value.map(item => ({ drinkId: item.drink.id, quantity: item.quantity })),
+      user: selectedUser.value
+        ? { id: selectedUser.value.id, username: selectedUser.value.username }
+        : null,
+    }
+    sessionStorage.setItem(CART_STATE_KEY, JSON.stringify(state))
+  } catch {
+    // non-critical — persistence is a convenience
+  }
+}
+
+const restoreTerminalState = async () => {
+  let state = null
+  try {
+    const raw = sessionStorage.getItem(CART_STATE_KEY)
+    state = raw ? JSON.parse(raw) : null
+  } catch {
+    state = null
+  }
+  if (!state || (!state.cart?.length && !state.user)) return
+
+  if (state.user) {
+    const result = await usersStore.fetchUsers({ search: state.user.username })
+    if (result.success) {
+      const user = usersStore.users.find(u => u.id === state.user.id)
+      if (user) {
+        selectedUser.value = user
+      }
+    }
+  }
+
+  if (state.cart?.length > 0) {
+    const available = new Map(drinksStore.availableDrinks.map(drink => [drink.id, drink]))
+    const restored = []
+    for (const line of state.cart) {
+      const drink = available.get(line.drinkId)
+      if (!drink) continue
+      const existing = restored.find(item => item.drink.id === drink.id)
+      if (existing) {
+        existing.quantity = Math.min(existing.quantity + line.quantity, drink.stock)
+      } else {
+        restored.push({ drink, quantity: Math.min(line.quantity, drink.stock) })
+      }
+    }
+    cart.value = restored
+  }
+}
+
+watch([cart, selectedUser], saveTerminalState, { deep: true })
+
+const openUndoModal = (sale) => {
+  if (undoLoading.value) return
+  undoTarget.value = sale
+  showUndoModal.value = true
+}
+
+const closeUndoModal = () => {
+  if (!undoLoading.value) {
+    showUndoModal.value = false
+    undoTarget.value = null
+  }
+}
+
+const confirmUndo = async () => {
+  if (!undoTarget.value || undoLoading.value) return
+  undoLoading.value = true
+  const target = undoTarget.value
+
+  try {
+    const result = await salesStore.undoTransaction(target.id)
+    if (result.success) {
+      showSuccess(`Sale undone — ${target.amount} credits restored to ${target.user?.username || 'customer'}`)
+      showUndoModal.value = false
+      undoTarget.value = null
+      await Promise.all([
+        drinksStore.fetchDrinks({ inStock: true }),
+        salesStore.fetchTransactionHistory({ limit: 10 }),
+        usersStore.fetchUsers({})
+      ])
+    } else {
+      showError(result.error || 'Failed to undo sale')
+    }
+  } catch (error) {
+    showError('Failed to undo sale')
+  } finally {
+    undoLoading.value = false
+  }
 }
 
 const addToCart = (drink) => {
@@ -485,6 +804,7 @@ const confirmSale = async () => {
       }
     }
   } else if (soldAmount > 0) {
+    rememberSale(currentUser, currentCart)
     selectedUser.value = null
     searchQuery.value = ''
     showConfirmModal.value = false
@@ -511,10 +831,12 @@ const formatTime = (date) => {
 }
 
 onMounted(async () => {
+  loadRecentCustomers()
   await Promise.all([
     drinksStore.fetchDrinks({ inStock: true }),
     salesStore.fetchTransactionHistory({ limit: 10 })
   ])
+  await restoreTerminalState()
 })
 </script>
 
@@ -556,6 +878,48 @@ onMounted(async () => {
   margin-bottom: 1.5rem;
   font-size: var(--font-size-xl);
   font-weight: 600;
+}
+
+.recent-customers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.recent-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-grey);
+}
+
+.recent-chip {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: rgba(34, 34, 34, 0.3);
+  color: var(--color-grey);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.recent-chip:hover {
+  border-color: var(--green-7);
+  color: var(--color-white);
+}
+
+.recent-chip.selected {
+  background: var(--green-3);
+  border-color: var(--green-7);
+  color: var(--color-white);
+}
+
+.recent-chip:focus-visible {
+  outline: 2px solid var(--green-9);
+  outline-offset: 2px;
 }
 
 .customer-search input,
@@ -630,6 +994,7 @@ onMounted(async () => {
 
 .user-credits {
   font-weight: bold;
+  color: var(--green-11);
 }
 
 .selected-customer {
@@ -701,9 +1066,34 @@ onMounted(async () => {
 }
 
 .customer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--glass-border);
+}
+
+.repeat-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--gray-7);
+  color: var(--color-white);
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  transition: background 0.3s ease;
+}
+
+.repeat-btn:hover:not(:disabled) {
+  background: var(--gray-9);
 }
 
 .add-credits-btn {
@@ -719,7 +1109,8 @@ onMounted(async () => {
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   transition: background 0.3s ease;
 }
 
@@ -733,18 +1124,65 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.category-chip {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: rgba(34, 34, 34, 0.3);
+  color: var(--color-grey);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.category-chip:hover {
+  border-color: var(--green-7);
+  color: var(--color-white);
+}
+
+.category-chip.active {
+  background: var(--green-3);
+  border-color: var(--green-7);
+  color: var(--color-white);
+}
+
+.category-chip:focus-visible {
+  outline: 2px solid var(--green-9);
+  outline-offset: 2px;
+}
+
 .drinks-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  max-height: 400px;
-  overflow-y: auto;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.drink-group-title {
+  grid-column: 1 / -1;
+  margin: 0.75rem 0 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--green-12);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.drink-group-title:first-of-type {
+  margin-top: 0;
 }
 
 .drink-card {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
+  padding: 0.75rem;
   cursor: pointer;
   transition: all 0.3s ease;
   background: rgba(34, 34, 34, 0.3);
@@ -758,9 +1196,17 @@ onMounted(async () => {
   box-shadow: 0 4px 12px rgba(5, 94, 104, 0.2);
 }
 
-.drink-info h4 {
+.drink-card p {
+  margin-bottom: 0;
+}
+
+.drink-name {
   margin-bottom: 0.5rem;
   color: var(--color-light-grey);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .alcohol-tag {
@@ -785,9 +1231,11 @@ onMounted(async () => {
   font-weight: bold;
 }
 
-.drink-stock {
-  color: var(--color-grey);
-  font-size: 0.9rem;
+.drink-stock-low {
+  margin-top: 0.25rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--orange-9);
 }
 
 .cart-item {
@@ -943,11 +1391,33 @@ onMounted(async () => {
 
 .sale-item {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr auto;
   gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid var(--glass-border);
   align-items: center;
+}
+
+.undo-btn {
+  background: rgba(220, 53, 69, 0.15);
+  border: 1px solid rgba(220, 53, 69, 0.5);
+  color: var(--red-9);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.undo-btn:hover {
+  background: rgba(220, 53, 69, 0.3);
+  color: var(--color-white);
+}
+
+.undo-btn:focus-visible {
+  outline: 2px solid var(--green-9);
+  outline-offset: 2px;
 }
 
 .sale-info {
@@ -1017,10 +1487,6 @@ onMounted(async () => {
 @media (max-width: 1024px) {
   .sales-container {
     grid-template-columns: 1fr;
-  }
-
-  .drinks-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 

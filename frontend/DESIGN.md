@@ -122,8 +122,8 @@ A palette of beer-glass greens and teals glowing over near-black — light is th
 ### Primary
 
 - **Signal Green** (#30A46C): the brightest interactive green — hover states, success notifications, link hovers, badge accents. Used sparingly; its rarity is the signal.
-- **Deep Green** (#327C55): the rest-state green — links, card hover borders, primary button fill at full opacity.
-- **Forest Green** (#152C1F): the "filled glass" green — primary button base, table header, active nav pill. A dark fill, not a glow.
+- **Deep Green** (#327C55): the rest-state green — links, card hover borders, and the **primary action button fill** (at 80% opacity resting, full at hover, per the Buttons spec). One ruling: primary actions are always Deep Green.
+- **Forest Green** (#152C1F): the "filled glass" green — embedded panel actions (e.g. Add Credits), table header, active nav pill. A dark fill, not a glow. Never the primary action.
 - **Bottle Green** (#2B6848): the edge color — the 1px border that rims glass panels, table underlines, and dividers. The bottle rim catching the light.
 - **Mint Bright** (#63D196): reserved for money — credit balances, prices, sale amounts. In the terminal, mint is currency.
 - **Mint Pale** (#B2F1CB): card titles and the lightest green text accents.
