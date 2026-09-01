@@ -1,0 +1,52 @@
+name: Deploy New Images onto Coolify
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://beer.sv-ada.nl
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master')
+    steps:
+      - name: Deploy backend API on Coolify
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_API_DEPLOY_WEBHOOK: ${{ vars.COOLIFY_API_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$COOLIFY_API_DEPLOY_WEBHOOK" ]; then
+            echo "Repository variable COOLIFY_API_DEPLOY_WEBHOOK is not set."
+            exit 1
+          fi
+          curl -f -X POST \
+            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$COOLIFY_API_DEPLOY_WEBHOOK"
+
+      - name: Deploy frontend on Coolify
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_FRONTEND_DEPLOY_WEBHOOK: ${{ vars.COOLIFY_FRONTEND_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$COOLIFY_FRONTEND_DEPLOY_WEBHOOK" ]; then
+            echo "Repository variable COOLIFY_FRONTEND_DEPLOY_WEBHOOK is not set."
+            exit 1
+          fi
+          curl -f -X POST \
+            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$COOLIFY_FRONTEND_DEPLOY_WEBHOOK"
