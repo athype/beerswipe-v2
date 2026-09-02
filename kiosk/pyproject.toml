@@ -17,3 +17,10 @@ dev = [
     "ruff>=0.15.21",
     "types-pyserial>=3.5",
 ]
+
+[tool.mypy]
+# kivy ships no type info (no py.typed marker); treat it as Any. This is
+# also why src/ui is not part of the --strict mypy run.
+[[tool.mypy.overrides]]
+module = "kivy.*"
+ignore_missing_imports = true
