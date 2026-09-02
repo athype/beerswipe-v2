@@ -7,6 +7,47 @@ import { loginRequestSchema } from "../validation/contracts.js";
 const router = express.Router();
 
 // Admin login
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     summary: Log in with username and password
+ *     description: >
+ *       Validates credentials and sets the `authToken` httpOnly cookie on the
+ *       response. Users without a password (members) cannot log in.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/LoginRequest"
+ *           example:
+ *             username: admin
+ *             password: secret
+ *     responses:
+ *       200:
+ *         description: Login successful — sets the authToken cookie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 user: { $ref: "#/components/schemas/AuthUser" }
+ *       400:
+ *         description: Username and password are required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Invalid credentials or unauthorized user
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/login", async (req, res) => {
   try {
     const parsedBody = loginRequestSchema.safeParse(req.body);
@@ -53,6 +94,31 @@ router.post("/login", async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     summary: Get the current session's user
+ *     tags: [Auth]
+ *     security:
+ *       - authToken: []
+ *     responses:
+ *       200:
+ *         description: The authenticated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user: { $ref: "#/components/schemas/AuthUser" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/me", authenticateToken, async (req, res) => {
   try {
     res.json({
@@ -70,6 +136,20 @@ router.get("/me", authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     summary: Log out — clears the authToken cookie
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Message"
+ */
 router.post("/logout", (req, res) => {
   res.clearCookie("authToken", {
     httpOnly: true,
@@ -79,6 +159,53 @@ router.post("/logout", (req, res) => {
   res.json({ message: "Logout successful" });
 });
 
+/**
+ * @openapi
+ * /auth/create-admin:
+ *   post:
+ *     summary: Create the first admin user (development only)
+ *     description: >
+ *       Refused with 403 when NODE_ENV is "production". Used to bootstrap an
+ *       admin account in a fresh database.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username: { type: string }
+ *               password: { type: string, format: password }
+ *             required: [username, password]
+ *     responses:
+ *       201:
+ *         description: Admin created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     userType: { type: string }
+ *       400:
+ *         description: Username and password are required, or username taken
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin creation is not allowed in production
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/create-admin", async (req, res) => {
   try {
     if (env.NODE_ENV === "production") {

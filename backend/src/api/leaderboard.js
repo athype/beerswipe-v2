@@ -19,6 +19,65 @@ function getMonthDateRange(year, month) {
 }
 
 // Get monthly leaderboard
+/**
+ * @openapi
+ * /leaderboard/monthly:
+ *   get:
+ *     summary: Monthly consumption leaderboard
+ *     description: Ranks non-admin users by drinks bought in the given month.
+ *     tags: [Leaderboard]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema: { type: integer, minimum: 1, maximum: 12 }
+ *     responses:
+ *       200:
+ *         description: Ranked leaderboard for the month
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 leaderboard:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank: { type: integer }
+ *                       userId: { type: integer }
+ *                       username: { type: string }
+ *                       userType: { type: string }
+ *                       transactionCount: { type: integer }
+ *                       totalDrinks: { type: integer }
+ *                       totalSpent: { type: integer }
+ *                 period:
+ *                   type: object
+ *                   properties:
+ *                     year: { type: integer }
+ *                     month: { type: integer }
+ *                     monthName: { type: string }
+ *                     startDate: { type: string, format: date-time }
+ *                     endDate: { type: string, format: date-time }
+ *       400:
+ *         description: Year and month are required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/monthly", authenticateToken, async (req, res) => {
   try {
     const { year, month } = req.query;
@@ -83,6 +142,52 @@ router.get("/monthly", authenticateToken, async (req, res) => {
 });
 
 // Get user's rank for a specific month
+/**
+ * @openapi
+ * /leaderboard/rank/{userId}:
+ *   get:
+ *     summary: One user's rank for a month
+ *     description: Rank is null when the user had no sales that month.
+ *     tags: [Leaderboard]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: year
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema: { type: integer, minimum: 1, maximum: 12 }
+ *     responses:
+ *       200:
+ *         description: The user's rank
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 rank: { type: integer, nullable: true }
+ *                 totalDrinks: { type: integer }
+ *                 totalUsers: { type: integer }
+ *       400:
+ *         description: Year and month are required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/rank/:userId", authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
