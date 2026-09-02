@@ -60,6 +60,16 @@
         />
       </div>
 
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input
+            v-model="form.isAlcohol"
+            type="checkbox"
+          />
+          Alcoholic (18+ only)
+        </label>
+      </div>
+
       <div v-if="isEdit" class="form-group">
         <label class="checkbox-label">
           <input
