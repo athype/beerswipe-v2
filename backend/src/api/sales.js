@@ -79,8 +79,8 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
 
     transaction = await sequelize.transaction();
 
-    const user = await User.findByPk(userId, { transaction });
-    const drink = await Drink.findByPk(drinkId, { transaction });
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    const drink = await Drink.findByPk(drinkId, { transaction, lock: transaction.LOCK.UPDATE });
 
     if (!user) {
       await transaction.rollback();
@@ -90,11 +90,6 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
     if (!drink) {
       await transaction.rollback();
       return res.status(404).json({ error: "Drink not found" });
-    }
-
-    if (!drink.isInStock() || drink.stock < quantity) {
-      await transaction.rollback();
-      return res.status(400).json({ error: "Insufficient stock or drink not available" });
     }
 
     // Legal gate: alcohol may only be sold to customers aged 18+ (Dutch law).
@@ -111,6 +106,11 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       }
     }
 
+    if (!drink.isInStock() || drink.stock < quantity) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Insufficient stock or drink not available" });
+    }
+
     const totalCost = drink.price * quantity;
 
     if (user.credits < totalCost) {
@@ -122,8 +122,8 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       });
     }
 
-    await user.deductCredits(totalCost);
-    await drink.deductStock(quantity);
+    await user.deductCredits(totalCost, { transaction });
+    await drink.deductStock(quantity, { transaction });
 
     const saleTransaction = await Transaction.create({
       userId: user.id,
@@ -323,12 +323,8 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
     }
 
     const transactionToUndo = await Transaction.findByPk(transactionId, {
-      include: [
-        { model: User, as: "user" },
-        { model: Drink, as: "drink" },
-        { model: User, as: "admin" },
-      ],
       transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
     });
 
     if (!transactionToUndo) {
@@ -353,15 +349,28 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
       }
     }
 
-    const user = transactionToUndo.user;
-    const drink = transactionToUndo.drink;
+    const user = await User.findByPk(transactionToUndo.userId, {
+      transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
+    });
+    const drink = transactionToUndo.type === "sale"
+      ? await Drink.findByPk(transactionToUndo.drinkId, {
+          transaction: dbTransaction,
+          lock: dbTransaction.LOCK.UPDATE,
+        })
+      : null;
+
+    if (!user) {
+      await dbTransaction.rollback();
+      return res.status(404).json({ error: "User not found" });
+    }
 
     if (transactionToUndo.type === "sale") {
       // Use unchecked method to restore credits (bypass 10-credit rule for undo operations)
-      await user.addCreditsUnchecked(transactionToUndo.amount);
+      await user.addCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
 
       if (drink) {
-        await drink.addStock(transactionToUndo.quantity || 1);
+        await drink.addStock(transactionToUndo.quantity || 1, { transaction: dbTransaction });
       }
     }
     else if (transactionToUndo.type === "credit_addition") {
@@ -375,7 +384,7 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
       }
 
       // Use unchecked method to deduct credits (bypass 10-credit rule for undo operations)
-      await user.deductCreditsUnchecked(transactionToUndo.amount);
+      await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
     }
     else {
       await dbTransaction.rollback();
