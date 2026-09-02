@@ -108,7 +108,7 @@ const handleDelete = (admin) => {
 }
 
 .badge-primary {
-  background: rgba(5, 94, 104, 0.8);
+  background: var(--green-3);
   color: var(--color-white);
 }
 
