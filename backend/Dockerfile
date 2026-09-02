@@ -11,7 +11,7 @@ COPY backend/package.json /workspace/backend/package.json
 COPY types/package.json /workspace/types/package.json
 
 # Install pnpm and dependencies
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.18.1
 RUN cd /workspace; pnpm install --frozen-lockfile --filter @beerswipe/backend...
 
 # Copy package sources required at runtime

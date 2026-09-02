@@ -20,7 +20,8 @@
       </div>
       
       <div class="current-credits">
-        Current Credits: {{ user?.credits }}
+        <span>Current Credits</span>
+        <strong class="credits-value">{{ user?.credits }}</strong>
       </div>
     </form>
 
@@ -114,69 +115,44 @@ watch(() => props.show, (newVal) => {
 .form-input {
   width: 100%;
   padding: 0.75rem;
-  border: 2px solid #e1e1e1;
-  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
   font-size: 1rem;
   background: var(--color-input-bg);
   color: var(--color-light-grey);
+  transition: all 0.3s ease;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
+  background: rgba(34, 34, 34, 0.7);
+  box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2);
 }
 
 .current-credits {
-  background: var(--color-teal);
-  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--green-7);
+  color: var(--color-light-grey);
   padding: 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
   font-weight: 500;
-  text-align: center;
+}
+
+.credits-value {
+  color: var(--green-11);
+  font-weight: 700;
 }
 
 .modal-actions {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
-}
-
-.btn {
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: background 0.3s ease;
-}
-
-.btn-primary {
-  background: var(--color-green);
-  color: white;
-  flex: 1;
-}
-
-.btn-primary:hover {
-  background: #4cae4c;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #545b62;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn:disabled:hover {
-  background: var(--color-green) !important;
 }
 </style>
