@@ -92,11 +92,6 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       return res.status(404).json({ error: "Drink not found" });
     }
 
-    if (!drink.isInStock() || drink.stock < quantity) {
-      await transaction.rollback();
-      return res.status(400).json({ error: "Insufficient stock or drink not available" });
-    }
-
     // Legal gate: alcohol may only be sold to customers aged 18+ (Dutch law).
     // Never trust the client — enforce on the server.
     if (drink.isAlcohol) {
@@ -111,28 +106,41 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       }
     }
 
-    const totalCost = drink.price * quantity;
+    const lockedUser = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    const lockedDrink = await Drink.findByPk(drinkId, { transaction, lock: transaction.LOCK.UPDATE });
 
-    if (user.credits < totalCost) {
+    if (!lockedUser || !lockedDrink) {
+      await transaction.rollback();
+      return res.status(404).json({ error: !lockedUser ? "User not found" : "Drink not found" });
+    }
+
+    if (!lockedDrink.isInStock() || lockedDrink.stock < quantity) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Insufficient stock or drink not available" });
+    }
+
+    const totalCost = lockedDrink.price * quantity;
+
+    if (lockedUser.credits < totalCost) {
       await transaction.rollback();
       return res.status(400).json({
         error: "Insufficient credits",
         required: totalCost,
-        available: user.credits,
+        available: lockedUser.credits,
       });
     }
 
-    await user.deductCredits(totalCost, { transaction });
-    await drink.deductStock(quantity, { transaction });
+    await lockedUser.deductCredits(totalCost, { transaction });
+    await lockedDrink.deductStock(quantity, { transaction });
 
     const saleTransaction = await Transaction.create({
-      userId: user.id,
-      drinkId: drink.id,
+      userId: lockedUser.id,
+      drinkId: lockedDrink.id,
       adminId: req.user.id,
       type: "sale",
       amount: totalCost,
       quantity,
-      description: `Sale: ${quantity}x ${drink.name}`,
+      description: `Sale: ${quantity}x ${lockedDrink.name}`,
     }, { transaction });
 
     await transaction.commit();
@@ -142,14 +150,14 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       transaction: {
         id: saleTransaction.id,
         user: {
-          id: user.id,
-          username: user.username,
-          remainingCredits: user.credits,
+          id: lockedUser.id,
+          username: lockedUser.username,
+          remainingCredits: lockedUser.credits,
         },
         drink: {
-          id: drink.id,
-          name: drink.name,
-          remainingStock: drink.stock,
+          id: lockedDrink.id,
+          name: lockedDrink.name,
+          remainingStock: lockedDrink.stock,
         },
         quantity,
         totalCost,
