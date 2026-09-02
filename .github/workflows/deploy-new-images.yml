@@ -7,9 +7,7 @@ on:
       - completed
   workflow_dispatch:
 
-permissions:
-  contents: read
-
+permissions: {}
 concurrency:
   group: deploy-production
   cancel-in-progress: true
@@ -30,11 +28,16 @@ jobs:
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           COOLIFY_API_DEPLOY_WEBHOOK: ${{ vars.COOLIFY_API_DEPLOY_WEBHOOK }}
         run: |
-          if [ -z "$COOLIFY_API_DEPLOY_WEBHOOK" ]; then
+          set -euo pipefail
+          if [ -z "${COOLIFY_API_TOKEN:-}" ]; then
+            echo "Secret COOLIFY_API_TOKEN is not set."
+            exit 1
+          fi
+          if [ -z "${COOLIFY_API_DEPLOY_WEBHOOK:-}" ]; then
             echo "Repository variable COOLIFY_API_DEPLOY_WEBHOOK is not set."
             exit 1
           fi
-          curl -f -X POST \
+          curl -fsS -X POST \
             -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
             "$COOLIFY_API_DEPLOY_WEBHOOK"
 
