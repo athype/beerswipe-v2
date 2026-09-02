@@ -22,6 +22,39 @@ import {
 
 const router = express.Router();
 
+/**
+ * @openapi
+ * /passkeys/register-options:
+ *   post:
+ *     summary: Start passkey registration for the current admin
+ *     description: >
+ *       Returns WebAuthn registration options (`PublicKeyCredentialCreationOptionsJSON`).
+ *       The challenge is stored server-side keyed to the admin and expires after
+ *       a short TTL — call register-verify right after the browser ceremony.
+ *     tags: [Passkeys]
+ *     security:
+ *       - authToken: []
+ *     responses:
+ *       200:
+ *         description: WebAuthn registration options (pass to navigator.credentials.create)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties: true
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/register-options", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const user = req.user;
@@ -56,6 +89,59 @@ router.post("/register-options", authenticateToken, requireAdmin, async (req, re
   }
 });
 
+/**
+ * @openapi
+ * /passkeys/register-verify:
+ *   post:
+ *     summary: Verify and store a passkey registration
+ *     description: Send the credential produced by the browser ceremony started via register-options.
+ *     tags: [Passkeys]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               credential:
+ *                 type: object
+ *                 additionalProperties: true
+ *                 description: Registration credential from navigator.credentials.create
+ *               deviceName:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Defaults to "Unnamed Device"
+ *             required: [credential]
+ *     responses:
+ *       200:
+ *         description: Registration verified and passkey stored
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 verified: { type: boolean, enum: [true] }
+ *                 message: { type: string }
+ *       400:
+ *         description: Invalid payload, expired/missing challenge, or verification failed
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/register-verify", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const user = req.user;
@@ -111,6 +197,41 @@ router.post("/register-verify", authenticateToken, requireAdmin, async (req, res
   }
 });
 
+/**
+ * @openapi
+ * /passkeys/login-options:
+ *   post:
+ *     summary: Start passkey login
+ *     description: >
+ *       Returns WebAuthn authentication options. When `username` is given, only
+ *       that user's passkeys are allowed; otherwise any passkey registered with
+ *       this server works. Username enumeration is avoided by returning empty
+ *       allowCredentials for unknown users.
+ *     tags: [Passkeys]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username: { type: string }
+ *     responses:
+ *       200:
+ *         description: WebAuthn authentication options (pass to navigator.credentials.get)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties: true
+ *       400:
+ *         description: Invalid payload
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/login-options", async (req, res) => {
   try {
     const parsedBody = passkeyLoginOptionsSchema.safeParse(req.body ?? {});
@@ -150,6 +271,50 @@ router.post("/login-options", async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /passkeys/login-verify:
+ *   post:
+ *     summary: Verify a passkey login
+ *     description: >
+ *       Verifies the assertion from the browser ceremony and, on success, sets
+ *       the `authToken` cookie — same session as a password login.
+ *     tags: [Passkeys]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               credential:
+ *                 type: object
+ *                 additionalProperties: true
+ *                 description: Assertion credential from navigator.credentials.get
+ *             required: [credential]
+ *     responses:
+ *       200:
+ *         description: Login successful — sets the authToken cookie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 user: { $ref: "#/components/schemas/AuthUser" }
+ *       400:
+ *         description: Invalid payload or expired/missing challenge
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Unknown passkey, inactive user, or verification failed
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/login-verify", async (req, res) => {
   try {
     const parsedBody = passkeyLoginVerifySchema.safeParse(req.body);
@@ -249,6 +414,48 @@ router.post("/login-verify", async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /passkeys:
+ *   get:
+ *     summary: List the current admin's passkeys
+ *     description: Newest first; credential material is never returned.
+ *     tags: [Passkeys]
+ *     security:
+ *       - authToken: []
+ *     responses:
+ *       200:
+ *         description: The admin's registered passkeys
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 passkeys:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: integer }
+ *                       deviceName: { type: string }
+ *                       transports:
+ *                         type: array
+ *                         items: { type: string }
+ *                       createdAt: { type: string, format: date-time }
+ *                       lastUsedAt: { type: string, format: date-time, nullable: true }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const passkeys = await Passkey.findAll({
@@ -265,6 +472,44 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /passkeys/{id}:
+ *   delete:
+ *     summary: Delete one of the current admin's passkeys
+ *     description: Only passkeys owned by the calling admin can be deleted.
+ *     tags: [Passkeys]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Passkey deleted
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Message" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Passkey not found (or not owned by this admin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const passkey = await Passkey.findOne({
@@ -288,6 +533,65 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /passkeys/{id}:
+ *   put:
+ *     summary: Rename one of the current admin's passkeys
+ *     description: Only passkeys owned by the calling admin can be renamed.
+ *     tags: [Passkeys]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               deviceName: { type: string, maxLength: 100 }
+ *             required: [deviceName]
+ *     responses:
+ *       200:
+ *         description: Passkey updated (full stored record returned)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 passkey:
+ *                   type: object
+ *                   allOf:
+ *                     - $ref: "#/components/schemas/Passkey"
+ *                     - type: object
+ *                       properties:
+ *                         publicKey:
+ *                           type: string
+ *                           description: Stored credential public key (base64url)
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Passkey not found (or not owned by this admin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { deviceName } = req.body;

@@ -44,6 +44,86 @@ function calculateAge(dateOfBirth) {
 }
 
 // Make a sale (admin or seller)
+/**
+ * @openapi
+ * /sales/sell:
+ *   post:
+ *     summary: Sell drinks to a user
+ *     description: >
+ *       Atomically deducts credits from the user, stock from the drink, and
+ *       records a `sale` transaction row. Sellers and admins.
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: "#/components/schemas/SellRequest" }
+ *     responses:
+ *       200:
+ *         description: Sale completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 transaction:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *                         remainingCredits: { type: integer }
+ *                     drink:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         name: { type: string }
+ *                         remainingStock: { type: integer }
+ *                     quantity: { type: integer }
+ *                     totalCost: { type: integer }
+ *                     admin:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *       400:
+ *         description: Validation failed, drink not available/out of stock, or insufficient credits
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: "#/components/schemas/Error"
+ *                 - type: object
+ *                   properties:
+ *                     error: { type: string }
+ *                     required: { type: integer, description: Credits required }
+ *                     available: { type: integer, description: Credits the user has }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: >
+ *           Admin or seller access required, or — for alcohol drinks — the
+ *           buyer has no date of birth on file or is under 18 (legal age gate)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: User or drink not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
   let transaction;
 
@@ -170,6 +250,89 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
 });
 
 // Get transaction history (admin or seller)
+/**
+ * @openapi
+ * /sales/history:
+ *   get:
+ *     summary: List transaction history
+ *     description: >
+ *       Paginated audit trail of sales and credit additions, newest first,
+ *       with the related user, admin and drink (drink is null for credit
+ *       additions).
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: integer }
+ *         description: Restrict to one user
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [sale, credit_addition] }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/after this date
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/before this date
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *     responses:
+ *       200:
+ *         description: Paginated history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 transactions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     allOf:
+ *                       - $ref: "#/components/schemas/Transaction"
+ *                       - type: object
+ *                         properties:
+ *                           user:
+ *                             type: object
+ *                             properties:
+ *                               id: { type: integer }
+ *                               username: { type: string }
+ *                               userType: { type: string }
+ *                           admin:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               id: { type: integer }
+ *                               username: { type: string }
+ *                           drink:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               id: { type: integer }
+ *                               name: { type: string }
+ *                               category: { type: string }
+ *                 pagination: { $ref: "#/components/schemas/Pagination" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin or seller access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res) => {
   try {
     const {
@@ -245,6 +408,70 @@ router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res)
 });
 
 // Get sales statistics (admin or seller)
+/**
+ * @openapi
+ * /sales/stats:
+ *   get:
+ *     summary: Get sales and credit statistics
+ *     description: Aggregates within the optional date window, plus the top 10 drinks by quantity sold.
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/after this date
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/before this date
+ *     responses:
+ *       200:
+ *         description: Aggregated statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sales:
+ *                   type: object
+ *                   properties:
+ *                     totalSales: { type: integer, description: Sale transaction count }
+ *                     totalRevenue: { type: integer, description: Credits earned }
+ *                     totalItemsSold: { type: integer }
+ *                 credits:
+ *                   type: object
+ *                   properties:
+ *                     totalCreditAdditions: { type: integer }
+ *                     totalCreditsAdded: { type: integer }
+ *                 topDrinks:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       drinkId: { type: integer }
+ *                       drink:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer }
+ *                           name: { type: string }
+ *                       salesCount: { type: integer }
+ *                       totalQuantity: { type: integer }
+ *                       totalRevenue: { type: integer }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin or seller access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -311,6 +538,84 @@ router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) =
   }
 });
 
+/**
+ * @openapi
+ * /sales/undo/{transactionId}:
+ *   delete:
+ *     summary: Undo a transaction
+ *     description: >
+ *       Reverses a sale (credits and stock restored, bypassing the block-of-10
+ *       rule) or a credit addition (credits deducted back), then deletes the
+ *       transaction row. Admins may undo any transaction; sellers may only undo
+ *       their own sales, within 15 minutes of the sale, and never credit
+ *       additions.
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Transaction undone
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 undoTransaction:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     type: { type: string, enum: [sale, credit_addition] }
+ *                     amount: { type: integer }
+ *                     quantity: { type: integer, nullable: true }
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *                         newCredits: { type: integer }
+ *                     drink:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id: { type: integer }
+ *                         name: { type: string }
+ *                         newStock: { type: integer }
+ *                     undoneBy:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *       400:
+ *         description: Transaction ID missing, type not undoable, or user lacks credits to undo a credit addition
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: >
+ *           Admin/seller role required, or a seller restriction: undoing a
+ *           non-sale, someone else's sale, or a sale older than 15 minutes
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Transaction or user not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, async (req, res) => {
   const dbTransaction = await sequelize.transaction();
 

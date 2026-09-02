@@ -10,6 +10,50 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Export stock to CSV (admin only) - MUST come before /:id route
+/**
+ * @openapi
+ * /drinks/export-csv:
+ *   get:
+ *     summary: Export the drink catalog to CSV
+ *     description: >
+ *       Downloads all drinks (optionally filtered) as
+ *       `name,description,price,stock,category,isActive,isAlcohol` with quoted fields.
+ *     tags: [Drinks]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema: { type: string }
+ *         description: Restrict to one category
+ *       - in: query
+ *         name: inStock
+ *         schema: { type: string, enum: ["true"] }
+ *         description: Only active drinks with stock above zero
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         headers:
+ *           Content-Disposition:
+ *             schema: { type: string }
+ *             description: attachment; filename=stock-export-<date>.csv
+ *         content:
+ *           text/csv:
+ *             schema: { type: string }
+ *             example: "\"Grolsch\",\"0.0% pilsener\",60,120,beer,true,true"
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { category, inStock } = req.query;
@@ -50,6 +94,40 @@ router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get all drinks
+/**
+ * @openapi
+ * /drinks:
+ *   get:
+ *     summary: List drinks
+ *     description: Public catalog listing, paginated and filterable.
+ *     tags: [Drinks]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Case-insensitive name substring search
+ *       - in: query
+ *         name: category
+ *         schema: { type: string }
+ *       - in: query
+ *         name: inStock
+ *         schema: { type: string, enum: ["true"] }
+ *         description: Only active drinks with stock above zero
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *     responses:
+ *       200:
+ *         description: Paginated drink list
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/DrinkList" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/", async (req, res) => {
   try {
     const { search, category, inStock, page = 1, limit = 50 } = req.query;
@@ -91,6 +169,32 @@ router.get("/", async (req, res) => {
 });
 
 // Get drink by ID
+/**
+ * @openapi
+ * /drinks/{id}:
+ *   get:
+ *     summary: Get one drink
+ *     description: Includes soft-deleted drinks (isActive false).
+ *     tags: [Drinks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: The drink
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Drink" }
+ *       404:
+ *         description: Drink not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.get("/:id", async (req, res) => {
   try {
     const drink = await Drink.findByPk(req.params.id);
@@ -108,6 +212,49 @@ router.get("/:id", async (req, res) => {
 });
 
 // Create new drink (admin only)
+/**
+ * @openapi
+ * /drinks:
+ *   post:
+ *     summary: Create a drink
+ *     description: Drink names must be unique.
+ *     tags: [Drinks]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/CreateDrinkRequest"
+ *     responses:
+ *       201:
+ *         description: Drink created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 drink: { $ref: "#/components/schemas/Drink" }
+ *       400:
+ *         description: Name/price missing, price <= 0, or name already in use
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, description, price, stock = 0, category = "beverage", isAlcohol = false } = req.body;
@@ -146,6 +293,59 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Update drink (admin only)
+/**
+ * @openapi
+ * /drinks/{id}:
+ *   put:
+ *     summary: Update a drink
+ *     description: Only provided fields are updated.
+ *     tags: [Drinks]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/UpdateDrinkRequest"
+ *     responses:
+ *       200:
+ *         description: Drink updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 drink: { $ref: "#/components/schemas/Drink" }
+ *       400:
+ *         description: Invalid price
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Drink not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, description, price, stock, category, isActive, isAlcohol } = req.body;
@@ -177,6 +377,63 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Add stock (admin only)
+/**
+ * @openapi
+ * /drinks/{id}/add-stock:
+ *   post:
+ *     summary: Add stock to a drink
+ *     tags: [Drinks]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/AddStockRequest"
+ *     responses:
+ *       200:
+ *         description: Stock added
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 drink:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     name: { type: string }
+ *                     stock: { type: integer }
+ *       400:
+ *         description: Quantity must be a positive number
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Drink not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/:id/add-stock", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { quantity } = req.body;
@@ -208,6 +465,71 @@ router.post("/:id/add-stock", authenticateToken, requireAdmin, async (req, res) 
 });
 
 // Import stock from CSV (admin only)
+/**
+ * @openapi
+ * /drinks/import-csv:
+ *   post:
+ *     summary: Import drinks from a CSV file
+ *     description: >
+ *       Columns: `name,description,price,stock,category,isActive,isAlcohol` (no
+ *       header row). Existing drink names are updated (stock, price, ...), new
+ *       names are created.
+ *     tags: [Drinks]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               csvFile:
+ *                 type: string
+ *                 format: binary
+ *                 description: Uploaded .csv file (see column spec above)
+ *             required: [csvFile]
+ *     responses:
+ *       200:
+ *         description: Import finished — per-line results and errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 imported: { type: integer, description: Created + updated drinks }
+ *                 errors: { type: integer, description: Failed lines }
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name: { type: string }
+ *                       action: { type: string, enum: [created, updated] }
+ *                       stock: { type: integer }
+ *                 errorDetails:
+ *                   type: array
+ *                   items: { type: string }
+ *                   description: Per-line failure messages
+ *       400:
+ *         description: CSV file is required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFile"), async (req, res) => {
   try {
     if (!req.file) {
@@ -306,6 +628,44 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
 });
 
 // Delete drink (admin only)
+/**
+ * @openapi
+ * /drinks/{id}:
+ *   delete:
+ *     summary: Soft-delete a drink
+ *     description: Sets isActive to false; the row and its sale history are kept.
+ *     tags: [Drinks]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Drink deleted
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Message" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Drink not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const drink = await Drink.findByPk(req.params.id);

@@ -85,7 +85,18 @@ pnpm --filter @beerswipe/backend run lint
 pnpm --filter @beerswipe/backend test
 ```
 
-## API Endpoints
+## API Documentation
+
+Every endpoint is documented with OpenAPI (via `@openapi` annotations above each route in `backend/src/api/`) and browsable interactively:
+
+- Swagger UI: `http://localhost:8080/api/v1/docs/`
+- Raw spec: `http://localhost:8080/api/v1/docs/spec.json`
+
+Authentication is a same-origin `authToken` cookie — log in through the Swagger UI (`POST /auth/login`), then protected endpoints work with "Try it out".
+
+Docs are enabled by default outside production. To control them explicitly, set `ENABLE_API_DOCS=true|false` (e.g. `ENABLE_API_DOCS=true` on a production instance for debugging).
+
+> The list below is **stale and incomplete** — treat the Swagger UI at `/api/v1/docs/` as the source of truth for the API surface.
 
 ### Authentication
 - `POST /api/v1/auth/login` - Admin login

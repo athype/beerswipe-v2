@@ -5,6 +5,9 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(8080),
   JWT_SECRET: z.string().default("your-secret-key-change-in-production"),
 
+  // API documentation: "true"/"false" overrides the default (off in production)
+  ENABLE_API_DOCS: z.enum(["true", "false"]).optional(),
+
   // Frontend URL configuration
   FEURL: z.string().default("http://localhost"),
   FEPORT: z.coerce.number().default(5173),
@@ -39,3 +42,17 @@ catch (error) {
 
 // eslint-disable-next-line node/no-process-env
 export const env = envSchema.parse(process.env);
+
+/**
+ * Whether the Swagger docs route should be served.
+ * Reads live process.env (not the parsed snapshot) so it can be toggled at
+ * request time — e.g. by tests — without re-parsing the whole schema.
+ * Default: enabled everywhere except production; ENABLE_API_DOCS overrides.
+ */
+export function apiDocsEnabled() {
+  const raw = process.env.ENABLE_API_DOCS; // eslint-disable-line node/no-process-env
+  if (raw !== undefined)
+    return raw === "true";
+  // eslint-disable-next-line node/no-process-env
+  return process.env.NODE_ENV !== "production";
+}
