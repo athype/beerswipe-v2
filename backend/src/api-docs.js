@@ -235,7 +235,7 @@ const schemas = {
 
 const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
-const apiDir = path.join(import.meta.dirname, "api").replaceAll("\\", "/");
+const apiDir = new URL("./api", import.meta.url).pathname.replaceAll("\\", "/");
 
 const spec = swaggerJsdoc({
   definition: {
