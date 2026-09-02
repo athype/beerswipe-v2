@@ -127,9 +127,9 @@ router.get("/profile", authenticateToken, requireAdmin, async (req, res) => {
  *   put:
  *     summary: Update the current admin's own profile
  *     description: >
- *       Changing the username also returns a fresh JWT `token` — the old one
- *       encodes the previous username and should be replaced (the authToken
- *       cookie is not rotated automatically).
+ *       Providing a username returns a fresh JWT `token` — the old one encodes
+ *       the previous username and should be replaced (the authToken cookie is
+ *       not rotated automatically).
  *     tags: [Admin]
  *     security:
  *       - authToken: []

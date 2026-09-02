@@ -202,18 +202,15 @@ const transactionSchema = {
 
 const passkeySchema = {
   type: "object",
+  description: "Public passkey projection (credential material is never returned)",
   properties: {
     id: { type: "integer" },
-    userId: { type: "integer" },
-    credentialId: { type: "string" },
-    counter: { type: "integer" },
-    transports: { type: "array", items: { type: "string" } },
     deviceName: { type: "string", nullable: true },
-    lastUsedAt: { type: "string", format: "date-time", nullable: true },
+    transports: { type: "array", items: { type: "string" } },
     createdAt: { type: "string", format: "date-time" },
-    updatedAt: { type: "string", format: "date-time" },
+    lastUsedAt: { type: "string", format: "date-time", nullable: true },
   },
-  required: ["id", "userId", "credentialId", "createdAt", "updatedAt"],
+  required: ["id", "createdAt"],
 };
 
 const schemas = {
