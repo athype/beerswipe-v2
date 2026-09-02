@@ -110,7 +110,9 @@ function calculateAge(dateOfBirth) {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }
  *       403:
- *         description: Admin or seller access required
+ *         description: >
+ *           Admin or seller access required, or — for alcohol drinks — the
+ *           buyer has no date of birth on file or is under 18 (legal age gate)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }
@@ -544,7 +546,9 @@ router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) =
  *     description: >
  *       Reverses a sale (credits and stock restored, bypassing the block-of-10
  *       rule) or a credit addition (credits deducted back), then deletes the
- *       transaction row. Admin only.
+ *       transaction row. Admins may undo any transaction; sellers may only undo
+ *       their own sales, within 15 minutes of the sale, and never credit
+ *       additions.
  *     tags: [Sales]
  *     security:
  *       - authToken: []
@@ -598,12 +602,14 @@ router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) =
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }
  *       403:
- *         description: Admin access required
+ *         description: >
+ *           Admin/seller role required, or a seller restriction: undoing a
+ *           non-sale, someone else's sale, or a sale older than 15 minutes
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }
  *       404:
- *         description: Transaction not found
+ *         description: Transaction or user not found
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }

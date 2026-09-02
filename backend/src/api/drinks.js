@@ -17,7 +17,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     summary: Export the drink catalog to CSV
  *     description: >
  *       Downloads all drinks (optionally filtered) as
- *       `name,description,price,stock,category,isActive` with quoted fields.
+ *       `name,description,price,stock,category,isActive,isAlcohol` with quoted fields.
  *     tags: [Drinks]
  *     security:
  *       - authToken: []
@@ -40,7 +40,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         content:
  *           text/csv:
  *             schema: { type: string }
- *             example: "\"Grolsch\",\"0.0% pilsener\",60,120,beer,true"
+ *             example: "\"Grolsch\",\"0.0% pilsener\",60,120,beer,true,true"
  *       401:
  *         description: Missing or invalid authToken cookie
  *         content:
@@ -471,9 +471,9 @@ router.post("/:id/add-stock", authenticateToken, requireAdmin, async (req, res) 
  *   post:
  *     summary: Import drinks from a CSV file
  *     description: >
- *       Columns: `name,description,price,stock,category,isActive` (no header
- *       row). Existing drink names are updated (stock, price, ...), new names
- *       are created.
+ *       Columns: `name,description,price,stock,category,isActive,isAlcohol` (no
+ *       header row). Existing drink names are updated (stock, price, ...), new
+ *       names are created.
  *     tags: [Drinks]
  *     security:
  *       - authToken: []

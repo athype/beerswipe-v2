@@ -53,11 +53,12 @@ const drinkSchema = {
     price: { type: "integer", minimum: 1, description: "Price in credits" },
     stock: { type: "integer", minimum: 0 },
     isActive: { type: "boolean", description: "false = soft-deleted" },
+    isAlcohol: { type: "boolean", description: "true = alcohol; buyer must be 18+, enforced at sale time" },
     category: { type: "string", nullable: true },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
-  required: ["id", "name", "price", "stock", "isActive", "createdAt", "updatedAt"],
+  required: ["id", "name", "price", "stock", "isActive", "isAlcohol", "createdAt", "updatedAt"],
 };
 
 const drinkListSchema = {
@@ -77,6 +78,7 @@ const createDrinkRequestSchema = {
     price: { type: "integer", minimum: 1, description: "Price in credits" },
     stock: { type: "integer", minimum: 0, default: 0 },
     category: { type: "string", default: "beverage" },
+    isAlcohol: { type: "boolean", default: false, description: "true = alcohol; buyers must be 18+" },
   },
   required: ["name", "price"],
 };
@@ -91,6 +93,7 @@ const updateDrinkRequestSchema = {
     stock: { type: "integer", minimum: 0 },
     category: { type: "string" },
     isActive: { type: "boolean" },
+    isAlcohol: { type: "boolean", description: "true = alcohol; buyers must be 18+" },
   },
 };
 

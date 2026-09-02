@@ -104,8 +104,8 @@ router.get("/", authenticateToken, requireAdminOrSeller, async (req, res) => {
  *     summary: Export non-admin users to CSV
  *     description: >
  *       Downloads members and non-members (admins/sellers are never exported)
- *       as `username,credits,dateOfBirth,isMember`. Empty dateOfBirth cells for
- *       users born after 2020.
+ *       as `username,credits,dateOfBirth,isMember`. dateOfBirth is formatted
+ *       DD-MM-YYYY and left empty when no birth date is recorded.
  *     tags: [Users]
  *     security:
  *       - authToken: []
