@@ -43,6 +43,7 @@ const MIGRATIONS = [
         defaultValue: false,
       });
       return true;
+    },
   },
 ];
 

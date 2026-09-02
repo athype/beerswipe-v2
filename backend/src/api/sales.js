@@ -122,8 +122,8 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       });
     }
 
-    await user.deductCredits(totalCost);
-    await drink.deductStock(quantity);
+    await user.deductCredits(totalCost, { transaction });
+    await drink.deductStock(quantity, { transaction });
 
     const saleTransaction = await Transaction.create({
       userId: user.id,
@@ -358,10 +358,10 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
 
     if (transactionToUndo.type === "sale") {
       // Use unchecked method to restore credits (bypass 10-credit rule for undo operations)
-      await user.addCreditsUnchecked(transactionToUndo.amount);
+      await user.addCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
 
       if (drink) {
-        await drink.addStock(transactionToUndo.quantity || 1);
+        await drink.addStock(transactionToUndo.quantity || 1, { transaction: dbTransaction });
       }
     }
     else if (transactionToUndo.type === "credit_addition") {
@@ -375,7 +375,7 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
       }
 
       // Use unchecked method to deduct credits (bypass 10-credit rule for undo operations)
-      await user.deductCreditsUnchecked(transactionToUndo.amount);
+      await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
     }
     else {
       await dbTransaction.rollback();
