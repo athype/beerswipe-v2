@@ -90,6 +90,122 @@ describe("POST /api/v1/sales/sell under concurrency", () => {
   });
 });
 
+
+const UNDO_CREDITS_AFTER_FIRST_SALE = 40;
+const UNDO_STOCK_AFTER_FIRST_SALE = 9;
+
+describe("DELETE /api/v1/sales/undo/:id under concurrency", () => {
+  it("never loses an update when an undo races a new sale", { timeout: 60_000 }, async () => {
+    // Fresh seller used for auth on every request in this test.
+    const seller = await User.create({
+      username: `race-seller-${uniqueSuffix()}`,
+      userType: "seller",
+      isActive: true,
+    });
+    createdUserIds.push(seller.id);
+    const token = generateToken(seller);
+
+    for (let round = 0; round < ROUNDS; round++) {
+      const tag = uniqueSuffix();
+
+      const user = await User.create({
+        username: `race-user-${tag}`,
+        userType: "member",
+        credits: CREDITS,
+        dateOfBirth: null,
+      });
+      createdUserIds.push(user.id);
+
+      const drink = await Drink.create({
+        name: `race-drink-${tag}`,
+        price: PRICE,
+        stock: UNDO_STOCK_AFTER_FIRST_SALE + 1, // 10
+        isActive: true,
+      });
+      createdDrinkIds.push(drink.id);
+
+      // Committed baseline sale: 50 -> 40 credits, 10 -> 9 stock.
+      const firstSale = await request(app)
+        .post("/api/v1/sales/sell")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ userId: user.id, drinkId: drink.id, quantity: 1 });
+      expect(firstSale.status, `round ${round}: baseline sale failed: ${firstSale.status} ${JSON.stringify(firstSale.body)}`).toBe(200);
+
+      const [undoRes, saleRes] = await Promise.all([
+        request(app)
+          .delete(`/api/v1/sales/undo/${firstSale.body.transaction.id}`)
+          .set("Authorization", `Bearer ${token}`),
+        request(app)
+          .post("/api/v1/sales/sell")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ userId: user.id, drinkId: drink.id, quantity: 1 }),
+      ]);
+
+      expect(undoRes.status, `round ${round}: undo failed: ${undoRes.status} ${JSON.stringify(undoRes.body)}`).toBe(200);
+      expect(saleRes.status, `round ${round}: racing sale failed: ${saleRes.status} ${JSON.stringify(saleRes.body)}`).toBe(200);
+
+      await user.reload();
+      await drink.reload();
+      expect(user.credits, `round ${round}: credits lost an update`).toBe(UNDO_CREDITS_AFTER_FIRST_SALE);
+      expect(drink.stock, `round ${round}: stock lost an update`).toBe(UNDO_STOCK_AFTER_FIRST_SALE);
+    }
+  });
+
+  it("restores credits/stock exactly once when two undos race the same sale", { timeout: 60_000 }, async () => {
+    const seller = await User.create({
+      username: `race-seller-${uniqueSuffix()}`,
+      userType: "seller",
+      isActive: true,
+    });
+    createdUserIds.push(seller.id);
+    const token = generateToken(seller);
+
+    for (let round = 0; round < ROUNDS; round++) {
+      const tag = uniqueSuffix();
+
+      const user = await User.create({
+        username: `race-user-${tag}`,
+        userType: "member",
+        credits: CREDITS,
+        dateOfBirth: null,
+      });
+      createdUserIds.push(user.id);
+
+      const drink = await Drink.create({
+        name: `race-drink-${tag}`,
+        price: PRICE,
+        stock: 10,
+        isActive: true,
+      });
+      createdDrinkIds.push(drink.id);
+
+      const firstSale = await request(app)
+        .post("/api/v1/sales/sell")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ userId: user.id, drinkId: drink.id, quantity: 1 });
+      expect(firstSale.status, `round ${round}: baseline sale failed: ${firstSale.status}`).toBe(200);
+
+      const [undo1, undo2] = await Promise.all([
+        request(app)
+          .delete(`/api/v1/sales/undo/${firstSale.body.transaction.id}`)
+          .set("Authorization", `Bearer ${token}`),
+        request(app)
+          .delete(`/api/v1/sales/undo/${firstSale.body.transaction.id}`)
+          .set("Authorization", `Bearer ${token}`),
+      ]);
+
+      // Exactly one undo may win; the other must see the transaction as gone.
+      const statuses = [undo1.status, undo2.status].sort();
+      expect(statuses, `round ${round}: unexpected undo statuses`).toEqual([200, 404]);
+
+      await user.reload();
+      await drink.reload();
+      expect(user.credits, `round ${round}: credits restored twice`).toBe(CREDITS);
+      expect(drink.stock, `round ${round}: stock restored twice`).toBe(10);
+    }
+  });
+});
+
 afterAll(async () => {
   // Best-effort cleanup: remove sale rows first, then the fixtures.
   try {

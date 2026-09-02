@@ -323,12 +323,8 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
     }
 
     const transactionToUndo = await Transaction.findByPk(transactionId, {
-      include: [
-        { model: User, as: "user" },
-        { model: Drink, as: "drink" },
-        { model: User, as: "admin" },
-      ],
       transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
     });
 
     if (!transactionToUndo) {
@@ -353,8 +349,21 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
       }
     }
 
-    const user = transactionToUndo.user;
-    const drink = transactionToUndo.drink;
+    const user = await User.findByPk(transactionToUndo.userId, {
+      transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
+    });
+    const drink = transactionToUndo.type === "sale"
+      ? await Drink.findByPk(transactionToUndo.drinkId, {
+          transaction: dbTransaction,
+          lock: dbTransaction.LOCK.UPDATE,
+        })
+      : null;
+
+    if (!user) {
+      await dbTransaction.rollback();
+      return res.status(404).json({ error: "User not found" });
+    }
 
     if (transactionToUndo.type === "sale") {
       // Use unchecked method to restore credits (bypass 10-credit rule for undo operations)
