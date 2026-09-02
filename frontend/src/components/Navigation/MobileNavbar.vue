@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
+import BottleMark from './BottleMark.vue'
 
 const authStore = useAuthStore()
 
@@ -32,7 +33,10 @@ const handleLogout = () => {
 <template>
   <header class="mobile-header">
     <div class="mobile-topbar">
-      <RouterLink to="/dashboard" class="mobile-brand">Beer Machine</RouterLink>
+      <RouterLink to="/dashboard" class="mobile-brand">
+        <BottleMark />
+        Beer Machine
+      </RouterLink>
       <button class="hamburger-btn" @click="openMenu" aria-label="Open menu">
         <span></span>
         <span></span>
@@ -45,8 +49,15 @@ const handleLogout = () => {
     <Transition name="mobile-overlay">
     <div v-if="isMenuOpen" class="mobile-overlay">
       <div class="mobile-overlay-header">
-        <span class="mobile-overlay-brand">Beer Machine</span>
-        <button class="close-btn" @click="closeMenu" aria-label="Close menu">✕</button>
+        <span class="mobile-overlay-brand">
+          <BottleMark />
+          Beer Machine
+        </span>
+        <button class="close-btn" @click="closeMenu" aria-label="Close menu">
+          <svg class="close-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M3 3 L13 13 M13 3 L3 13" />
+          </svg>
+        </button>
       </div>
 
       <nav class="mobile-overlay-nav">
@@ -91,6 +102,9 @@ const handleLogout = () => {
 }
 
 .mobile-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   font-size: var(--font-size-xl);
   font-weight: 700;
   color: var(--color-white);
@@ -118,20 +132,27 @@ const handleLogout = () => {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.hamburger-btn:hover span {
+  background: var(--green-9);
+}
+
 .hamburger-btn span {
   display: block;
   width: 22px;
   height: 2px;
   background: var(--color-white);
   border-radius: 2px;
+  transition: background 0.3s ease;
 }
 
-/* Fullscreen overlay */
+/* Fullscreen overlay — the bar's backlight washes up the glass as it opens */
 .mobile-overlay {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(16, 24, 20, 0.97);
+  background:
+    radial-gradient(120% 55% at 50% -5%, rgba(27, 73, 48, 0.55) 0%, rgba(16, 18, 17, 0) 60%),
+    rgba(16, 24, 20, 0.97);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display: flex;
@@ -149,6 +170,9 @@ const handleLogout = () => {
 }
 
 .mobile-overlay-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   font-size: var(--font-size-xl);
   font-weight: 700;
   color: var(--color-white);
@@ -158,7 +182,6 @@ const handleLogout = () => {
   background: none;
   border: 1px solid var(--green-7);
   color: var(--color-white);
-  font-size: 1.25rem;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--radius-md);
@@ -167,6 +190,15 @@ const handleLogout = () => {
   align-items: center;
   justify-content: center;
   transition: background 0.3s ease;
+}
+
+.close-icon {
+  width: 16px;
+  height: 16px;
+  stroke: var(--color-white);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  fill: none;
 }
 
 .close-btn:hover {
@@ -191,11 +223,18 @@ const handleLogout = () => {
   border: 1px solid transparent;
 }
 
-.mobile-nav-link:hover,
-.mobile-nav-link.router-link-active {
+.mobile-nav-link:hover {
   color: var(--color-white);
   background: var(--green-5);
   border-color: var(--green-7);
+}
+
+/* The poured glass stays lit: brighter rim, backlight beneath, light on top */
+.mobile-nav-link.router-link-active {
+  color: var(--color-white);
+  background: var(--green-5);
+  border-color: var(--green-8);
+  box-shadow: 0 4px 16px -4px rgba(48, 164, 108, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .mobile-overlay-footer {
@@ -237,5 +276,16 @@ a.mobile-username:hover {
 .mobile-overlay-leave-from {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Keyboard focus: the accent-teal ring, visible on the dark glass */
+.mobile-brand:focus-visible,
+.hamburger-btn:focus-visible,
+.close-btn:focus-visible,
+.mobile-nav-link:focus-visible,
+.mobile-username:focus-visible,
+.mobile-overlay-footer .btn:focus-visible {
+  outline: 2px solid rgba(5, 94, 104, 0.5);
+  outline-offset: 2px;
 }
 </style>

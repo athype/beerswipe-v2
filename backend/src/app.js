@@ -9,11 +9,13 @@ import { initializeDatabase } from "./config/database.js";
 import { env } from "./env.js";
 
 import * as middlewares from "./middlewares.js";
+import { runMigrations } from "./migrate.js";
 
 const app = express();
 
 try {
   await initializeDatabase();
+  await runMigrations();
 }
 catch (error) {
   console.error("Failed to initialize database:", error);

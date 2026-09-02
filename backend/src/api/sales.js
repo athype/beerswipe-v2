@@ -7,6 +7,42 @@ import { sellRequestSchema } from "../validation/contracts.js";
 
 const router = express.Router();
 
+// Sellers may only undo their own recent sales; admins keep full undo rights.
+const SELLER_UNDO_WINDOW_MS = 15 * 60 * 1000;
+
+function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return null;
+
+  let birthYear;
+  let birthMonth;
+  let birthDay;
+
+  if (typeof dateOfBirth === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+    const [y, m, d] = dateOfBirth.split("-").map(Number);
+    birthYear = y;
+    birthMonth = m;
+    birthDay = d;
+  } else {
+    const birthDate = new Date(dateOfBirth);
+    if (Number.isNaN(birthDate.getTime())) return null;
+    birthYear = birthDate.getUTCFullYear();
+    birthMonth = birthDate.getUTCMonth() + 1;
+    birthDay = birthDate.getUTCDate();
+  }
+
+  const today = new Date();
+  const year = today.getUTCFullYear();
+  const month = today.getUTCMonth() + 1;
+  const day = today.getUTCDate();
+
+  let age = year - birthYear;
+  if (month < birthMonth || (month === birthMonth && day < birthDay)) {
+    age -= 1;
+  }
+
+  return age;
+}
+
 // Make a sale (admin or seller)
 router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
   let transaction;
@@ -59,6 +95,20 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
     if (!drink.isInStock() || drink.stock < quantity) {
       await transaction.rollback();
       return res.status(400).json({ error: "Insufficient stock or drink not available" });
+    }
+
+    // Legal gate: alcohol may only be sold to customers aged 18+ (Dutch law).
+    // Never trust the client — enforce on the server.
+    if (drink.isAlcohol) {
+      const age = user.dateOfBirth ? calculateAge(user.dateOfBirth) : null;
+      if (age === null || age < 18) {
+        await transaction.rollback();
+        return res.status(403).json({
+          error: age === null
+            ? "Cannot sell alcohol: customer has no date of birth on file"
+            : "Cannot sell alcohol: customer is under 18",
+        });
+      }
     }
 
     const totalCost = drink.price * quantity;
@@ -261,7 +311,7 @@ router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) =
   }
 });
 
-router.delete("/undo/:transactionId", authenticateToken, requireAdmin, async (req, res) => {
+router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, async (req, res) => {
   const dbTransaction = await sequelize.transaction();
 
   try {
@@ -284,6 +334,23 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdmin, async (re
     if (!transactionToUndo) {
       await dbTransaction.rollback();
       return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    // Sellers: only their own sales, only within the correction window.
+    if (req.user.userType !== "admin") {
+      if (transactionToUndo.type !== "sale") {
+        await dbTransaction.rollback();
+        return res.status(403).json({ error: "Sellers can only undo sales" });
+      }
+      if (transactionToUndo.adminId !== req.user.id) {
+        await dbTransaction.rollback();
+        return res.status(403).json({ error: "You can only undo your own sales" });
+      }
+      const ageMs = Date.now() - new Date(transactionToUndo.transactionDate).getTime();
+      if (ageMs > SELLER_UNDO_WINDOW_MS) {
+        await dbTransaction.rollback();
+        return res.status(403).json({ error: "Sales older than 15 minutes can only be undone by an admin" });
+      }
     }
 
     const user = transactionToUndo.user;

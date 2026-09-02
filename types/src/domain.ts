@@ -41,6 +41,7 @@ export interface Drink {
   price: number;
   stock: number;
   isActive: boolean;
+  isAlcohol: boolean;
   category: string;
   createdAt?: ISODateString;
   updatedAt?: ISODateString;

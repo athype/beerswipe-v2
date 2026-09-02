@@ -49,7 +49,10 @@
         :class="{ inactive: !drink.isActive }"
       >
         <div class="drink-header">
-          <h3>{{ drink.name }}</h3>
+          <h3>
+            {{ drink.name }}
+            <span v-if="drink.isAlcohol" class="alcohol-badge">18+</span>
+          </h3>
           <div class="drink-status">
             <span class="status-badge" :class="{ active: drink.isActive }">
               {{ drink.isActive ? 'Active' : 'Inactive' }}
@@ -178,7 +181,8 @@ const drinkForm = reactive({
   price: 1,
   stock: 0,
   category: 'beverage',
-  isActive: true
+  isActive: true,
+  isAlcohol: false
 })
 
 const searchDrinks = async () => {
@@ -220,7 +224,8 @@ const openEditModal = (drink) => {
     price: drink.price,
     stock: drink.stock,
     category: drink.category,
-    isActive: drink.isActive
+    isActive: drink.isActive,
+    isAlcohol: drink.isAlcohol
   })
   showEditModal.value = true
 }
@@ -270,7 +275,8 @@ const closeModals = () => {
     price: 1,
     stock: 0,
     category: 'beverage',
-    isActive: true
+    isActive: true,
+    isAlcohol: false
   })
 }
 
@@ -400,6 +406,19 @@ onMounted(() => {
 .drink-header h3 {
   margin: 0;
   font-size: 1.3rem;
+}
+
+.alcohol-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(220, 53, 69, 0.3);
+  border: 1px solid rgba(220, 53, 69, 0.6);
+  color: var(--color-white);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  vertical-align: middle;
 }
 
 .status-badge {

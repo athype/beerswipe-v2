@@ -39,6 +39,11 @@ const Drink = sequelize.define("Drink", {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  isAlcohol: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
   category: {
     type: DataTypes.STRING,
     allowNull: true,

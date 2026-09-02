@@ -13,8 +13,8 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Total Sales</h3>
-          <CountUp 
-          :from="0" 
+          <CountUp
+          :from="0"
           :to="salesStore.stats.sales?.totalSales || 0"
           direction="up"
           :duration="1"
@@ -28,8 +28,8 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Revenue</h3>
-          <CountUp 
-          :from="0" 
+          <CountUp
+          :from="0"
           :to="salesStore.stats.sales?.totalRevenue || 0"
           direction="up"
           :duration="1"
@@ -43,8 +43,8 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Items Sold</h3>
-          <CountUp 
-          :from="0" 
+          <CountUp
+          :from="0"
           :to="salesStore.stats.sales?.totalItemsSold || 0"
           direction="up"
           :duration="1"
@@ -58,7 +58,7 @@
       <div class="card stat-card">
         <div class="card-body text-center">
           <h3 class="text-lg mb-sm">Credits Added</h3>
-          <CountUp 
+          <CountUp
           :from="0"
           :to="salesStore.stats.credits?.totalCreditsAdded || 0"
           direction="up"
@@ -74,24 +74,29 @@
     <div class="dashboard-grid">
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">Quick Actions</h2>
+          <h2 class="qa-sign-title">Quick Actions</h2>
         </div>
         <div class="card-body">
-          <div class="action-buttons">
-            <RouterLink to="/sales" class="btn btn-primary btn-lg">
-              Make Sale
+          <div class="qa-menu">
+            <RouterLink to="/sales" class="qa-menu-row qa-menu-row-primary">
+              <span>Make Sale</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             </RouterLink>
-            <RouterLink v-if="authStore.isAdmin" to="/users" class="btn btn-secondary btn-lg">
-              Manage Users
+            <RouterLink v-if="authStore.isAdmin" to="/users" class="qa-menu-row">
+              <span>Manage Users</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             </RouterLink>
-            <RouterLink v-if="authStore.isAdmin" to="/drinks" class="btn btn-secondary btn-lg">
-              Manage Drinks
+            <RouterLink v-if="authStore.isAdmin" to="/drinks" class="qa-menu-row">
+              <span>Manage Drinks</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             </RouterLink>
-            <RouterLink to="/history" class="btn btn-secondary btn-lg">
-              View History
+            <RouterLink to="/history" class="qa-menu-row">
+              <span>View History</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             </RouterLink>
-            <RouterLink v-if="authStore.isAdmin" to="/leaderboard" class="btn btn-secondary btn-lg">
-              View Leaderboard
+            <RouterLink v-if="authStore.isAdmin" to="/leaderboard" class="qa-menu-row">
+              <span>View Leaderboard</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
             </RouterLink>
           </div>
         </div>
@@ -109,8 +114,8 @@
             <p>No recent transactions</p>
           </div>
           <div v-else class="transaction-list">
-            <div 
-              v-for="transaction in recentTransactions" 
+            <div
+              v-for="transaction in recentTransactions"
               :key="transaction.id"
               class="transaction-item"
             >
@@ -122,7 +127,7 @@
               <div class="transaction-details flex-1">
                 <p class="text-sm font-medium mb-xs">{{ transaction.description }}</p>
                 <p class="text-xs">
-                  {{ transaction.user?.username }} • 
+                  {{ transaction.user?.username }} •
                   {{ transaction.amount }} credits •
                   {{ formatDate(transaction.transactionDate) }}
                 </p>
@@ -139,8 +144,8 @@
       </div>
       <div class="card-body">
         <div class="low-stock-grid">
-          <div 
-            v-for="drink in lowStockDrinks" 
+          <div
+            v-for="drink in lowStockDrinks"
             :key="drink.id"
             class="low-stock-item"
           >
@@ -165,11 +170,11 @@ const authStore = useAuthStore()
 const salesStore = useSalesStore()
 const drinksStore = useDrinksStore()
 
-const recentTransactions = computed(() => 
+const recentTransactions = computed(() =>
   salesStore.transactions.slice(0, 5)
 )
 
-const lowStockDrinks = computed(() => 
+const lowStockDrinks = computed(() =>
   drinksStore.drinks.filter(drink => drink.isActive && drink.stock <= 5)
 )
 
@@ -218,10 +223,58 @@ onMounted(async () => {
   font-size: var(--font-size-4xl);
 }
 
-.action-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
+.qa-sign-title {
+  margin: 0 0 20px;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-shadow: 0 0 11px rgba(48, 164, 108, 0.55), 0 0 2px rgba(177, 241, 203, 0.5), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.qa-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.qa-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-light-grey);
+  transition: background 0.2s ease, transform 0.25s ease;
+}
+
+.qa-menu-row:last-child {
+  border-bottom: none;
+}
+
+.qa-menu-row:hover {
+  background: var(--green-3);
+  transform: translateX(4px);
+}
+
+.qa-menu-row-primary {
+  color: var(--green-11);
+  background: rgba(48, 164, 108, 0.08);
+}
+
+.qa-menu-row svg {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.qa-menu-row:hover svg {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .transaction-list {
@@ -265,11 +318,7 @@ onMounted(async () => {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
-  
-  .action-buttons {
-    grid-template-columns: 1fr;
-  }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
