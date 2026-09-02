@@ -26,6 +26,15 @@ const MIGRATIONS = [
         return false;
       }
       if (table.isAlcohol) {
+        if (table.isAlcohol.allowNull) {
+          await queryInterface.sequelize.query('UPDATE "Drinks" SET "isAlcohol" = false WHERE "isAlcohol" IS NULL;');
+          await queryInterface.changeColumn("Drinks", "isAlcohol", {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+          });
+          return true;
+        }
         return false;
       }
       await queryInterface.addColumn("Drinks", "isAlcohol", {
@@ -34,7 +43,6 @@ const MIGRATIONS = [
         defaultValue: false,
       });
       return true;
-    },
   },
 ];
 

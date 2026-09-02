@@ -11,16 +11,32 @@ const router = express.Router();
 const SELLER_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
 function calculateAge(dateOfBirth) {
-  const birthDate = new Date(dateOfBirth);
-  if (Number.isNaN(birthDate.getTime())) {
-    return null;
+  if (!dateOfBirth) return null;
+
+  let birthYear;
+  let birthMonth;
+  let birthDay;
+
+  if (typeof dateOfBirth === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+    const [y, m, d] = dateOfBirth.split("-").map(Number);
+    birthYear = y;
+    birthMonth = m;
+    birthDay = d;
+  } else {
+    const birthDate = new Date(dateOfBirth);
+    if (Number.isNaN(birthDate.getTime())) return null;
+    birthYear = birthDate.getUTCFullYear();
+    birthMonth = birthDate.getUTCMonth() + 1;
+    birthDay = birthDate.getUTCDate();
   }
 
   const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const year = today.getUTCFullYear();
+  const month = today.getUTCMonth() + 1;
+  const day = today.getUTCDate();
 
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+  let age = year - birthYear;
+  if (month < birthMonth || (month === birthMonth && day < birthDay)) {
     age -= 1;
   }
 
