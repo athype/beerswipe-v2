@@ -1,6 +1,6 @@
 import express from "express";
 import { env } from "../env.js";
-import { authenticateToken, generateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.js";
 import { Passkey, User } from "../models/index.js";
 import {
   clearChallenge,
@@ -55,7 +55,7 @@ const router = express.Router();
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/register-options", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/register-options", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const user = req.user;
 
@@ -142,7 +142,7 @@ router.post("/register-options", authenticateToken, requireAdmin, async (req, re
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/register-verify", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/register-verify", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const user = req.user;
     const parsedBody = passkeyRegisterVerifySchema.safeParse(req.body);
@@ -456,7 +456,7 @@ router.post("/login-verify", async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/", authenticateToken, requireAdmin, async (req, res) => {
+router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const passkeys = await Passkey.findAll({
       where: { userId: req.user.id },
@@ -510,7 +510,7 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const passkey = await Passkey.findOne({
       where: {
@@ -592,7 +592,7 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { deviceName } = req.body;
 
