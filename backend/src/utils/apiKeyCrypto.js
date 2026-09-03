@@ -8,6 +8,13 @@ export function generateApiKey() {
   return `${API_KEY_PREFIX}${randomBytes(16).toString("hex")}`;
 }
 
+// Deliberately a fast, unsalted hash (not bcrypt/argon2): the input is a
+// 128-bit random secret, where a slow KDF adds no offline-brute-force
+// protection (2^128 is infeasible at any guess rate) but would cost
+// ~50-100ms on every key-authenticated request (e.g. each kiosk sale).
+// Design spec decision 3; GitHub stores its API tokens the same way.
+// CodeQL's insufficient-password-hash rule cannot model entropy — suppressed.
+// codeql[js/insufficient-password-hash]
 export function hashApiKey(apiKey) {
   return createHash("sha256").update(apiKey).digest("hex");
 }

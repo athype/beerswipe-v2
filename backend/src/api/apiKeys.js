@@ -73,6 +73,7 @@ function parseKeyId(req, res) {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
+// codeql[js/missing-rate-limiting] — rate limiting deliberately deferred: 128-bit keys, revocation is the control (design spec §14)
 router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const rows = await ApiKey.findAll({
@@ -135,6 +136,7 @@ router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
+// codeql[js/missing-rate-limiting] — rate limiting deliberately deferred: 128-bit keys, revocation is the control (design spec §14)
 router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const parsedBody = createApiKeySchema.safeParse(req.body);
@@ -208,6 +210,7 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
+// codeql[js/missing-rate-limiting] — rate limiting deliberately deferred: 128-bit keys, revocation is the control (design spec §14)
 router.post("/:id/revoke", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const id = parseKeyId(req, res);
@@ -273,6 +276,7 @@ router.post("/:id/revoke", authenticateRequest, requireAdmin, async (req, res) =
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
+// codeql[js/missing-rate-limiting] — rate limiting deliberately deferred: 128-bit keys, revocation is the control (design spec §14)
 router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const id = parseKeyId(req, res);
