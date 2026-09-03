@@ -98,10 +98,11 @@ const form = reactive({
   expiryDate: ''
 })
 
+const isReveal = computed(() => props.created !== null)
+
 const todayString = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
   .toISOString()
   .slice(0, 10)
-// expire the moment it is created (UTC offset aside).
 const handleSubmit = () => {
   if (submitting.value) return
   submitting.value = true
