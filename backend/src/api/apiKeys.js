@@ -73,8 +73,7 @@ function parseKeyId(req, res) {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-// codeql[js/missing-rate-limiting] — rate limiting deliberately deferred: 128-bit keys, revocation is the control (design spec §14)
-router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
+router.get("/", authenticateRequest, requireAdmin, async (req, res) => { // codeql[js/missing-rate-limiting] — deferred (design spec §14)
   try {
     const rows = await ApiKey.findAll({
       include: [
