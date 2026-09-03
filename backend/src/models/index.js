@@ -1,3 +1,4 @@
+import ApiKey from "./ApiKey.js";
 import Drink from "./Drink.js";
 import Passkey from "./Passkey.js";
 import Transaction from "./Transaction.js";
@@ -18,6 +19,16 @@ User.hasMany(Passkey, {
   foreignKey: "userId",
   as: "passkeys",
   onDelete: "CASCADE",
+});
+
+User.hasMany(ApiKey, {
+  foreignKey: "createdBy",
+  as: "apiKeys",
+});
+
+ApiKey.belongsTo(User, {
+  foreignKey: "createdBy",
+  as: "creator",
 });
 
 Drink.hasMany(Transaction, {
@@ -46,6 +57,7 @@ Passkey.belongsTo(User, {
 });
 
 export {
+  ApiKey,
   Drink,
   Passkey,
   Transaction,
