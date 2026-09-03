@@ -55,6 +55,7 @@ function calculateAge(dateOfBirth) {
  *     tags: [Sales]
  *     security:
  *       - authToken: []
+ *       - apiKeyHeader: []
  *     requestBody:
  *       required: true
  *       content:

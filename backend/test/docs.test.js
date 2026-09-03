@@ -68,6 +68,11 @@ const EXPECTED_OPERATIONS = [
   ["/admin", "post"],
   ["/admin/{id}", "put"],
   ["/admin/{id}", "delete"],
+  // api keys
+  ["/api-keys", "get"],
+  ["/api-keys", "post"],
+  ["/api-keys/{id}/revoke", "post"],
+  ["/api-keys/{id}", "delete"],
 ];
 
 // Mounts the docs router exactly like production does (api/index.js mounts
