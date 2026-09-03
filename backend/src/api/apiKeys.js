@@ -49,7 +49,7 @@ function parseKeyId(req, res) {
  *     tags: [Api Keys]
  *     security:
  *       - authToken: []
- *     responses:
+ *       - apiKeyHeader: []
  *       200:
  *         description: Key list
  *         content:

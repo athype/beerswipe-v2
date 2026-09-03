@@ -77,18 +77,25 @@ export async function authenticateApiKey(req, res, next) {
 
     // Throttled touch: only write lastUsedAt when it is null or older than 60s.
     const throttleBefore = new Date(Date.now() - LAST_USED_THROTTLE_MS);
-    await ApiKey.update(
-      { lastUsedAt: new Date() },
-      {
-        where: {
-          id: apiKey.id,
-          [Op.or]: [
-            { lastUsedAt: null },
-            { lastUsedAt: { [Op.lt]: throttleBefore } },
-          ],
-        },
-      },
-    );
+    if (!apiKey.lastUsedAt || apiKey.lastUsedAt.getTime() < throttleBefore.getTime()) {
+      try {
+        await ApiKey.update(
+          { lastUsedAt: new Date() },
+          {
+            where: {
+              id: apiKey.id,
+              [Op.or]: [
+                { lastUsedAt: null },
+                { lastUsedAt: { [Op.lt]: throttleBefore } },
+              ],
+            },
+          },
+        );
+      }
+      catch (e) {
+        console.error("API key lastUsedAt update error:", e);
+      }
+    }
 
     return next();
   }
@@ -100,7 +107,6 @@ export async function authenticateApiKey(req, res, next) {
 
 // Combined guard: cookie/Bearer JWT if one is presented (today's behavior,
 // including 403 for a presented-but-invalid JWT), else X-API-Key, else 401.
-export function authenticateRequest(req, res, next) {
   const bearer = req.headers.authorization && req.headers.authorization.split(" ")[1];
   if (req.cookies?.authToken || bearer) {
     return authenticateToken(req, res, next);
