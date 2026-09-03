@@ -134,7 +134,7 @@ long-lived API key instead of a login session:
   auth endpoints).
 - A key acts as the admin who created it (`Transaction.adminId` records that
   admin), restricted to the key's scope: `admin` (everything) or `seller`
-  (sell + history only).
+  (the access of a seller account).
 - A leaked key is neutralized by revoking it on the API Keys page — do this
   immediately. Never put keys in URLs or logs; use HTTPS everywhere.
 

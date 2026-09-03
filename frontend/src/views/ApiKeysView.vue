@@ -316,11 +316,11 @@ tr.muted {
 }
 
 .btn.danger {
-  background: var(--red-8);
+  background: #e74c3c;
 }
 
 .btn.danger:hover {
-  background: var(--red-9);
+  background: #c0392b;
 }
 
 .loading,

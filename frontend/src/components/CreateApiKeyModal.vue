@@ -24,7 +24,7 @@
         <label for="apiKeyScope">Scope:</label>
         <select id="apiKeyScope" v-model="form.scope" class="form-input">
           <option value="admin">Admin — full access as the creating admin</option>
-          <option value="seller">Seller — sell and history access only</option>
+          <option value="seller">Seller — access equal to a seller account</option>
         </select>
       </div>
 

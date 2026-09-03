@@ -336,3 +336,21 @@ describe("X-API-Key end-to-end", () => {
     expect(expired.body).toEqual({ error: "Invalid API key" });
   });
 });
+
+describe("invalid key id handling", () => {
+  it("returns 400 Invalid key id for non-numeric and non-positive ids", async () => {
+    const admin = await createAdmin();
+
+    const revoke = await request(app)
+      .post("/api/v1/api-keys/not-a-number/revoke")
+      .set("Cookie", cookieFor(admin));
+    expect(revoke.status).toBe(400);
+    expect(revoke.body).toEqual({ error: "Invalid key id" });
+
+    const del = await request(app)
+      .delete("/api/v1/api-keys/0")
+      .set("Cookie", cookieFor(admin));
+    expect(del.status).toBe(400);
+    expect(del.body).toEqual({ error: "Invalid key id" });
+  });
+});
