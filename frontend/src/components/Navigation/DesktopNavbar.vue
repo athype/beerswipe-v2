@@ -39,6 +39,7 @@ const handleLogout = () => {
             <RouterLink to="/sales" class="navbar-link">Sales</RouterLink>
             <RouterLink v-if="authStore.isAdmin" to="/users" class="navbar-link">Users</RouterLink>
             <RouterLink v-if="authStore.isAdmin" to="/drinks" class="navbar-link">Drinks</RouterLink>
+            <RouterLink v-if="authStore.isAdmin" to="/api-keys" class="navbar-link">API Keys</RouterLink>
             <RouterLink to="/history" class="navbar-link">History</RouterLink>
             <RouterLink v-if="authStore.isAdmin" to="/leaderboard" class="navbar-link">Leaderboard</RouterLink>
 
