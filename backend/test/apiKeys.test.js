@@ -196,3 +196,141 @@ describe("DELETE /api/v1/api-keys/:id", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("X-API-Key end-to-end", () => {
+  it("sells with an admin-scoped key minted via the API, recording the creator", async () => {
+    const admin = await createAdmin();
+
+    const mint = await request(app)
+      .post("/api/v1/api-keys")
+      .set("Cookie", cookieFor(admin))
+      .send({ name: "E2E admin key", scope: "admin" });
+    const plaintext = mint.body.key;
+    const keyId = mint.body.apiKey.id;
+
+    const buyer = await User.create({
+      username: `e2e-buyer-${uniqueSuffix()}`,
+      credits: 100,
+      isActive: true,
+    });
+    created.users.push(buyer.id);
+    const drink = await Drink.create({
+      name: `E2E drink ${uniqueSuffix()}`,
+      price: 10,
+      stock: 10,
+      isActive: true,
+      isAlcohol: false,
+    });
+    created.drinks.push(drink.id);
+
+    // Admin-scoped key can sell AND manage keys.
+    const sell = await request(app)
+      .post("/api/v1/sales/sell")
+      .set("X-API-Key", plaintext)
+      .send({ userId: buyer.id, drinkId: drink.id, quantity: 1 });
+    expect(sell.status).toBe(200);
+    expect(JSON.stringify(sell.body)).not.toContain(plaintext);
+
+    const sale = await Transaction.findOne({
+      where: { type: "sale", userId: buyer.id },
+      order: [["id", "DESC"]],
+    });
+    created.transactions.push(sale.id);
+    expect(sale.adminId).toBe(admin.id);
+
+    const manage = await request(app).get("/api/v1/api-keys").set("X-API-Key", plaintext);
+    expect(manage.status).toBe(200);
+
+    // lastUsedAt was touched by the requests above.
+    const row = await ApiKey.findByPk(keyId);
+    expect(row.lastUsedAt).not.toBeNull();
+
+    const revoke = await request(app)
+      .post(`/api/v1/api-keys/${keyId}/revoke`)
+      .set("Cookie", cookieFor(admin));
+    expect(revoke.status).toBe(200);
+
+    // Revoked keys stop working on every route.
+    const afterRevoke = await request(app)
+      .post("/api/v1/sales/sell")
+      .set("X-API-Key", plaintext)
+      .send({ userId: buyer.id, drinkId: drink.id, quantity: 1 });
+    expect(afterRevoke.status).toBe(401);
+    expect(afterRevoke.body).toEqual({ error: "Invalid API key" });
+  });
+
+  it("restricts seller-scoped keys to seller routes (403 on management)", async () => {
+    const admin = await createAdmin();
+    const mint = await request(app)
+      .post("/api/v1/api-keys")
+      .set("Cookie", cookieFor(admin))
+      .send({ name: "E2E seller key", scope: "seller" });
+    const plaintext = mint.body.key;
+
+    const buyer = await User.create({
+      username: `e2e-buyer-${uniqueSuffix()}`,
+      credits: 100,
+      isActive: true,
+    });
+    created.users.push(buyer.id);
+    const drink = await Drink.create({
+      name: `E2E drink ${uniqueSuffix()}`,
+      price: 10,
+      stock: 10,
+      isActive: true,
+      isAlcohol: false,
+    });
+    created.drinks.push(drink.id);
+
+    const sell = await request(app)
+      .post("/api/v1/sales/sell")
+      .set("X-API-Key", plaintext)
+      .send({ userId: buyer.id, drinkId: drink.id, quantity: 1 });
+    expect(sell.status).toBe(200);
+
+    const sale = await Transaction.findOne({
+      where: { type: "sale", userId: buyer.id },
+      order: [["id", "DESC"]],
+    });
+    created.transactions.push(sale.id);
+
+    const manage = await request(app).get("/api/v1/api-keys").set("X-API-Key", plaintext);
+    expect(manage.status).toBe(403);
+    expect(manage.body).toEqual({ error: "Admin access required" });
+  });
+
+  it("rejects hard-deleted and past-expiry keys with the same 401", async () => {
+    const admin = await createAdmin();
+
+    const mint = await request(app)
+      .post("/api/v1/api-keys")
+      .set("Cookie", cookieFor(admin))
+      .send({ name: "Delete me e2e" });
+    const deletedKey = mint.body.key;
+    const deletedId = mint.body.apiKey.id;
+
+    const del = await request(app)
+      .delete(`/api/v1/api-keys/${deletedId}`)
+      .set("Cookie", cookieFor(admin));
+    expect(del.status).toBe(200);
+
+    const gone = await request(app).get("/api/v1/auth/me").set("X-API-Key", deletedKey);
+    expect(gone.status).toBe(401);
+    expect(gone.body).toEqual({ error: "Invalid API key" });
+
+    const expiredPlaintext = generateApiKey();
+    const expiredRow = await ApiKey.create({
+      name: "Expired seed",
+      scope: "admin",
+      keyHash: hashApiKey(expiredPlaintext),
+      prefix: apiKeyPrefix(expiredPlaintext),
+      createdBy: admin.id,
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+    created.keys.push(expiredRow.id);
+
+    const expired = await request(app).get("/api/v1/auth/me").set("X-API-Key", expiredPlaintext);
+    expect(expired.status).toBe(401);
+    expect(expired.body).toEqual({ error: "Invalid API key" });
+  });
+});
