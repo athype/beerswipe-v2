@@ -207,6 +207,7 @@ describe("X-API-Key end-to-end", () => {
       .send({ name: "E2E admin key", scope: "admin" });
     const plaintext = mint.body.key;
     const keyId = mint.body.apiKey.id;
+    created.keys.push(keyId);
 
     const buyer = await User.create({
       username: `e2e-buyer-${uniqueSuffix()}`,
@@ -266,6 +267,7 @@ describe("X-API-Key end-to-end", () => {
       .set("Cookie", cookieFor(admin))
       .send({ name: "E2E seller key", scope: "seller" });
     const plaintext = mint.body.key;
+    created.keys.push(mint.body.apiKey.id);
 
     const buyer = await User.create({
       username: `e2e-buyer-${uniqueSuffix()}`,
