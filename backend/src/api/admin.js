@@ -1,6 +1,6 @@
 import express from "express";
 import { Op } from "sequelize";
-import { authenticateToken, generateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.js";
 import { User } from "../models/index.js";
 
 const router = express.Router();
@@ -45,7 +45,7 @@ const router = express.Router();
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/", authenticateToken, requireAdmin, async (req, res) => {
+router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const admins = await User.findAll({
       where: {
@@ -102,7 +102,7 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/profile", authenticateToken, requireAdmin, async (req, res) => {
+router.get("/profile", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const admin = await User.findByPk(req.user.id, {
       attributes: ["id", "username", "userType", "createdAt", "updatedAt"],
@@ -183,7 +183,7 @@ router.get("/profile", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.put("/profile", authenticateToken, requireAdmin, async (req, res) => {
+router.put("/profile", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, currentPassword } = req.body;
 
@@ -299,7 +299,7 @@ router.put("/profile", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, userType = "admin" } = req.body;
 
@@ -404,7 +404,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, userType } = req.body;
     const adminId = req.params.id;
@@ -514,7 +514,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const adminId = req.params.id;
 

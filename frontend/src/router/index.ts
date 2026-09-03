@@ -7,6 +7,7 @@ import DashboardView from '../views/DashboardView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
 import UsersView from '../views/UsersView.vue'
 import DrinksView from '../views/DrinksView.vue'
+import ApiKeysView from '../views/ApiKeysView.vue'
 import SalesView from '../views/SalesView.vue'
 import TransactionHistoryView from '../views/TransactionHistoryView.vue'
 import LeaderboardView from '../views/LeaderboardView.vue'
@@ -53,6 +54,12 @@ const routes: RouteRecordRaw[] = [
     path: '/drinks',
     name: 'drinks',
     component: DrinksView,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/api-keys',
+    name: 'api-keys',
+    component: ApiKeysView,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {

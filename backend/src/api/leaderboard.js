@@ -1,7 +1,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateRequest } from "../middleware/auth.js";
 import { Transaction, User } from "../models/index.js";
 
 const router = express.Router();
@@ -78,7 +78,7 @@ function getMonthDateRange(year, month) {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/monthly", authenticateToken, async (req, res) => {
+router.get("/monthly", authenticateRequest, async (req, res) => {
   try {
     const { year, month } = req.query;
 
@@ -188,7 +188,7 @@ router.get("/monthly", authenticateToken, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/rank/:userId", authenticateToken, async (req, res) => {
+router.get("/rank/:userId", authenticateRequest, async (req, res) => {
   try {
     const { userId } = req.params;
     const { year, month } = req.query;
