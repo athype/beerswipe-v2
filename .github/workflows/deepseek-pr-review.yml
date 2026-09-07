@@ -1,0 +1,22 @@
+name: Code Review
+on:
+  pull_request_target:
+    types:
+      - opened # Triggers when a PR is opened
+      - reopened # Triggers when a PR is reopened
+      - synchronize # Triggers when a commit is pushed to the PR
+
+permissions:
+  pull-requests: write
+
+jobs:
+  setup-deepseek-review:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    name: Code Review
+    steps:
+      - name: DeepSeek Code Review
+        uses: hustcer/deepseek-review@eccde2e9781008d795e366b951e313e37af88dd5
+        with:
+          chat-token: ${{ secrets.CHAT_TOKEN }}
