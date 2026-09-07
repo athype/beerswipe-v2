@@ -2,9 +2,6 @@ name: Code Review
 on:
   pull_request:
     types: [opened, reopened, synchronize]
-  issue_comment:
-    types: [created]
-    if: github.event.issue.pull_request
 
 
 permissions:
@@ -26,5 +23,3 @@ jobs:
         uses: hustcer/deepseek-review@eccde2e9781008d795e366b951e313e37af88dd5
         with:
           chat-token: ${{ secrets.CHAT_TOKEN }}
-          watch-mention: "@github-actions"
-          allowed-associations: "OWNER,MEMBER,COLLABORATOR"
