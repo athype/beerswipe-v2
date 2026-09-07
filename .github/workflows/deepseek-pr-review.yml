@@ -1,21 +1,23 @@
 name: Code Review
 on:
-  pull_request_target:
-    types:
-      - opened
-      - reopened
-      - synchronize
+  pull_request:
+    types: [opened, reopened, synchronize]
   issue_comment:
-    types:
-      - created # Triggers when a comment is created on a PR
+    types: [created]
+    if: github.event.issue.pull_request
 
 
 permissions:
   pull-requests: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
 
 jobs:
   setup-deepseek-review:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    if: github.event_name == 'pull_request_target' || (github.event_name == 'issue_comment' && github.event.issue.pull_request)
     timeout-minutes: 30
     runs-on: ubuntu-latest
     name: Code Review
