@@ -3,18 +3,16 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
-
 permissions:
   pull-requests: write
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   setup-deepseek-review:
-    if: github.event_name == 'pull_request_target' || (github.event_name == 'issue_comment' && github.event.issue.pull_request)
     timeout-minutes: 30
     runs-on: ubuntu-latest
     name: Code Review
