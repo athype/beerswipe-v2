@@ -108,8 +108,8 @@ export async function authenticateApiKey(req, res, next) {
 // Combined guard: cookie/Bearer JWT if one is presented (today's behavior,
 // including 403 for a presented-but-invalid JWT), else X-API-Key, else 401.
 export function authenticateRequest(req, res, next) {
-  const bearer = req.headers.authorization && req.headers.authorization.split(" ")[1];
-  if (req.cookies?.authToken || bearer) {
+  const hasAuthorizationHeader = typeof req.headers.authorization === "string" && req.headers.authorization.length > 0;
+  if (req.cookies?.authToken || hasAuthorizationHeader) {
     return authenticateToken(req, res, next);
   }
   if (req.headers["x-api-key"]) {
