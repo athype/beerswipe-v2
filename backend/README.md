@@ -120,3 +120,32 @@ Docs are enabled by default outside production. To control them explicitly, set 
 - `POST /api/v1/sales/add-credits` - Add credits to user
 - `GET /api/v1/sales/transactions` - Get transaction history
 - `GET /api/v1/sales/stats` - Get sales statistics
+
+## API Keys
+
+Programmatic clients (the kiosk, third-party integrations) authenticate with a
+long-lived API key instead of a login session:
+
+- Create keys in the web UI on the **API Keys** page (admin only). The
+  plaintext key (`bsk_…`) is shown **exactly once** at creation and is only
+  stored as a SHA-256 hash — a lost key must be revoked and recreated.
+- Send it on every request: `X-API-Key: bsk_…`. Any endpoint that accepts the
+  `authToken` cookie also accepts `X-API-Key` (except the unauthenticated
+  auth endpoints).
+- A key acts as the admin who created it (`Transaction.adminId` records that
+  admin), restricted to the key's scope: `admin` (everything) or `seller`
+  (the access of a seller account).
+- A leaked key is neutralized by revoking it on the API Keys page — do this
+  immediately. Never put keys in URLs or logs; use HTTPS everywhere.
+
+Management endpoints (admin only, cookie or admin-scoped key):
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/v1/api-keys` | List keys (name, masked prefix, scope, creator, status) |
+| POST | `/api/v1/api-keys` | Create a key: `{ name, scope?, expiresAt? }` → returns the plaintext `key` once |
+| POST | `/api/v1/api-keys/:id/revoke` | Revoke a key (soft delete) |
+| DELETE | `/api/v1/api-keys/:id` | Hard-delete a key row |
+
+Provision one key per kiosk ("Kiosk bar", "Kiosk upstairs") so each device can
+be revoked individually; the kiosk reads its key from its own config.

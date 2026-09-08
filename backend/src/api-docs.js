@@ -213,6 +213,50 @@ const passkeySchema = {
   required: ["id", "createdAt"],
 };
 
+const apiKeySchema = {
+  type: "object",
+  description: "API key metadata (plaintext is shown once at creation and never stored)",
+  properties: {
+    id: { type: "integer" },
+    name: { type: "string", maxLength: 50 },
+    prefix: { type: "string", description: "First 12 chars, e.g. \"bsk_ab12cd34\"" },
+    scope: { type: "string", enum: ["admin", "seller"] },
+    createdBy: { type: "integer", description: "User id of the creating admin" },
+    isRevoked: { type: "boolean" },
+    expiresAt: { type: "string", format: "date-time", nullable: true },
+    lastUsedAt: { type: "string", format: "date-time", nullable: true },
+    createdAt: { type: "string", format: "date-time" },
+  },
+  required: ["id", "name", "prefix", "scope", "createdBy", "isRevoked", "expiresAt", "lastUsedAt", "createdAt"],
+};
+
+const apiKeyListItemSchema = {
+  type: "object",
+  description: "API key list row with the creating admin joined",
+  properties: {
+    ...apiKeySchema.properties,
+    creator: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        username: { type: "string" },
+      },
+      required: ["id", "username"],
+    },
+  },
+  required: [...apiKeySchema.required, "creator"],
+};
+
+const createApiKeyRequestSchema = {
+  type: "object",
+  properties: {
+    name: { type: "string", maxLength: 50 },
+    scope: { type: "string", enum: ["admin", "seller"], default: "admin" },
+    expiresAt: { type: "string", format: "date-time", description: "Optional; must be in the future" },
+  },
+  required: ["name"],
+};
+
 const schemas = {
   Error: errorSchema,
   ServerError: serverErrorSchema,
@@ -231,6 +275,9 @@ const schemas = {
   SellRequest: sellRequestSchema,
   Transaction: transactionSchema,
   Passkey: passkeySchema,
+  ApiKey: apiKeySchema,
+  ApiKeyListItem: apiKeyListItemSchema,
+  CreateApiKeyRequest: createApiKeyRequestSchema,
 };
 
 const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
@@ -248,7 +295,11 @@ const spec = swaggerJsdoc({
         + "Authentication is a `authToken` httpOnly cookie set by `POST /auth/login` "
         + "(or the passkey flow). Since the cookie is httpOnly, call the login endpoint "
         + "from this UI first — same-origin requests then carry the cookie automatically "
-        + "and protected endpoints can be executed with \"Try it out\".",
+        + "and protected endpoints can be executed with \"Try it out\"."
+        + "\n\nAlternatively, programmatic clients authenticate with an "
+        + "`X-API-Key` header instead of the cookie — see `POST /api-keys` "
+        + "to mint one. Any endpoint accepting the `authToken` cookie also "
+        + "accepts `X-API-Key`, except the unauthenticated auth endpoints.",
     },
     servers: [{ url: "/api/v1" }],
     tags: [
@@ -259,6 +310,7 @@ const spec = swaggerJsdoc({
       { name: "Leaderboard", description: "Monthly consumption rankings" },
       { name: "Passkeys", description: "WebAuthn passkey registration and login" },
       { name: "Admin", description: "Admin account management" },
+      { name: "Api Keys", description: "Long-lived API keys for programmatic clients" },
     ],
     components: {
       securitySchemes: {
@@ -267,6 +319,12 @@ const spec = swaggerJsdoc({
           in: "cookie",
           name: "authToken",
           description: "httpOnly session cookie set by POST /auth/login (24h expiry)",
+        },
+        apiKeyHeader: {
+          type: "apiKey",
+          in: "header",
+          name: "X-API-Key",
+          description: "Long-lived API key created on the admin /api-keys page. Every endpoint that accepts the authToken cookie also accepts X-API-Key; the key acts as the admin who created it, restricted to the key's scope.",
         },
       },
       schemas,

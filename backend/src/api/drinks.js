@@ -3,7 +3,7 @@ import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
-import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateRequest, requireAdmin } from "../middleware/auth.js";
 import { Drink } from "../models/index.js";
 
 const router = express.Router();
@@ -54,7 +54,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
+router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { category, inStock } = req.query;
 
@@ -255,7 +255,7 @@ router.get("/:id", async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { name, description, price, stock = 0, category = "beverage", isAlcohol = false } = req.body;
 
@@ -346,7 +346,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { name, description, price, stock, category, isActive, isAlcohol } = req.body;
 
@@ -434,7 +434,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/:id/add-stock", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/:id/add-stock", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { quantity } = req.body;
 
@@ -530,7 +530,7 @@ router.post("/:id/add-stock", authenticateToken, requireAdmin, async (req, res) 
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFile"), async (req, res) => {
+router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csvFile"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "CSV file is required" });
@@ -666,7 +666,7 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const drink = await Drink.findByPk(req.params.id);
     if (!drink) {

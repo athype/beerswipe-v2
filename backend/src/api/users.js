@@ -3,7 +3,7 @@ import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
-import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
+import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { User } from "../models/index.js";
 
 const router = express.Router();
@@ -59,7 +59,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/", authenticateToken, requireAdminOrSeller, async (req, res) => {
+router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
     const { type, search, page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
@@ -138,7 +138,7 @@ router.get("/", authenticateToken, requireAdminOrSeller, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
+router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { type } = req.query;
 
@@ -225,7 +225,7 @@ router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.get("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
       attributes: { exclude: ["password"] },
@@ -300,7 +300,7 @@ router.get("/:id", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, credits = 0, dateOfBirth, userType = "member" } = req.body;
 
@@ -410,7 +410,7 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/:id/add-credits", authenticateToken, requireAdmin, async (req, res) => {
+router.post("/:id/add-credits", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { amount } = req.body;
 
@@ -569,7 +569,7 @@ function parseFlexibleDate(dateStr) {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFile"), async (req, res) => {
+router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csvFile"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "CSV file is required" });
@@ -722,7 +722,7 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
+router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, dateOfBirth, userType, isActive } = req.body;
 

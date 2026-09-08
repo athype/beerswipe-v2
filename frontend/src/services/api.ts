@@ -130,4 +130,14 @@ export const leaderboardAPI = {
   getUserRank: (userId: number, year: types.UserRankQuery['year'], month: types.UserRankQuery['month']) => api.get<types.UserRankResponse>(`/leaderboard/rank/${userId}`, { params: { year, month } }),
 };
 
+export const apiKeysAPI = {
+  getAll: () => api.get<types.ListApiKeysResponse>('/api-keys'),
+
+  create: (data: types.CreateApiKeyRequest) => api.post<types.CreateApiKeyResponse>('/api-keys', data),
+
+  revoke: (id: number) => api.post<types.RevokeApiKeyResponse>(`/api-keys/${id}/revoke`),
+
+  remove: (id: number) => api.delete<types.RevokeApiKeyResponse>(`/api-keys/${id}`),
+};
+
 export default api;

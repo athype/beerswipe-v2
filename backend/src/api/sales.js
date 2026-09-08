@@ -1,7 +1,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
-import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
+import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { Drink, Transaction, User } from "../models/index.js";
 import { sellRequestSchema } from "../validation/contracts.js";
 
@@ -55,6 +55,7 @@ function calculateAge(dateOfBirth) {
  *     tags: [Sales]
  *     security:
  *       - authToken: []
+ *       - apiKeyHeader: []
  *     requestBody:
  *       required: true
  *       content:
@@ -124,7 +125,7 @@ function calculateAge(dateOfBirth) {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
+router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   let transaction;
 
   try {
@@ -333,7 +334,7 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res) => {
+router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
     const {
       userId,
@@ -472,7 +473,7 @@ router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res)
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) => {
+router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const whereClause = {};
@@ -616,7 +617,7 @@ router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) =
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, async (req, res) => {
+router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   const dbTransaction = await sequelize.transaction();
 
   try {

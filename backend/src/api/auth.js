@@ -1,6 +1,6 @@
 import express from "express";
 import { env } from "../env.js";
-import { authenticateToken, generateToken } from "../middleware/auth.js";
+import { authenticateRequest, generateToken } from "../middleware/auth.js";
 import { User } from "../models/index.js";
 import { loginRequestSchema } from "../validation/contracts.js";
 
@@ -119,7 +119,7 @@ router.post("/login", async (req, res) => {
  *       500:
  *         $ref: "#/components/responses/InternalError"
  */
-router.get("/me", authenticateToken, async (req, res) => {
+router.get("/me", authenticateRequest, async (req, res) => {
   try {
     res.json({
       user: {
