@@ -678,8 +678,9 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  *             type: object
  *             properties:
  *               username: { type: string, maxLength: 50 }
- *               dateOfBirth: { type: string, format: date, nullable: true }
+ *               dateOfBirth: { type: string, format: date, nullable: true, description: Set to null to clear the stored date }
  *               userType: { type: string, enum: [member, non-member] }
+ *               userCredits: { type: integer, minimum: 0, description: Set the user's credit balance directly }
  *               isActive: { type: boolean }
  *     responses:
  *       200:
@@ -700,7 +701,9 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  *                     userType: { type: string }
  *                     isActive: { type: boolean }
  *       400:
- *         description: Cannot modify admin or seller users through this endpoint
+ *         description: >
+ *           Cannot modify admin or seller users through this endpoint, or the
+ *           provided credits value is invalid
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }
@@ -724,7 +727,11 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  */
 router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const { username, dateOfBirth, userType, isActive } = req.body;
+    const { username, dateOfBirth, userType, userCredits, isActive } = req.body;
+
+    if (userCredits !== undefined && (!Number.isInteger(userCredits) || userCredits < 0)) {
+      return res.status(400).json({ error: "Credits must be a non-negative integer" });
+    }
 
     const user = await User.findByPk(req.params.id);
     if (!user) {
@@ -738,8 +745,9 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
 
     const updatedUser = await user.update({
       username: username || user.username,
-      dateOfBirth: dateOfBirth || user.dateOfBirth,
+      dateOfBirth: dateOfBirth !== undefined ? dateOfBirth : user.dateOfBirth,
       userType: userType || user.userType,
+      credits: userCredits !== undefined ? userCredits : user.credits,
       isActive: isActive !== undefined ? isActive : user.isActive,
     });
 

@@ -39,7 +39,7 @@ export const useUsersStore = defineStore('users', {
     async fetchUsers(params: ListUsersQuery = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
-      
+
       try {
         const response = await usersAPI.getAll(params);
         this.users = response.data.users;
@@ -57,7 +57,7 @@ export const useUsersStore = defineStore('users', {
     async createUser(userData: CreateUserRequest): Promise<StoreActionResult<CreateUserResponse>> {
       this.loading = true;
       this.error = null;
-      
+
       try {
         const response = await usersAPI.create(userData);
         await this.fetchUsers(); // Refresh the list
@@ -74,15 +74,15 @@ export const useUsersStore = defineStore('users', {
     async addCredits(userId: number, amount: number): Promise<StoreActionResult<AddCreditsResponse>> {
       this.loading = true;
       this.error = null;
-      
+
       try {
         const response = await usersAPI.addCredits(userId, amount);
-        
+
         const userIndex = this.users.findIndex(u => u.id === userId);
         if (userIndex !== -1) {
           this.users[userIndex].credits = response.data.user.credits;
         }
-        
+
         return { success: true, data: response.data };
       } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: string } } };
@@ -96,7 +96,7 @@ export const useUsersStore = defineStore('users', {
     async importCSV(formData: FormData): Promise<StoreActionResult<ImportUsersCsvResponse>> {
       this.loading = true;
       this.error = null;
-      
+
       try {
         const response = await usersAPI.importCSV(formData);
         await this.fetchUsers(); // Refresh the list
@@ -113,26 +113,26 @@ export const useUsersStore = defineStore('users', {
     async exportCSV(params: Record<string, unknown> = {}): Promise<StoreActionResult> {
       this.loading = true;
       this.error = null;
-      
+
       try {
         const response = await usersAPI.exportCSV(params);
-        
+
         const blob = new Blob([response.data], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        
+
         const today = new Date().toISOString().split('T')[0];
-        const filename = params.type 
+        const filename = params.type
           ? `users-${params.type}-export-${today}.csv`
           : `users-export-${today}.csv`;
-        
+
         link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
-        
+
         return { success: true };
       } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: string } } };
@@ -146,16 +146,16 @@ export const useUsersStore = defineStore('users', {
     async updateUser(userId: number, userData: UpdateUserRequest): Promise<StoreActionResult<UpdateUserResponse>> {
       this.loading = true;
       this.error = null;
-      
+
       try {
         const response = await usersAPI.update(userId, userData);
-        
+
         // Update the user in our local state
         const userIndex = this.users.findIndex(u => u.id === userId);
         if (userIndex !== -1) {
           this.users[userIndex] = { ...this.users[userIndex], ...response.data.user };
         }
-        
+
         return { success: true, data: response.data };
       } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: string } } };
