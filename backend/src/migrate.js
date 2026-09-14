@@ -85,6 +85,33 @@ const MIGRATIONS = [
       return true;
     },
   },
+  {
+    name: "2026-09-14/transactions-credit-adjustment-type",
+    up: async (queryInterface) => {
+      // sync() only reshapes the schema when NODE_ENV is development, so in
+      // production and in tests the enum value must be added here. On a fresh
+      // database sync() has already created the type with the value in it.
+      const [typeRows] = await queryInterface.sequelize.query(
+        "SELECT 1 FROM pg_type WHERE typname = 'enum_Transactions_type';",
+      );
+      if (typeRows.length === 0) {
+        return false;
+      }
+
+      const [valueRows] = await queryInterface.sequelize.query(
+        "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+        + "WHERE t.typname = 'enum_Transactions_type' AND e.enumlabel = 'credit_adjustment';",
+      );
+      if (valueRows.length > 0) {
+        return false;
+      }
+
+      await queryInterface.sequelize.query(
+        "ALTER TYPE \"enum_Transactions_type\" ADD VALUE IF NOT EXISTS 'credit_adjustment';",
+      );
+      return true;
+    },
+  },
 ];
 
 export async function runMigrations() {

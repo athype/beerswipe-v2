@@ -210,8 +210,8 @@ const handleUpdateUser = async (userData) => {
   const result = await usersStore.updateUser(selectedUser.value.id, {
     username: userData.username,
     userType: userData.userType,
-    userCredits: userData.credits,
-    dateOfBirth: userData.dateOfBirth || null,
+    ...(userData.credits !== selectedUser.value.credits ? { userCredits: userData.credits } : {}),
+    ...(userData.dateOfBirth !== undefined ? { dateOfBirth: userData.dateOfBirth || null } : {}),
     isActive: userData.isActive
   })
 

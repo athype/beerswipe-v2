@@ -19,8 +19,8 @@
             class="form-input"
           />
           <div v-if="showUserSuggestions && userSuggestions.length > 0" class="user-suggestions">
-            <div 
-              v-for="user in userSuggestions" 
+            <div
+              v-for="user in userSuggestions"
               :key="user.id"
               class="user-suggestion"
               @mousedown="selectUser(user)"
@@ -31,16 +31,17 @@
           </div>
         </div>
       </div>
-      
+
       <div class="filter-group">
         <label for="typeFilter">Type:</label>
         <select id="typeFilter" v-model="filters.type" @change="applyFilters">
           <option value="">All Types</option>
-          <option value="sale">Sales</option>
-          <option value="credit_addition">Credit Additions</option>
+          <option v-for="option in TRANSACTION_TYPE_FILTER_OPTIONS" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
         </select>
       </div>
-      
+
       <div class="filter-group">
         <label for="startDate">Start Date:</label>
         <input
@@ -51,7 +52,7 @@
           class="form-input"
         />
       </div>
-      
+
       <div class="filter-group">
         <label for="endDate">End Date:</label>
         <input
@@ -62,7 +63,7 @@
           class="form-input"
         />
       </div>
-      
+
       <button @click="clearFilters" class="btn">Clear Filters</button>
     </div>
 
@@ -89,7 +90,7 @@
             <td>{{ formatDateTime(transaction.transactionDate) }}</td>
             <td>
               <span class="transaction-type" :class="transaction.type">
-                {{ transaction.type === 'sale' ? '🛒 Sale' : '💰 Credit Addition' }}
+                {{ transactionTypeLabel(transaction.type) }}
               </span>
             </td>
             <td>
@@ -103,8 +104,8 @@
             <td>{{ transaction.quantity || '-' }}</td>
             <td>{{ transaction.admin?.username }}</td>
             <td>
-              <button 
-                @click="openUndoModal(transaction)" 
+              <button
+                @click="openUndoModal(transaction)"
                 class="btn small undo-btn"
                 title="Undo Transaction"
               >
@@ -118,7 +119,7 @@
 
     <!-- Pagination -->
     <div v-if="salesStore.pagination.pages > 1" class="pagination">
-      <button 
+      <button
         @click="changePage(salesStore.pagination.page - 1)"
         :disabled="salesStore.pagination.page === 1"
         class="btn small"
@@ -128,7 +129,7 @@
       <span>
         Page {{ salesStore.pagination.page }} of {{ salesStore.pagination.pages }}
       </span>
-      <button 
+      <button
         @click="changePage(salesStore.pagination.page + 1)"
         :disabled="salesStore.pagination.page === salesStore.pagination.pages"
         class="btn small"
@@ -145,17 +146,17 @@
           <h3>Total Transactions</h3>
           <p class="stat-number">{{ salesStore.pagination.total }}</p>
         </div>
-        
+
         <div class="stat-card">
           <h3>Sales Count</h3>
           <p class="stat-number">{{ salesCount }}</p>
         </div>
-        
+
         <div class="stat-card">
           <h3>Credit Additions</h3>
           <p class="stat-number">{{ creditAdditionsCount }}</p>
         </div>
-        
+
         <div class="stat-card">
           <h3>Total Revenue</h3>
           <p class="stat-number">{{ totalRevenue }} credits</p>
@@ -179,6 +180,11 @@ import { useSalesStore } from '../stores/sales'
 import { useUsersStore } from '../stores/users'
 import { useNotifications } from '@/composables/useNotifications'
 import UndoTransactionModal from '../components/UndoTransactionModal.vue'
+import {
+  TRANSACTION_TYPE_FILTER_OPTIONS,
+  transactionTypeLabel,
+  undoCreditDelta,
+} from '@/utils/transactionTypes'
 
 const salesStore = useSalesStore()
 const usersStore = useUsersStore()
@@ -199,10 +205,10 @@ const selectedTransaction = ref(null)
 let searchTimeout = null
 const debouncedSearch = async () => {
   clearTimeout(searchTimeout)
-  
+
   if (filters.userSearch.length >= 2) {
     try {
-      const result = await usersStore.fetchUsers({ 
+      const result = await usersStore.fetchUsers({
         search: filters.userSearch,
         limit: 10
       })
@@ -215,7 +221,7 @@ const debouncedSearch = async () => {
   } else {
     userSuggestions.value = []
   }
-  
+
   searchTimeout = setTimeout(() => {
     applyFilters()
   }, 500)
@@ -238,13 +244,13 @@ const getUserIdFromSearch = async () => {
   if (!filters.userSearch.trim()) {
     return null
   }
-  
+
   try {
-    const userSearchResult = await usersStore.fetchUsers({ 
+    const userSearchResult = await usersStore.fetchUsers({
       search: filters.userSearch,
       limit: 100
     })
-    
+
     if (userSearchResult.success && usersStore.users.length > 0) {
       return usersStore.users[0].id
     } else {
@@ -272,39 +278,39 @@ const totalRevenue = computed(() => {
 
 const applyFilters = async () => {
   const params = {}
-  
+
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
     params.userId = userId
   }
-  
+
   if (filters.type) {
     params.type = filters.type
   }
-  
+
   if (filters.startDate) {
     params.startDate = filters.startDate
   }
-  
+
   if (filters.endDate) {
     params.endDate = filters.endDate
   }
-  
+
   await salesStore.fetchTransactionHistory(params)
 }
 
 const changePage = async (page) => {
   const params = { page }
-  
+
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
     params.userId = userId
   }
-  
+
   if (filters.type) params.type = filters.type
   if (filters.startDate) params.startDate = filters.startDate
   if (filters.endDate) params.endDate = filters.endDate
-  
+
   await salesStore.fetchTransactionHistory(params)
 }
 
@@ -331,15 +337,17 @@ const closeUndoModal = () => {
 const handleUndoTransaction = async (transaction) => {
   try {
     const result = await salesStore.undoTransaction(transaction.id)
-    
+
     if (result.success) {
       closeUndoModal()
+      const delta = undoCreditDelta(transaction)
+      const amount = Math.abs(delta)
       showSuccess(`Transaction undone successfully! ${
-        transaction.type === 'sale' 
-          ? `${transaction.amount} credits restored to ${transaction.user?.username}` 
-          : `${transaction.amount} credits deducted from ${transaction.user?.username}`
+        delta >= 0
+          ? `${amount} credits restored to ${transaction.user?.username}`
+          : `${amount} credits deducted from ${transaction.user?.username}`
       }`)
-      
+
       await applyFilters()
     } else {
       showError(result.error || 'Failed to undo transaction')
@@ -520,7 +528,14 @@ th {
 }
 
 .transaction-type.credit_addition {
-  background: var(--color-green);
+  background: var(--green-7);
+  color: var(--color-white);
+}
+
+/* Manual admin corrections get their own hue so they stand out from the
+   sale/credit-addition greens when auditing a balance. */
+.transaction-type.credit_adjustment {
+  background: var(--green-5);
   color: var(--color-white);
 }
 
@@ -637,15 +652,15 @@ th {
   .history-filters {
     grid-template-columns: 1fr;
   }
-  
+
   .transactions-table {
     overflow-x: auto;
   }
-  
+
   table {
     min-width: 800px;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr 1fr;
   }

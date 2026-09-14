@@ -183,14 +183,19 @@ const sellRequestSchema = {
 
 const transactionSchema = {
   type: "object",
-  description: "An audit-trail row for a sale or credit addition",
+  description: "An audit-trail row for a sale, credit addition, or credit adjustment",
   properties: {
     id: { type: "integer" },
     userId: { type: "integer" },
     drinkId: { type: "integer", nullable: true },
     adminId: { type: "integer", nullable: true, description: "Crediting admin, when present" },
-    type: { type: "string", enum: ["sale", "credit_addition"] },
-    amount: { type: "integer", description: "Credits involved (negative for sales)" },
+    type: { type: "string", enum: ["sale", "credit_addition", "credit_adjustment"] },
+    amount: {
+      type: "integer",
+      description:
+        "Credits involved. Positive for sales and credit additions; for credit_adjustment "
+        + "the signed net change, negative when the edit lowered the balance.",
+    },
     quantity: { type: "integer", nullable: true, description: "Number of drinks, for sales" },
     description: { type: "string", nullable: true },
     transactionDate: { type: "string", format: "date-time" },

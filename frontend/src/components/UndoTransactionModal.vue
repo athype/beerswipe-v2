@@ -7,56 +7,61 @@
   >
     <div class="undo-content">
       <div class="warning-icon">⚠️</div>
-      
+
       <h3 class="warning-title">Are you sure you want to undo this transaction?</h3>
-      
+
       <div class="transaction-details">
         <div class="detail-row">
           <span class="label">Type:</span>
           <span class="value transaction-type" :class="transaction?.type">
-            {{ transaction?.type === 'sale' ? '🛒 Sale' : '💰 Credit Addition' }}
+            {{ transactionTypeLabel(transaction?.type) }}
           </span>
         </div>
-        
+
         <div class="detail-row">
           <span class="label">User:</span>
           <span class="value">{{ transaction?.user?.username }}</span>
         </div>
-        
+
         <div class="detail-row">
           <span class="label">Amount:</span>
           <span class="value amount">{{ transaction?.amount }} credits</span>
         </div>
-        
+
         <div v-if="transaction?.type === 'sale'" class="detail-row">
           <span class="label">Quantity:</span>
           <span class="value">{{ transaction?.quantity }}</span>
         </div>
-        
+
         <div class="detail-row">
           <span class="label">Description:</span>
           <span class="value">{{ transaction?.description }}</span>
         </div>
-        
+
         <div class="detail-row">
           <span class="label">Date:</span>
           <span class="value">{{ formatDateTime(transaction?.transactionDate) }}</span>
         </div>
       </div>
-      
+
       <div class="undo-effects">
         <h4>This action will:</h4>
-        <ul v-if="transaction?.type === 'sale'">
-          <li>Restore {{ transaction?.amount }} credits to {{ transaction?.user?.username }}</li>
-          <li v-if="transaction?.drink">Restore {{ transaction?.quantity }} units to {{ transaction?.drink?.name }} inventory</li>
-          <li>Permanently remove this transaction from the system</li>
-        </ul>
-        <ul v-else-if="transaction?.type === 'credit_addition'">
-          <li>Deduct {{ transaction?.amount }} credits from {{ transaction?.user?.username }}</li>
+        <ul>
+          <!-- Direction comes from undoCreditDelta so the wording cannot lie:
+               a credit adjustment may have raised or lowered the balance. -->
+          <li v-if="creditEffect > 0">
+            Restore {{ creditEffect }} credits to {{ transaction?.user?.username }}
+          </li>
+          <li v-else-if="creditEffect < 0">
+            Deduct {{ -creditEffect }} credits from {{ transaction?.user?.username }}
+          </li>
+          <li v-if="transaction?.type === 'sale' && transaction?.drink">
+            Restore {{ transaction?.quantity }} units to {{ transaction?.drink?.name }} inventory
+          </li>
           <li>Permanently remove this transaction from the system</li>
         </ul>
       </div>
-      
+
       <div class="warning-message">
         <strong>This action cannot be undone!</strong>
       </div>
@@ -65,9 +70,9 @@
     <template #footer>
       <div class="modal-actions">
         <button type="button" @click="close" class="btn btn-secondary">Cancel</button>
-        <button 
-          type="button" 
-          @click="confirmUndo" 
+        <button
+          type="button"
+          @click="confirmUndo"
           :disabled="isLoading"
           class="btn btn-danger"
         >
@@ -79,8 +84,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Modal from './Modal.vue'
+import { transactionTypeLabel, undoCreditDelta } from '@/utils/transactionTypes'
 
 const props = defineProps({
   show: {
@@ -96,6 +102,9 @@ const props = defineProps({
 const emit = defineEmits(['close', 'confirm'])
 
 const isLoading = ref(false)
+
+// Signed change undoing this transaction makes to the user's balance.
+const creditEffect = computed(() => undoCreditDelta(props.transaction))
 
 const close = () => {
   emit('close')
@@ -183,17 +192,22 @@ watch(() => props.show, (newVal) => {
 }
 
 .transaction-type.sale {
-  background: var(--color-teal);
+  background: var(--green-3);
   color: var(--color-white);
 }
 
 .transaction-type.credit_addition {
-  background: var(--color-green);
+  background: var(--green-7);
+  color: var(--color-white);
+}
+
+.transaction-type.credit_adjustment {
+  background: var(--green-5);
   color: var(--color-white);
 }
 
 .amount {
-  color: var(--color-teal);
+  color: var(--green-11);
   font-weight: bold;
 }
 
