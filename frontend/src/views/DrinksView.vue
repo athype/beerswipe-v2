@@ -31,7 +31,7 @@
       <select v-model="filterStock" @change="searchDrinks" class="filter-select">
         <option value="">All Stock</option>
         <option value="in-stock">In Stock</option>
-        <option value="low-stock">Low Stock (≤5)</option>
+        <option value="low-stock">Low Stock (≤{{ LOW_STOCK_THRESHOLD }})</option>
         <option value="out-of-stock">Out of Stock</option>
       </select>
     </div>
@@ -69,7 +69,7 @@
             </div>
             <div class="detail">
               <span class="label">Stock:</span>
-              <span class="value" :class="{ 'low-stock': drink.stock <= 5, 'out-of-stock': drink.stock === 0 }">
+              <span class="value" :class="`value--${stockLevel(drink)}`">
                 {{ drink.stock }}
               </span>
             </div>
@@ -155,6 +155,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
+import { LOW_STOCK_THRESHOLD, stockLevel } from '@/utils/stock'
 import { useDrinksStore } from '../stores/drinks'
 import StockCsvImportModal from '../components/StockCsvImportModal.vue'
 import StockCsvExportModal from '../components/StockCsvExportModal.vue'
@@ -476,11 +477,11 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.value.low-stock {
+.value--low {
   color: #f39c12;
 }
 
-.value.out-of-stock {
+.value--out {
   color: #e74c3c;
 }
 
