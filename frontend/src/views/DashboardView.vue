@@ -75,22 +75,24 @@
         <h3 class="qa-sign-title">Stock at a glance</h3>
       </div>
       <div class="card-body">
-        <div v-for="group in stockGroups" :key="group.key" class="stock-group">
-          <div class="card-header">
-            <h3 class="card-title">{{ group.label }}</h3>
-          </div>
-          <div class="low-stock-grid">
-            <div
-              v-for="drink in drinksStore.drinks.filter(d => d.isActive && stockLevel(d) === group.key)"
-              :key="drink.id"
-              class="low-stock-item"
-              :class="`low-stock-item--${stockLevel(drink)}`"
-            >
-              <span>{{ drink.name }}</span>
-              <span class="badge">{{ drink.stock }}</span>
+        <template v-for="group in stockGroups" :key="group.key">
+          <div v-if="groupedDrinks[group.key].length" class="stock-group">
+            <div class="card-header">
+              <h3 class="card-title">{{ group.label }}</h3>
+            </div>
+            <div class="low-stock-grid">
+              <div
+                v-for="drink in groupedDrinks[group.key]"
+                :key="drink.id"
+                class="low-stock-item"
+                :class="`low-stock-item--${group.key}`"
+              >
+                <span>{{ drink.name }}</span>
+                <span class="badge">{{ drink.stock }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
     <div class="dashboard-grid">
@@ -189,6 +191,16 @@ const stockGroups = [
   { key: 'low', label: 'Low stock' },
   { key: 'ok', label: 'In stock' },
 ]
+
+// One pass over the drinks list, so each drink's level is read once instead of
+// re-filtering the whole array for every group on every render.
+const groupedDrinks = computed(() => {
+  const groups = { out: [], low: [], ok: [] }
+  for (const drink of drinksStore.drinks) {
+    if (drink.isActive) groups[stockLevel(drink)].push(drink)
+  }
+  return groups
+})
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {
