@@ -32,11 +32,13 @@ const Transaction = sequelize.define("Transaction", {
     },
   },
   type: {
-    type: DataTypes.ENUM("sale", "credit_addition"),
+    type: DataTypes.ENUM("sale", "credit_addition", "credit_adjustment"),
     allowNull: false,
   },
   amount: {
-    type: DataTypes.INTEGER, // credits involved
+    // Credits involved. Positive for sales and credit additions; a signed net
+    // change for credit_adjustment (negative when an edit lowered the balance).
+    type: DataTypes.INTEGER,
     allowNull: false,
   },
   quantity: {

@@ -51,6 +51,7 @@ export interface AddCreditsResponse {
 export interface UpdateUserRequest {
   username?: string;
   dateOfBirth?: ISODateString | null;
+  userCredits?: number;
   userType?: MemberUserType;
   isActive?: boolean;
 }

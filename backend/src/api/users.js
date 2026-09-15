@@ -3,8 +3,9 @@ import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
+import { sequelize } from "../config/database.js";
 import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
-import { User } from "../models/index.js";
+import { Transaction, User } from "../models/index.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -426,7 +427,6 @@ router.post("/:id/add-credits", authenticateRequest, requireAdmin, async (req, r
     await user.addCredits(amount);
 
     // Create transaction record
-    const { Transaction } = await import("../models/index.js");
     await Transaction.create({
       userId: user.id,
       adminId: req.user.id,
@@ -449,6 +449,25 @@ router.post("/:id/add-credits", authenticateRequest, requireAdmin, async (req, r
     res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
+
+// Strict YYYY-MM-DD check: correct shape, a real calendar date, and not in the
+// future (a future date of birth would also break the alcohol age gate).
+function isValidISODate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  // Round-tripping catches impossible dates like 2023-02-30, which Date
+  // silently rolls forward into March.
+  const isRealDate = date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+
+  return isRealDate && date.getTime() <= Date.now();
+}
 
 function parseFlexibleDate(dateStr) {
   if (!dateStr || dateStr.trim() === "")
@@ -661,7 +680,11 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  *     summary: Update a member or non-member user
  *     description: >
  *       Only provided fields are updated. Admin and seller users cannot be
- *       modified through this endpoint.
+ *       modified through this endpoint. When `userCredits` actually changes the
+ *       balance, a `credit_adjustment` transaction is recorded (amount is the
+ *       signed net change, description carries the before → after values), which
+ *       makes the edit auditable and reversible via the undo endpoint. No
+ *       transaction is recorded when the balance is left unchanged.
  *     tags: [Users]
  *     security:
  *       - authToken: []
@@ -678,8 +701,9 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  *             type: object
  *             properties:
  *               username: { type: string, maxLength: 50 }
- *               dateOfBirth: { type: string, format: date, nullable: true }
+ *               dateOfBirth: { type: string, format: date, nullable: true, description: Set to null to clear the stored date }
  *               userType: { type: string, enum: [member, non-member] }
+ *               userCredits: { type: integer, minimum: 0, description: Set the user's credit balance directly }
  *               isActive: { type: boolean }
  *     responses:
  *       200:
@@ -700,7 +724,9 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  *                     userType: { type: string }
  *                     isActive: { type: boolean }
  *       400:
- *         description: Cannot modify admin or seller users through this endpoint
+ *         description: >
+ *           Cannot modify admin or seller users through this endpoint, or the
+ *           provided credits value is invalid
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }
@@ -723,25 +749,61 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  *         $ref: "#/components/responses/InternalError"
  */
 router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
-  try {
-    const { username, dateOfBirth, userType, isActive } = req.body;
+  const dbTransaction = await sequelize.transaction();
 
-    const user = await User.findByPk(req.params.id);
+  try {
+    const { username, dateOfBirth, userType, userCredits, isActive } = req.body;
+
+    if (userCredits !== undefined && (!Number.isInteger(userCredits) || userCredits < 0)) {
+      await dbTransaction.rollback();
+      return res.status(400).json({ error: "Credits must be a non-negative integer" });
+    }
+
+    if (dateOfBirth !== undefined && dateOfBirth !== null && !isValidISODate(dateOfBirth)) {
+      await dbTransaction.rollback();
+      return res.status(400).json({ error: "Invalid dateOfBirth" });
+    }
+
+    const user = await User.findByPk(req.params.id, {
+      transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
+    });
     if (!user) {
+      await dbTransaction.rollback();
       return res.status(404).json({ error: "User not found" });
     }
 
     // Prevent changing admin or seller users
     if (user.userType === "admin" || user.userType === "seller") {
+      await dbTransaction.rollback();
       return res.status(400).json({ error: "Cannot modify admin or seller users through this endpoint" });
     }
 
+    // Editing a balance is auditable: when the value actually changes we record
+    // the signed net change, so the edit shows up in the transaction history and
+    // can be reversed. No row is written when the balance is left untouched.
+    const previousCredits = user.credits;
+    const creditsChanged = userCredits !== undefined && userCredits !== previousCredits;
+
     const updatedUser = await user.update({
-      username: username || user.username,
-      dateOfBirth: dateOfBirth || user.dateOfBirth,
-      userType: userType || user.userType,
+      username: username !== undefined ? username : user.username,
+      dateOfBirth: dateOfBirth !== undefined ? dateOfBirth : user.dateOfBirth,
+      userType: userType !== undefined ? userType : user.userType,
+      credits: userCredits !== undefined ? userCredits : user.credits,
       isActive: isActive !== undefined ? isActive : user.isActive,
-    });
+    }, { transaction: dbTransaction });
+
+    if (creditsChanged) {
+      await Transaction.create({
+        userId: updatedUser.id,
+        adminId: req.user.id,
+        type: "credit_adjustment",
+        amount: userCredits - previousCredits,
+        description: `Credits edited: ${previousCredits} → ${userCredits}`,
+      }, { transaction: dbTransaction });
+    }
+
+    await dbTransaction.commit();
 
     res.json({
       message: "User updated successfully",
@@ -756,6 +818,9 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
     });
   }
   catch (error) {
+    if (dbTransaction && !dbTransaction.finished) {
+      await dbTransaction.rollback();
+    }
     console.error("Update user error:", error);
     res.status(500).json({ error: "Internal server error" });
   }

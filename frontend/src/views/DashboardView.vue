@@ -120,8 +120,8 @@
               class="transaction-item"
             >
               <div class="transaction-icon">
-                <span class="badge" :class="transaction.type === 'sale' ? 'badge-success' : 'badge-primary'">
-                  {{ transaction.type === 'sale' ? 'Sale' : 'Credit' }}
+                <span class="badge" :class="transactionTypeDashboardBadgeClass(transaction.type)">
+                  {{ transactionTypeShortLabel(transaction.type) }}
                 </span>
               </div>
               <div class="transaction-details flex-1">
@@ -165,6 +165,10 @@ import { useAuthStore } from '@/stores/auth.js'
 import { useSalesStore } from '@/stores/sales.js'
 import { useDrinksStore } from '@/stores/drinks.js'
 import CountUp from '@/vue-bits-animations/CountUp/CountUp.vue'
+import {
+  transactionTypeDashboardBadgeClass,
+  transactionTypeShortLabel,
+} from '@/utils/transactionTypes'
 
 const authStore = useAuthStore()
 const salesStore = useSalesStore()

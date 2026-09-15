@@ -6,7 +6,7 @@ export type AdminUserType = "admin" | "seller";
 
 export type MemberUserType = "member" | "non-member";
 
-export type TransactionType = "sale" | "credit_addition";
+export type TransactionType = "sale" | "credit_addition" | "credit_adjustment";
 
 export interface AuthUser {
   id: number;

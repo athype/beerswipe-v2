@@ -270,7 +270,7 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
  *         description: Restrict to one user
  *       - in: query
  *         name: type
- *         schema: { type: string, enum: [sale, credit_addition] }
+ *         schema: { type: string, enum: [sale, credit_addition, credit_adjustment] }
  *       - in: query
  *         name: startDate
  *         schema: { type: string, format: date }
@@ -351,7 +351,7 @@ router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, re
     if (userId) {
       whereClause.userId = userId;
     }
-    if (type && ["sale", "credit_addition"].includes(type)) {
+    if (type && ["sale", "credit_addition", "credit_adjustment"].includes(type)) {
       whereClause.type = type;
     }
     if (startDate) {
@@ -546,10 +546,11 @@ router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res)
  *     summary: Undo a transaction
  *     description: >
  *       Reverses a sale (credits and stock restored, bypassing the block-of-10
- *       rule) or a credit addition (credits deducted back), then deletes the
- *       transaction row. Admins may undo any transaction; sellers may only undo
- *       their own sales, within 15 minutes of the sale, and never credit
- *       additions.
+ *       rule), a credit addition (credits deducted back), or a credit adjustment
+ *       (the signed net change of an admin balance edit is applied in reverse),
+ *       then deletes the transaction row. Admins may undo any transaction;
+ *       sellers may only undo their own sales, within 15 minutes of the sale,
+ *       and never credit additions or adjustments.
  *     tags: [Sales]
  *     security:
  *       - authToken: []
@@ -571,7 +572,7 @@ router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res)
  *                   type: object
  *                   properties:
  *                     id: { type: integer }
- *                     type: { type: string, enum: [sale, credit_addition] }
+ *                     type: { type: string, enum: [sale, credit_addition, credit_adjustment] }
  *                     amount: { type: integer }
  *                     quantity: { type: integer, nullable: true }
  *                     user:
@@ -691,6 +692,26 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
 
       // Use unchecked method to deduct credits (bypass 10-credit rule for undo operations)
       await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
+    }
+    else if (transactionToUndo.type === "credit_adjustment") {
+      // The amount is the signed net change of the edit, so undoing it means
+      // applying the opposite. A raised balance is deducted back; a lowered one
+      // is restored. Unchecked methods bypass the 10-credit rule, matching the
+      // other undo paths.
+      if (transactionToUndo.amount > 0) {
+        if (user.credits < transactionToUndo.amount) {
+          await dbTransaction.rollback();
+          return res.status(400).json({
+            error: "Cannot undo credit adjustment: user has insufficient credits",
+            userCredits: user.credits,
+            requiredCredits: transactionToUndo.amount,
+          });
+        }
+        await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
+      }
+      else if (transactionToUndo.amount < 0) {
+        await user.addCreditsUnchecked(-transactionToUndo.amount, { transaction: dbTransaction });
+      }
     }
     else {
       await dbTransaction.rollback();
