@@ -369,6 +369,13 @@ onMounted(() => {
   max-width: 400px;
 }
 
+/* Flex items refuse to shrink below their intrinsic width by default, which is
+   what let the filters push the page wider than the viewport on mobile. */
+.search-input,
+.filter-select {
+  min-width: 0;
+}
+
 .drinks-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -526,5 +533,40 @@ onMounted(() => {
   text-align: center;
   color: #7f8c8d;
   padding: 3rem;
+}
+
+@media (max-width: 768px) {
+  .drinks-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .drinks-header h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .drinks-filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .search-input,
+  .filter-select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .drinks-grid {
+    /* 350px minimum columns don't fit a phone; minmax(0, …) keeps a single
+       card from widening the page instead of overflowing inside the track. */
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>
