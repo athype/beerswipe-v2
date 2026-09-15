@@ -70,7 +70,31 @@
         </div>
       </div>
     </div>
-
+    <div class="card card-warning mt-lg">
+      <div class="card-header">
+        <h3 class="qa-sign-title">Stock at a glance</h3>
+      </div>
+      <div class="card-body">
+        <template v-for="group in stockGroups" :key="group.key">
+          <div v-if="groupedDrinks[group.key].length" class="stock-group">
+            <div class="card-header">
+              <h3 class="card-title">{{ group.label }}</h3>
+            </div>
+            <div class="low-stock-grid">
+              <div
+                v-for="drink in groupedDrinks[group.key]"
+                :key="drink.id"
+                class="low-stock-item"
+                :class="`low-stock-item--${group.key}`"
+              >
+                <span>{{ drink.name }}</span>
+                <span class="badge">{{ drink.stock }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
     <div class="dashboard-grid">
       <div class="card">
         <div class="card-header">
@@ -137,24 +161,6 @@
         </div>
       </div>
     </div>
-
-    <div v-if="lowStockDrinks.length > 0" class="card card-warning mt-lg">
-      <div class="card-header">
-        <h3 class="card-title text-warning">Low Stock Alert</h3>
-      </div>
-      <div class="card-body">
-        <div class="low-stock-grid">
-          <div
-            v-for="drink in lowStockDrinks"
-            :key="drink.id"
-            class="low-stock-item"
-          >
-            <span>{{ drink.name }}</span>
-            <span class="badge badge-warning">{{ drink.stock }} left</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -169,6 +175,7 @@ import {
   transactionTypeDashboardBadgeClass,
   transactionTypeShortLabel,
 } from '@/utils/transactionTypes'
+import { stockLevel } from '@/utils/stock'
 
 const authStore = useAuthStore()
 const salesStore = useSalesStore()
@@ -178,9 +185,22 @@ const recentTransactions = computed(() =>
   salesStore.transactions.slice(0, 5)
 )
 
-const lowStockDrinks = computed(() =>
-  drinksStore.drinks.filter(drink => drink.isActive && drink.stock <= 5)
-)
+// keys must match the values stockLevel() returns
+const stockGroups = [
+  { key: 'out', label: 'Out of stock' },
+  { key: 'low', label: 'Low stock' },
+  { key: 'ok', label: 'In stock' },
+]
+
+// One pass over the drinks list, so each drink's level is read once instead of
+// re-filtering the whole array for every group on every render.
+const groupedDrinks = computed(() => {
+  const groups = { out: [], low: [], ok: [] }
+  for (const drink of drinksStore.drinks) {
+    if (drink.isActive) groups[stockLevel(drink)].push(drink)
+  }
+  return groups
+})
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {
@@ -309,13 +329,39 @@ onMounted(async () => {
 }
 
 .low-stock-item {
+  --stock-edge: var(--green-7);
+  --stock-surface: var(--color-black);
+  --stock-tone: var(--green-12);
+  --stock-badge-bg: var(--green-3);
+  --stock-badge-fg: var(--stock-tone);
+
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-black);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--color-grey);
+  background: var(--stock-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--stock-edge);
+}
+.low-stock-item .badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--stock-badge-bg);
+  color: var(--stock-badge-fg);
+}
+.low-stock-item--low {
+  --stock-edge: var(--orange-7);
+  --stock-badge-bg: var(--orange-3);
+  --stock-badge-fg: var(--orange-12);
+}
+
+.low-stock-item--out {
+  --stock-edge: var(--red-7);
+  --stock-badge-bg: var(--red-3);
+  --stock-badge-fg: var(--red-12);
 }
 
 @media (max-width: 768px) {

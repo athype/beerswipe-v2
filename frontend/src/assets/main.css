@@ -12,7 +12,7 @@
   --color-teal-dark: #044D56;
   --color-green: #62A388;
   --color-grey: #B9D2D2;
-  
+
   /* Extended Color Palette */
   --color-white: #ffffff;
   --color-light-grey: #f8f9fa;
@@ -21,7 +21,7 @@
   --color-success: #28a745;
   --color-warning: #ffc107;
   --color-info: #17a2b8;
-  
+
   /* Dark Theme Component Colors */
   --color-card-bg: #343434;
   --color-modal-bg: #343434;
@@ -57,14 +57,35 @@
   --gray-12: #eceeed;
   --color-background: #101211;
 
-  --red-3: #3B1219;
-  --red-7: #8C333A;
-  --red-9: #E5484D;
   --blue-3: #0D2847;
   --blue-9: #00A2C7;
-  --orange-3: #331E0B;
-  --orange-9: #F76B15;
-  
+
+  --orange-1: #17120e;
+  --orange-2: #1e160f;
+  --orange-3: #331e0b;
+  --orange-4: #462100;
+  --orange-5: #562800;
+  --orange-6: #66350c;
+  --orange-7: #7e451d;
+  --orange-8: #a35829;
+  --orange-9: #f76b15;
+  --orange-10: #ff801f;
+  --orange-11: #ffa057;
+  --orange-12: #ffe0c2;
+
+  --red-1: #191111;
+  --red-2: #201314;
+  --red-3: #3b1219;
+  --red-4: #500f1c;
+  --red-5: #611623;
+  --red-6: #72232d;
+  --red-7: #8c333a;
+  --red-8: #b54548;
+  --red-9: #e5484d;
+  --red-10: #ec5d5e;
+  --red-11: #ff9592;
+  --red-12: #ffd1d9;
+
   /* Typography */
   --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   --font-size-xs: 0.75rem;
@@ -75,7 +96,7 @@
   --font-size-2xl: 1.5rem;
   --font-size-3xl: 1.875rem;
   --font-size-4xl: 2.25rem;
-  
+
   /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -84,20 +105,20 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
   --spacing-3xl: 4rem;
-  
+
   /* Border Radius */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  
+
   /* Shadows - Enhanced for glassmorphism */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  
+
   /* Glassmorphism Effects */
   --glass-bg: rgba(52, 52, 52, 0.5);
   --glass-bg-light: rgba(52, 52, 52, 0.3);
@@ -106,7 +127,7 @@
   --glass-border-accent: rgba(5, 94, 104, 0.4);
   --glass-blur: blur(10px);
   --glass-blur-strong: blur(16px);
-  
+
   /* Breakpoints */
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
@@ -239,6 +260,7 @@ a:hover {
   border-bottom: 1px solid var(--green-7);
   padding-bottom: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
 }
 
 .card-title {
@@ -728,6 +750,13 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2) !important;
 }
 
+/* Form controls do NOT inherit font from body — they fall back to the UA
+   default (~13px). iOS Safari zooms the page when a focused control is under
+   16px, so pin every control to the base font size. */
+input, select, textarea {
+  font-size: var(--font-size-base) !important;
+}
+
 /* Apply glass effect to card-like elements */
 .card, .users-table, .drinks-table {
   background: var(--glass-bg) !important;
@@ -751,17 +780,17 @@ h1, h2, h3, h4, h5, h6 {
   .container {
     padding: 0 var(--spacing-sm);
   }
-  
+
   .navbar-content {
     flex-direction: column;
     gap: var(--spacing-md);
   }
-  
+
   .navbar-nav {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .navbar-user {
     margin-left: 0;
     padding-left: 0;
@@ -769,25 +798,25 @@ h1, h2, h3, h4, h5, h6 {
     border-top: 1px solid var(--green-7);
     padding-top: var(--spacing-md);
   }
-  
+
   .card {
     padding: var(--spacing-md);
   }
-  
+
   .popup {
     margin: var(--spacing-md);
   }
-  
+
   .table-container {
     border-radius: 0;
     margin: 0 calc(-1 * var(--spacing-md));
   }
-  
+
   .btn {
     width: 100%;
     justify-content: center;
   }
-  
+
   .btn + .btn {
     margin-top: var(--spacing-sm);
   }

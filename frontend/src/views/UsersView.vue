@@ -341,16 +341,24 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2);
 }
 
+/* Flex items refuse to shrink below their intrinsic width by default, which is
+   what let the filters push the page wider than the viewport on mobile. */
+.search-input,
+.filter-select {
+  min-width: 0;
+}
+
 .users-table {
   background: var(--color-black);
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 900px;
 }
 
 th,
@@ -456,5 +464,29 @@ th {
   text-align: center;
   color: var(--color-medium-grey);
   padding: 3rem;
+}
+
+@media (max-width: 768px) {
+  .users-filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .search-input,
+  .filter-select {
+    width: 100%;
+  }
+
+  /* main.css makes every .btn full-width on mobile; these two rows are meant to
+     stay side by side, and the local .btn rule stops them shrinking, so they
+     would otherwise spill out of their row and widen the page. */
+  .actions .btn,
+  .pagination .btn {
+    width: auto;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
 }
 </style>
