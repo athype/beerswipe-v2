@@ -21,6 +21,7 @@ This package provides compile-time contracts only. It intentionally contains no 
 - `sales`: sale, history, stats, and undo contracts
 - `leaderboard`: monthly leaderboard and rank contracts
 - `passkeys`: passkey/WebAuthn application-level contracts
+- `apikey`: API key management contracts
 
 ## Build
 
