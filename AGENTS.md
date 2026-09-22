@@ -54,7 +54,7 @@ Read these before major changes:
 - `frontend/src/router/index.js`
 - `frontend/src/services/api.js`
 - `frontend/src/stores/auth.js`
-- `frontend/src/components/Modal.vue`
+- `frontend/src/components/modals/Modal.vue`
 
 ## Toolchain And Runtime
 - Node.js: `^20.19.0 || >=22.12.0` (frontend and types engines)
@@ -154,7 +154,7 @@ Do not bypass stores with ad hoc axios calls in components.
 - When a mutation changes list state, refresh or reconcile store data explicitly.
 
 ### Modal and component patterns
-- Reuse `frontend/src/components/Modal.vue` for modal shell behavior.
+- Reuse `frontend/src/components/modals/Modal.vue` for modal shell behavior.
 - Keep modal form state local to modal component.
 - Emit success/close events and trigger parent/store refresh explicitly.
 

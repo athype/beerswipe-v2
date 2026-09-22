@@ -175,7 +175,7 @@ Mirrors `UsersView.vue` (plain-JS `<script setup>`, local `ref`s driving the mod
 - Empty state: short explanation of what API keys are for (programmatic access for the kiosk / integrations), since a fresh install has none.
 - Success/error feedback via `useNotifications()` (`showSuccess`/`showError`), the existing convention.
 
-### 8.4 Modal — `frontend/src/components/CreateApiKeyModal.vue`
+### 8.4 Modal — `../../../frontend/src/components/modals/CreateApiKeyModal.vue`
 
 **Top-level `components/`, NOT `components/modals/`** — the explorer verified `components/modals/*` are stale legacy duplicates; the live pattern is top-level (CreateUserModal.vue etc.). Wraps `Modal.vue`, props `{ show }`, emits `close` / `success`.
 

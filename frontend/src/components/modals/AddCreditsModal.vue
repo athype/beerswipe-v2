@@ -38,8 +38,8 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
-import { useUsersStore } from '../stores/users.js'
+import { useNotifications } from '@/composables/useNotifications.ts'
+import { useUsersStore } from '@/stores/users.ts'
 import Modal from './Modal.vue'
 
 const props = defineProps({

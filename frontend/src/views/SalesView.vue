@@ -326,7 +326,7 @@ import { useUsersStore } from '../stores/users'
 import { useDrinksStore } from '../stores/drinks'
 import { useSalesStore } from '../stores/sales'
 import { stockLevel } from '@/utils/stock'
-import AddCreditsModal from '../components/AddCreditsModal.vue'
+import AddCreditsModal from '@/components/modals/AddCreditsModal.vue'
 import SaleConfirmModal from '../components/modals/SaleConfirmModal.vue'
 import UndoSaleConfirmModal from '../components/modals/UndoSaleConfirmModal.vue'
 

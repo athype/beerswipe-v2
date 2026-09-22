@@ -179,7 +179,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useSalesStore } from '../stores/sales'
 import { useUsersStore } from '../stores/users'
 import { useNotifications } from '@/composables/useNotifications'
-import UndoTransactionModal from '../components/UndoTransactionModal.vue'
+import UndoTransactionModal from '@/components/modals/UndoTransactionModal.vue'
 import {
   TRANSACTION_TYPE_FILTER_OPTIONS,
   transactionTypeLabel,

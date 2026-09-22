@@ -147,10 +147,10 @@
 import { ref, onMounted } from 'vue'
 import { useUsersStore } from '../stores/users'
 import { useNotifications } from '@/composables/useNotifications'
-import CreateUserModal from '../components/CreateUserModal.vue'
-import EditUserModal from '../components/EditUserModal.vue'
-import AddCreditsModal from '../components/AddCreditsModal.vue'
-import CsvImportModal from '../components/CsvImportModal.vue'
+import CreateUserModal from '@/components/modals/CreateUserModal.vue'
+import EditUserModal from '@/components/modals/EditUserModal.vue'
+import AddCreditsModal from '@/components/modals/AddCreditsModal.vue'
+import CsvImportModal from '@/components/modals/CsvImportModal.vue'
 import CsvExportModal from '../components/modals/CsvExportModal.vue'
 
 const usersStore = useUsersStore()

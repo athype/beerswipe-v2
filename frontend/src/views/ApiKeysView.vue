@@ -90,7 +90,7 @@
 import { onMounted, ref } from 'vue'
 import { useApiKeysStore } from '../stores/apiKeys'
 import { useNotifications } from '@/composables/useNotifications'
-import CreateApiKeyModal from '../components/CreateApiKeyModal.vue'
+import CreateApiKeyModal from '@/components/modals/CreateApiKeyModal.vue'
 
 const apiKeysStore = useApiKeysStore()
 const { showSuccess, showError } = useNotifications()

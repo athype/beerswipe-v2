@@ -86,7 +86,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import Modal from './Modal.vue'
-import { transactionTypeLabel, undoCreditDelta } from '@/utils/transactionTypes'
+import { transactionTypeLabel, undoCreditDelta } from '@/utils/transactionTypes.ts'
 
 const props = defineProps({
   show: {

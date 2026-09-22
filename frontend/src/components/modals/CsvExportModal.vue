@@ -37,7 +37,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import Modal from '../Modal.vue'
+import Modal from './Modal.vue'
 
 defineProps({
     show: {

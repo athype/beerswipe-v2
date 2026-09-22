@@ -1763,7 +1763,7 @@ git commit -m "feat(frontend): api keys service module and pinia store (BS-122)"
 
 **Files:**
 - Create: `frontend/src/views/ApiKeysView.vue`
-- Create: `frontend/src/components/CreateApiKeyModal.vue`
+- Create: `../../../frontend/src/components/modals/CreateApiKeyModal.vue`
 - Modify: `frontend/src/router/index.ts` (import + route)
 - Modify: `frontend/src/components/Navigation/DesktopNavbar.vue` (one link)
 - Modify: `frontend/src/components/Navigation/MobileNavbar.vue` (one link)
@@ -1774,7 +1774,7 @@ git commit -m "feat(frontend): api keys service module and pinia store (BS-122)"
 
 - [ ] **Step 1: Create the modal component**
 
-`frontend/src/components/CreateApiKeyModal.vue` (plain JS `<script setup>`, style matches `CreateUserModal.vue`; the reveal phase disables overlay/Escape closing so the one-time key cannot be lost accidentally):
+`../../../frontend/src/components/modals/CreateApiKeyModal.vue` (plain JS `<script setup>`, style matches `CreateUserModal.vue`; the reveal phase disables overlay/Escape closing so the one-time key cannot be lost accidentally):
 
 ```vue
 <template>

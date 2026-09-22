@@ -8,7 +8,7 @@ import AdminForm from '../components/AdminForm.vue'
 import AdminList from '../components/AdminList.vue'
 import PasskeyList from '../components/PasskeyList.vue'
 import PasskeyRegistration from '../components/PasskeyRegistration.vue'
-import Modal from '../components/Modal.vue'
+import Modal from '@/components/modals/Modal.vue'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()

@@ -91,7 +91,7 @@
 </template>
 
 <script setup>
-import Modal from '../Modal.vue'
+import Modal from './Modal.vue'
 
 defineProps({
   show: {
