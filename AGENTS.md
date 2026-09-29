@@ -160,6 +160,12 @@ Do not bypass stores with ad hoc axios calls in components.
 
 ## Cross Cutting Guardrails
 
+### Language conventions
+New code should be TypeScript wherever the toolchain supports it.
+- `types/` is TypeScript already; keep it that way.
+- `frontend/` has the toolchain in place (`tsconfig.json`, `vue-tsc`; api/router/stores converted in #107). New modules, stores, composables and components use TypeScript (`<script setup lang="ts">` for components); avoid adding new `.js` files. Remaining conversions are tracked in #36.
+- `backend/` is still JavaScript and has no TypeScript toolchain yet (tracked in #35). New backend code follows the existing JavaScript conventions until that migration lands; TypeScript-first applies there from then on.
+
 ### Passkeys (WebAuthn)
 - Backend challenge storage is in-memory with TTL (not persisted across restarts).
 - Registration and login depend on challenge lifecycle in `backend/src/utils/webauthn.js`.
