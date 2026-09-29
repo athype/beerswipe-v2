@@ -166,7 +166,7 @@ Do not bypass stores with ad hoc axios calls in components.
 New code should be TypeScript wherever the toolchain supports it.
 - `types/` is TypeScript already; keep it that way.
 - `frontend/` has the toolchain in place (`tsconfig.json`, `vue-tsc`; api/router/stores converted in #107). New modules, stores, composables and components use TypeScript (`<script setup lang="ts">` for components); avoid adding new `.js` files. Remaining conversions are tracked in #36.
-- `backend/` has the toolchain in place: `backend/tsconfig.json`, a `typecheck` script (`tsc --noEmit`), and native Node type stripping, so `.ts` files run directly (no build step, no bundler). Write new modules in TypeScript; existing `.js` files convert opportunistically (remaining conversions tracked in #35). Stripping rules: relative imports use the real file extension (`./foo.ts` after converting `foo.js`), only erasable syntax (`erasableSyntaxOnly` enforces this), and type-only imports from `@beerswipe/types` use `import type`.
+- `backend/` has the toolchain in place: `backend/tsconfig.json`, a `typecheck` script (`tsc --noEmit`), and native Node type stripping, so `.ts` files run directly (no build step, no bundler). Write new modules in TypeScript; existing `.js` files convert opportunistically (remaining conversions tracked in #35; they are included by `allowJs` but not type-checked until converted). Stripping rules: relative imports use the real file extension (`./foo.ts` after converting `foo.js`), only erasable syntax (`erasableSyntaxOnly` enforces this), and type-only imports from `@beerswipe/types` use `import type`.
 
 ### Passkeys (WebAuthn)
 - Backend challenge storage is in-memory with TTL (not persisted across restarts).

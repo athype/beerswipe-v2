@@ -1,4 +1,6 @@
 # Backend Dockerfile
+# Node 24 LTS: native TS type stripping is stable here. The engines floor
+# (>=22.18.0) is the minimum for default, warning-free stripping.
 FROM node:24-alpine
 
 WORKDIR /app
