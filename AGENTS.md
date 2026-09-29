@@ -75,6 +75,7 @@ Read these before major changes:
 - local run with env file: `pnpm --filter @beerswipe/backend run start:local`
 - production run: `pnpm --filter @beerswipe/backend start`
 - lint and fix: `pnpm --filter @beerswipe/backend run lint`
+- typecheck: `pnpm --filter @beerswipe/backend run typecheck`
 - tests: `pnpm --filter @beerswipe/backend test`
 - seed: `pnpm --filter @beerswipe/backend run seed`
 
@@ -165,7 +166,7 @@ Do not bypass stores with ad hoc axios calls in components.
 New code should be TypeScript wherever the toolchain supports it.
 - `types/` is TypeScript already; keep it that way.
 - `frontend/` has the toolchain in place (`tsconfig.json`, `vue-tsc`; api/router/stores converted in #107). New modules, stores, composables and components use TypeScript (`<script setup lang="ts">` for components); avoid adding new `.js` files. Remaining conversions are tracked in #36.
-- `backend/` is still JavaScript and has no TypeScript toolchain yet (tracked in #35). New backend code follows the existing JavaScript conventions until that migration lands; TypeScript-first applies there from then on.
+- `backend/` has the toolchain in place: `backend/tsconfig.json`, a `typecheck` script (`tsc --noEmit`), and native Node type stripping, so `.ts` files run directly (no build step, no bundler). Write new modules in TypeScript; existing `.js` files convert opportunistically (remaining conversions tracked in #35). Stripping rules: relative imports use the real file extension (`./foo.ts` after converting `foo.js`), only erasable syntax (`erasableSyntaxOnly` enforces this), and type-only imports from `@beerswipe/types` use `import type`.
 
 ### Passkeys (WebAuthn)
 - Backend challenge storage is in-memory with TTL (not persisted across restarts).
@@ -214,7 +215,7 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 ## Verification Checklist
 
 ### Minimum checks before merging
-- backend changes: run `pnpm --filter @beerswipe/backend test` and `pnpm --filter @beerswipe/backend run lint` from repo root
+- backend changes: run `pnpm --filter @beerswipe/backend run typecheck`, `pnpm --filter @beerswipe/backend test`, and `pnpm --filter @beerswipe/backend run lint` from repo root
 - frontend changes: run `pnpm --filter @beerswipe/frontend run test:unit`, `pnpm --filter @beerswipe/frontend run build`, and `pnpm --filter @beerswipe/frontend run typecheck` from repo root
 - integration touching auth/sales/passkeys: manual smoke test across frontend + backend
 
