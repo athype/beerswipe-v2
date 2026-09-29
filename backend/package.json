@@ -6,6 +6,9 @@
   "author": "Krisztian Kozari",
   "license": "Proprietary",
   "packageManager": "pnpm@10.18.1",
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "keywords": [],
   "main": "src/index.js",
   "scripts": {
@@ -13,6 +16,7 @@
     "start:local": "node --env-file=../.env src/index.js",
     "dev": "node --watch --env-file=../.env src/index.js",
     "lint": "eslint --fix src",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "seed": "node --env-file=../.env scripts/seed.js"
   },
@@ -37,8 +41,10 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.16.2",
+    "@types/node": "^24.0.0",
     "eslint-plugin-format": "^1.0.1",
     "supertest": "^7.1.1",
+    "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }
 }
