@@ -22,7 +22,7 @@
     "@beerswipe/types": "workspace:*",
     "@simplewebauthn/browser": "^13.2.2",
     "@vueuse/core": "^14.3.0",
-    "axios": "^1.15.2",
+    "axios": "^1.18.0",
     "ogl": "^1.0.11",
     "pinia": "^3.0.3",
     "vue": "^3.5.18",
