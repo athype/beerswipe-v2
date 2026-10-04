@@ -52,20 +52,20 @@ const Drink = sequelize.define("Drink", {
 });
 
 // Instance methods
-Drink.prototype.addStock = function (quantity) {
+Drink.prototype.addStock = function (quantity, options) {
   if (quantity <= 0) {
     throw new Error("Stock quantity must be positive");
   }
   this.stock += quantity;
-  return this.save();
+  return this.save(options);
 };
 
-Drink.prototype.deductStock = function (quantity = 1) {
+Drink.prototype.deductStock = function (quantity = 1, options) {
   if (this.stock < quantity) {
     throw new Error("Insufficient stock");
   }
   this.stock -= quantity;
-  return this.save();
+  return this.save(options);
 };
 
 Drink.prototype.isInStock = function () {

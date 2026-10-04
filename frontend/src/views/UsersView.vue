@@ -64,16 +64,16 @@
             </td>
             <td>
               <div class="actions">
-                <button 
-                  @click="openAddCreditsModal(user)" 
+                <button
+                  @click="openAddCreditsModal(user)"
                   class="btn small"
                   title="Add Credits"
                 >
                   💰
                 </button>
-                <button 
+                <button
                   v-if="user.userType !== 'admin'"
-                  @click="openEditModal(user)" 
+                  @click="openEditModal(user)"
                   class="btn small"
                   title="Edit User"
                 >
@@ -88,7 +88,7 @@
 
     <!-- Pagination -->
     <div v-if="usersStore.pagination.pages > 1" class="pagination">
-      <button 
+      <button
         @click="changePage(usersStore.pagination.page - 1)"
         :disabled="usersStore.pagination.page === 1"
         class="btn small"
@@ -98,7 +98,7 @@
       <span>
         Page {{ usersStore.pagination.page }} of {{ usersStore.pagination.pages }}
       </span>
-      <button 
+      <button
         @click="changePage(usersStore.pagination.page + 1)"
         :disabled="usersStore.pagination.page === usersStore.pagination.pages"
         class="btn small"
@@ -113,21 +113,21 @@
       @close="showCreateModal = false"
       @submit="handleCreateUser"
     />
-    
+
     <EditUserModal
       :show="showEditModal"
       :user="selectedUser"
       @close="closeEditModal"
       @submit="handleUpdateUser"
     />
-    
+
     <AddCreditsModal
       :show="showCreditsModal"
       :user="selectedUser"
       @close="closeCreditsModal"
       @success="closeCreditsModal"
     />
-    
+
     <CsvImportModal
       :show="showCSVModal"
       @close="showCSVModal = false"
@@ -169,7 +169,7 @@ const searchUsers = async () => {
   const params = {}
   if (searchQuery.value) params.search = searchQuery.value
   if (filterType.value) params.type = filterType.value
-  
+
   await usersStore.fetchUsers(params)
 }
 
@@ -177,7 +177,7 @@ const changePage = async (page) => {
   const params = { page }
   if (searchQuery.value) params.search = searchQuery.value
   if (filterType.value) params.type = filterType.value
-  
+
   await usersStore.fetchUsers(params)
 }
 
@@ -201,7 +201,7 @@ const openEditModal = (user) => {
     showError('Admin users cannot be edited')
     return
   }
-  
+
   selectedUser.value = user
   showEditModal.value = true
 }
@@ -210,10 +210,11 @@ const handleUpdateUser = async (userData) => {
   const result = await usersStore.updateUser(selectedUser.value.id, {
     username: userData.username,
     userType: userData.userType,
-    dateOfBirth: userData.dateOfBirth || null,
+    ...(userData.credits !== selectedUser.value.credits ? { userCredits: userData.credits } : {}),
+    ...(userData.dateOfBirth !== undefined ? { dateOfBirth: userData.dateOfBirth || null } : {}),
     isActive: userData.isActive
   })
-  
+
   if (result.success) {
     closeEditModal()
     showSuccess('User updated successfully!')
@@ -302,12 +303,12 @@ onMounted(() => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .users-header h1 {
     font-size: 2rem;
     margin-bottom: 1rem;
   }
-  
+
   .header-actions {
     justify-content: flex-start;
   }
@@ -340,16 +341,24 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(5, 94, 104, 0.2);
 }
 
+/* Flex items refuse to shrink below their intrinsic width by default, which is
+   what let the filters push the page wider than the viewport on mobile. */
+.search-input,
+.filter-select {
+  min-width: 0;
+}
+
 .users-table {
   background: var(--color-black);
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 900px;
 }
 
 th,
@@ -455,5 +464,29 @@ th {
   text-align: center;
   color: var(--color-medium-grey);
   padding: 3rem;
+}
+
+@media (max-width: 768px) {
+  .users-filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .search-input,
+  .filter-select {
+    width: 100%;
+  }
+
+  /* main.css makes every .btn full-width on mobile; these two rows are meant to
+     stay side by side, and the local .btn rule stops them shrinking, so they
+     would otherwise spill out of their row and widen the page. */
+  .actions .btn,
+  .pagination .btn {
+    width: auto;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
 }
 </style>

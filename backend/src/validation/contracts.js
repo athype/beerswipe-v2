@@ -51,3 +51,16 @@ export const passkeyLoginOptionsSchema = z.object({
 export const passkeyLoginVerifySchema = z.object({
   credential: authenticationCredentialSchema,
 });
+
+export const apiKeyScopeEnum = z.enum(["admin", "seller"]);
+
+export const createApiKeySchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  scope: apiKeyScopeEnum.optional().default("admin"),
+  expiresAt: z.coerce.date().optional(),
+}).refine(
+  data => data.expiresAt === undefined || data.expiresAt.getTime() > Date.now(),
+  { message: "expiresAt must be in the future", path: ["expiresAt"] },
+);
+
+export const apiKeyIdParamSchema = z.coerce.number().int().positive();

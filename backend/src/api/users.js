@@ -3,14 +3,64 @@ import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
-import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
-import { User } from "../models/index.js";
+import { sequelize } from "../config/database.js";
+import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
+import { Transaction, User } from "../models/index.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all users (admin only)
-router.get("/", authenticateToken, requireAdminOrSeller, async (req, res) => {
+/**
+ * @openapi
+ * /users:
+ *   get:
+ *     summary: List users
+ *     description: Paginated user list. Sellers and admins; password hashes are never returned.
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [admin, member, non-member] }
+ *         description: Filter by user type
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Case-insensitive username substring search
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *     responses:
+ *       200:
+ *         description: Paginated user list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items: { $ref: "#/components/schemas/User" }
+ *                 pagination: { $ref: "#/components/schemas/Pagination" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin or seller access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
     const { type, search, page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
@@ -48,7 +98,48 @@ router.get("/", authenticateToken, requireAdminOrSeller, async (req, res) => {
 });
 
 // Export users to CSV (MUST come before /:id route)
-router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /users/export-csv:
+ *   get:
+ *     summary: Export non-admin users to CSV
+ *     description: >
+ *       Downloads members and non-members (admins/sellers are never exported)
+ *       as `username,credits,dateOfBirth,isMember`. dateOfBirth is formatted
+ *       DD-MM-YYYY and left empty when no birth date is recorded.
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [member, non-member] }
+ *         description: Restrict export to one user type
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         headers:
+ *           Content-Disposition:
+ *             schema: { type: string }
+ *             description: attachment; filename=users-export-<date>.csv
+ *         content:
+ *           text/csv:
+ *             schema: { type: string }
+ *             example: "username,credits,dateOfBirth,isMember\nada,120,01-01-2000,true"
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { type } = req.query;
 
@@ -98,7 +189,44 @@ router.get("/export-csv", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get user by ID
-router.get("/:id", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /users/{id}:
+ *   get:
+ *     summary: Get one user
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: The user (password hash excluded)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/User" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.get("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
       attributes: { exclude: ["password"] },
@@ -117,7 +245,63 @@ router.get("/:id", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Create new user (member/non-member)
-router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /users:
+ *   post:
+ *     summary: Create a member or non-member user
+ *     description: Created users cannot log in (no password is set for them).
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username: { type: string, maxLength: 50 }
+ *               credits: { type: integer, minimum: 0, default: 0 }
+ *               dateOfBirth: { type: string, format: date, nullable: true }
+ *               userType: { type: string, enum: [member, non-member], default: member }
+ *             required: [username]
+ *     responses:
+ *       201:
+ *         description: User created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     credits: { type: integer }
+ *                     dateOfBirth: { type: string, format: date, nullable: true }
+ *                     userType: { type: string }
+ *       400:
+ *         description: Username required, invalid user type, or username taken
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, credits = 0, dateOfBirth, userType = "member" } = req.body;
 
@@ -161,7 +345,73 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Add credits to user
-router.post("/:id/add-credits", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /users/{id}/add-credits:
+ *   post:
+ *     summary: Add credits to a user's balance
+ *     description: >
+ *       Credits are added in blocks of 10, per domain invariant. Also records
+ *       a `credit_addition` transaction with the acting admin.
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: integer
+ *                 description: Credit amount; must be a multiple of 10
+ *                 multipleOf: 10
+ *             required: [amount]
+ *     responses:
+ *       200:
+ *         description: Credits added
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     credits: { type: integer }
+ *       400:
+ *         description: Amount must be a positive block of 10
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.post("/:id/add-credits", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { amount } = req.body;
 
@@ -177,7 +427,6 @@ router.post("/:id/add-credits", authenticateToken, requireAdmin, async (req, res
     await user.addCredits(amount);
 
     // Create transaction record
-    const { Transaction } = await import("../models/index.js");
     await Transaction.create({
       userId: user.id,
       adminId: req.user.id,
@@ -200,6 +449,25 @@ router.post("/:id/add-credits", authenticateToken, requireAdmin, async (req, res
     res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
+
+// Strict YYYY-MM-DD check: correct shape, a real calendar date, and not in the
+// future (a future date of birth would also break the alcohol age gate).
+function isValidISODate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  // Round-tripping catches impossible dates like 2023-02-30, which Date
+  // silently rolls forward into March.
+  const isRealDate = date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+
+  return isRealDate && date.getTime() <= Date.now();
+}
 
 function parseFlexibleDate(dateStr) {
   if (!dateStr || dateStr.trim() === "")
@@ -254,7 +522,73 @@ function parseFlexibleDate(dateStr) {
 }
 
 // Import users from CSV
-router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFile"), async (req, res) => {
+/**
+ * @openapi
+ * /users/import-csv:
+ *   post:
+ *     summary: Import users from a CSV file
+ *     description: >
+ *       Columns: `username,credits,dateOfBirth,isMember` (no header row).
+ *       dateOfBirth is optional and parsed flexibly (YYYY-MM-DD or DD-MM-YYYY).
+ *       Existing usernames are skipped and reported as per-line errors.
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               csvFile:
+ *                 type: string
+ *                 format: binary
+ *                 description: Uploaded .csv file (see column spec above)
+ *             required: [csvFile]
+ *     responses:
+ *       200:
+ *         description: Import finished — per-line results and errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 imported: { type: integer, description: Users created }
+ *                 errors:
+ *                   type: array
+ *                   items: { type: string }
+ *                   description: Per-line failures incl. unparsable dates
+ *                 warnings: { type: integer }
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       username: { type: string }
+ *                       credits: { type: integer }
+ *                       userType: { type: string }
+ *                       dateOfBirth: { type: string, format: date, nullable: true }
+ *       400:
+ *         description: CSV file is required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csvFile"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "CSV file is required" });
@@ -339,26 +673,137 @@ router.post("/import-csv", authenticateToken, requireAdmin, upload.single("csvFi
 });
 
 // Update user
-router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { username, dateOfBirth, userType, isActive } = req.body;
+/**
+ * @openapi
+ * /users/{id}:
+ *   put:
+ *     summary: Update a member or non-member user
+ *     description: >
+ *       Only provided fields are updated. Admin and seller users cannot be
+ *       modified through this endpoint. When `userCredits` actually changes the
+ *       balance, a `credit_adjustment` transaction is recorded (amount is the
+ *       signed net change, description carries the before → after values), which
+ *       makes the edit auditable and reversible via the undo endpoint. No
+ *       transaction is recorded when the balance is left unchanged.
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username: { type: string, maxLength: 50 }
+ *               dateOfBirth: { type: string, format: date, nullable: true, description: Set to null to clear the stored date }
+ *               userType: { type: string, enum: [member, non-member] }
+ *               userCredits: { type: integer, minimum: 0, description: Set the user's credit balance directly }
+ *               isActive: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: User updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     credits: { type: integer }
+ *                     dateOfBirth: { type: string, format: date, nullable: true }
+ *                     userType: { type: string }
+ *                     isActive: { type: boolean }
+ *       400:
+ *         description: >
+ *           Cannot modify admin or seller users through this endpoint, or the
+ *           provided credits value is invalid
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
+  const dbTransaction = await sequelize.transaction();
 
-    const user = await User.findByPk(req.params.id);
+  try {
+    const { username, dateOfBirth, userType, userCredits, isActive } = req.body;
+
+    if (userCredits !== undefined && (!Number.isInteger(userCredits) || userCredits < 0)) {
+      await dbTransaction.rollback();
+      return res.status(400).json({ error: "Credits must be a non-negative integer" });
+    }
+
+    if (dateOfBirth !== undefined && dateOfBirth !== null && !isValidISODate(dateOfBirth)) {
+      await dbTransaction.rollback();
+      return res.status(400).json({ error: "Invalid dateOfBirth" });
+    }
+
+    const user = await User.findByPk(req.params.id, {
+      transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
+    });
     if (!user) {
+      await dbTransaction.rollback();
       return res.status(404).json({ error: "User not found" });
     }
 
     // Prevent changing admin or seller users
     if (user.userType === "admin" || user.userType === "seller") {
+      await dbTransaction.rollback();
       return res.status(400).json({ error: "Cannot modify admin or seller users through this endpoint" });
     }
 
+    // Editing a balance is auditable: when the value actually changes we record
+    // the signed net change, so the edit shows up in the transaction history and
+    // can be reversed. No row is written when the balance is left untouched.
+    const previousCredits = user.credits;
+    const creditsChanged = userCredits !== undefined && userCredits !== previousCredits;
+
     const updatedUser = await user.update({
-      username: username || user.username,
-      dateOfBirth: dateOfBirth || user.dateOfBirth,
-      userType: userType || user.userType,
+      username: username !== undefined ? username : user.username,
+      dateOfBirth: dateOfBirth !== undefined ? dateOfBirth : user.dateOfBirth,
+      userType: userType !== undefined ? userType : user.userType,
+      credits: userCredits !== undefined ? userCredits : user.credits,
       isActive: isActive !== undefined ? isActive : user.isActive,
-    });
+    }, { transaction: dbTransaction });
+
+    if (creditsChanged) {
+      await Transaction.create({
+        userId: updatedUser.id,
+        adminId: req.user.id,
+        type: "credit_adjustment",
+        amount: userCredits - previousCredits,
+        description: `Credits edited: ${previousCredits} → ${userCredits}`,
+      }, { transaction: dbTransaction });
+    }
+
+    await dbTransaction.commit();
 
     res.json({
       message: "User updated successfully",
@@ -373,6 +818,9 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     });
   }
   catch (error) {
+    if (dbTransaction && !dbTransaction.finished) {
+      await dbTransaction.rollback();
+    }
     console.error("Update user error:", error);
     res.status(500).json({ error: "Internal server error" });
   }

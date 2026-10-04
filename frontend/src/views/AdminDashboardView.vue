@@ -342,13 +342,13 @@ const handlePasskeyDelete = async (passkeyId) => {
 
 .tab:hover {
   color: var(--color-white);
-  background: rgba(5, 94, 104, 0.1);
+  border-bottom-color: var(--green-7);
 }
 
 .tab.active {
   color: var(--color-white);
-  border-bottom-color: var(--color-teal);
-  background: rgba(5, 94, 104, 0.2);
+  border-bottom-color: var(--green-9);
+  background: var(--green-3);
 }
 
 .tab-content {
@@ -399,7 +399,7 @@ const handlePasskeyDelete = async (passkeyId) => {
 }
 
 .badge-admin {
-  background: rgba(5, 94, 104, 0.8);
+  background: var(--green-3);
   color: var(--color-white);
   padding: var(--spacing-xs) var(--spacing-md);
   border-radius: var(--radius-sm);
@@ -453,7 +453,7 @@ const handlePasskeyDelete = async (passkeyId) => {
   }
 
   .tab.active {
-    border-left: 4px solid var(--color-teal);
+    border-left: 4px solid var(--green-9);
     border-bottom-color: var(--glass-border);
   }
 

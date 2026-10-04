@@ -1,5 +1,7 @@
 # Backend Dockerfile
-FROM node:20-alpine
+# Node 24 LTS: native TS type stripping is stable here. The engines floor
+# (>=22.18.0) is the minimum for default, warning-free stripping.
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -11,7 +13,7 @@ COPY backend/package.json /workspace/backend/package.json
 COPY types/package.json /workspace/types/package.json
 
 # Install pnpm and dependencies
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.18.1
 RUN cd /workspace; pnpm install --frozen-lockfile --filter @beerswipe/backend...
 
 # Copy package sources required at runtime

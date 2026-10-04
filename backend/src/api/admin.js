@@ -1,12 +1,51 @@
 import express from "express";
 import { Op } from "sequelize";
-import { authenticateToken, generateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.js";
 import { User } from "../models/index.js";
 
 const router = express.Router();
 
 // Get all admin users (admin only)
-router.get("/", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /admin:
+ *   get:
+ *     summary: List active admins and sellers
+ *     tags: [Admin]
+ *     security:
+ *       - authToken: []
+ *     responses:
+ *       200:
+ *         description: Active admin/seller accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 admins:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: integer }
+ *                       username: { type: string }
+ *                       userType: { type: string, enum: [admin, seller] }
+ *                       createdAt: { type: string, format: date-time }
+ *                       updatedAt: { type: string, format: date-time }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const admins = await User.findAll({
       where: {
@@ -26,7 +65,44 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get current admin profile (admin only)
-router.get("/profile", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /admin/profile:
+ *   get:
+ *     summary: Get the current admin's profile
+ *     tags: [Admin]
+ *     security:
+ *       - authToken: []
+ *     responses:
+ *       200:
+ *         description: The current admin
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 admin:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     userType: { type: string }
+ *                     createdAt: { type: string, format: date-time }
+ *                     updatedAt: { type: string, format: date-time }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.get("/profile", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const admin = await User.findByPk(req.user.id, {
       attributes: ["id", "username", "userType", "createdAt", "updatedAt"],
@@ -45,7 +121,69 @@ router.get("/profile", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Update current admin profile (admin only)
-router.put("/profile", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /admin/profile:
+ *   put:
+ *     summary: Update the current admin's own profile
+ *     description: >
+ *       Providing a username returns a fresh JWT `token` — the old one encodes
+ *       the previous username and should be replaced (the authToken cookie is
+ *       not rotated automatically).
+ *     tags: [Admin]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username: { type: string }
+ *               password: { type: string, format: password, minLength: 6 }
+ *               currentPassword:
+ *                 type: string
+ *                 format: password
+ *                 description: Required when changing the password
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 admin:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     userType: { type: string }
+ *                 token:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Fresh JWT when the username changed
+ *       400:
+ *         description: Current password missing, password too short, or username taken
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Current password is incorrect
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.put("/profile", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, currentPassword } = req.body;
 
@@ -109,7 +247,59 @@ router.put("/profile", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Create new admin or seller (admin only)
-router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /admin:
+ *   post:
+ *     summary: Create an admin or seller account
+ *     tags: [Admin]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username: { type: string, maxLength: 50 }
+ *               password: { type: string, format: password, minLength: 6 }
+ *               userType: { type: string, enum: [admin, seller], default: admin }
+ *             required: [username, password]
+ *     responses:
+ *       201:
+ *         description: Account created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 admin:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     userType: { type: string }
+ *       400:
+ *         description: Missing fields, short password, invalid user type, or username taken
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, userType = "admin" } = req.body;
 
@@ -152,7 +342,69 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Update another admin (admin only)
-router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /admin/{id}:
+ *   put:
+ *     summary: Update another admin or seller
+ *     description: Updating your own account is refused — use PUT /admin/profile.
+ *     tags: [Admin]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username: { type: string, maxLength: 50 }
+ *               password: { type: string, format: password, minLength: 6 }
+ *               userType: { type: string, enum: [admin, seller] }
+ *     responses:
+ *       200:
+ *         description: Account updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 admin:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     username: { type: string }
+ *                     userType: { type: string }
+ *       400:
+ *         description: Self-update refused, username taken, short password, or invalid user type
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Admin or seller not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, userType } = req.body;
     const adminId = req.params.id;
@@ -219,7 +471,50 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Deactivate admin or seller (admin only)
-router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
+/**
+ * @openapi
+ * /admin/{id}:
+ *   delete:
+ *     summary: Deactivate an admin or seller
+ *     description: Soft-deletes (isActive false). Own account and the last active admin are protected.
+ *     tags: [Admin]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Account deactivated
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Message" }
+ *       400:
+ *         description: Cannot delete your own account or the last active admin
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Admin or seller not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const adminId = req.params.id;
 

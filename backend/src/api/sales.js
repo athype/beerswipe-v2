@@ -1,7 +1,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
-import { authenticateToken, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
+import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { Drink, Transaction, User } from "../models/index.js";
 import { sellRequestSchema } from "../validation/contracts.js";
 
@@ -44,7 +44,88 @@ function calculateAge(dateOfBirth) {
 }
 
 // Make a sale (admin or seller)
-router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) => {
+/**
+ * @openapi
+ * /sales/sell:
+ *   post:
+ *     summary: Sell drinks to a user
+ *     description: >
+ *       Atomically deducts credits from the user, stock from the drink, and
+ *       records a `sale` transaction row. Sellers and admins.
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *       - apiKeyHeader: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: "#/components/schemas/SellRequest" }
+ *     responses:
+ *       200:
+ *         description: Sale completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 transaction:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *                         remainingCredits: { type: integer }
+ *                     drink:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         name: { type: string }
+ *                         remainingStock: { type: integer }
+ *                     quantity: { type: integer }
+ *                     totalCost: { type: integer }
+ *                     admin:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *       400:
+ *         description: Validation failed, drink not available/out of stock, or insufficient credits
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: "#/components/schemas/Error"
+ *                 - type: object
+ *                   properties:
+ *                     error: { type: string }
+ *                     required: { type: integer, description: Credits required }
+ *                     available: { type: integer, description: Credits the user has }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: >
+ *           Admin or seller access required, or — for alcohol drinks — the
+ *           buyer has no date of birth on file or is under 18 (legal age gate)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: User or drink not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   let transaction;
 
   try {
@@ -79,8 +160,8 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
 
     transaction = await sequelize.transaction();
 
-    const user = await User.findByPk(userId, { transaction });
-    const drink = await Drink.findByPk(drinkId, { transaction });
+    const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    const drink = await Drink.findByPk(drinkId, { transaction, lock: transaction.LOCK.UPDATE });
 
     if (!user) {
       await transaction.rollback();
@@ -90,11 +171,6 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
     if (!drink) {
       await transaction.rollback();
       return res.status(404).json({ error: "Drink not found" });
-    }
-
-    if (!drink.isInStock() || drink.stock < quantity) {
-      await transaction.rollback();
-      return res.status(400).json({ error: "Insufficient stock or drink not available" });
     }
 
     // Legal gate: alcohol may only be sold to customers aged 18+ (Dutch law).
@@ -111,6 +187,11 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       }
     }
 
+    if (!drink.isInStock() || drink.stock < quantity) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Insufficient stock or drink not available" });
+    }
+
     const totalCost = drink.price * quantity;
 
     if (user.credits < totalCost) {
@@ -122,8 +203,8 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
       });
     }
 
-    await user.deductCredits(totalCost);
-    await drink.deductStock(quantity);
+    await user.deductCredits(totalCost, { transaction });
+    await drink.deductStock(quantity, { transaction });
 
     const saleTransaction = await Transaction.create({
       userId: user.id,
@@ -170,7 +251,90 @@ router.post("/sell", authenticateToken, requireAdminOrSeller, async (req, res) =
 });
 
 // Get transaction history (admin or seller)
-router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res) => {
+/**
+ * @openapi
+ * /sales/history:
+ *   get:
+ *     summary: List transaction history
+ *     description: >
+ *       Paginated audit trail of sales and credit additions, newest first,
+ *       with the related user, admin and drink (drink is null for credit
+ *       additions).
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: integer }
+ *         description: Restrict to one user
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [sale, credit_addition, credit_adjustment] }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/after this date
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/before this date
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *     responses:
+ *       200:
+ *         description: Paginated history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 transactions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     allOf:
+ *                       - $ref: "#/components/schemas/Transaction"
+ *                       - type: object
+ *                         properties:
+ *                           user:
+ *                             type: object
+ *                             properties:
+ *                               id: { type: integer }
+ *                               username: { type: string }
+ *                               userType: { type: string }
+ *                           admin:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               id: { type: integer }
+ *                               username: { type: string }
+ *                           drink:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               id: { type: integer }
+ *                               name: { type: string }
+ *                               category: { type: string }
+ *                 pagination: { $ref: "#/components/schemas/Pagination" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin or seller access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
     const {
       userId,
@@ -187,7 +351,7 @@ router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res)
     if (userId) {
       whereClause.userId = userId;
     }
-    if (type && ["sale", "credit_addition"].includes(type)) {
+    if (type && ["sale", "credit_addition", "credit_adjustment"].includes(type)) {
       whereClause.type = type;
     }
     if (startDate) {
@@ -245,7 +409,71 @@ router.get("/history", authenticateToken, requireAdminOrSeller, async (req, res)
 });
 
 // Get sales statistics (admin or seller)
-router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) => {
+/**
+ * @openapi
+ * /sales/stats:
+ *   get:
+ *     summary: Get sales and credit statistics
+ *     description: Aggregates within the optional date window, plus the top 10 drinks by quantity sold.
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/after this date
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *         description: Only transactions on/before this date
+ *     responses:
+ *       200:
+ *         description: Aggregated statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sales:
+ *                   type: object
+ *                   properties:
+ *                     totalSales: { type: integer, description: Sale transaction count }
+ *                     totalRevenue: { type: integer, description: Credits earned }
+ *                     totalItemsSold: { type: integer }
+ *                 credits:
+ *                   type: object
+ *                   properties:
+ *                     totalCreditAdditions: { type: integer }
+ *                     totalCreditsAdded: { type: integer }
+ *                 topDrinks:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       drinkId: { type: integer }
+ *                       drink:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer }
+ *                           name: { type: string }
+ *                       salesCount: { type: integer }
+ *                       totalQuantity: { type: integer }
+ *                       totalRevenue: { type: integer }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin or seller access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const whereClause = {};
@@ -311,7 +539,86 @@ router.get("/stats", authenticateToken, requireAdminOrSeller, async (req, res) =
   }
 });
 
-router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, async (req, res) => {
+/**
+ * @openapi
+ * /sales/undo/{transactionId}:
+ *   delete:
+ *     summary: Undo a transaction
+ *     description: >
+ *       Reverses a sale (credits and stock restored, bypassing the block-of-10
+ *       rule), a credit addition (credits deducted back), or a credit adjustment
+ *       (the signed net change of an admin balance edit is applied in reverse),
+ *       then deletes the transaction row. Admins may undo any transaction;
+ *       sellers may only undo their own sales, within 15 minutes of the sale,
+ *       and never credit additions or adjustments.
+ *     tags: [Sales]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Transaction undone
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 undoTransaction:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer }
+ *                     type: { type: string, enum: [sale, credit_addition, credit_adjustment] }
+ *                     amount: { type: integer }
+ *                     quantity: { type: integer, nullable: true }
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *                         newCredits: { type: integer }
+ *                     drink:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id: { type: integer }
+ *                         name: { type: string }
+ *                         newStock: { type: integer }
+ *                     undoneBy:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         username: { type: string }
+ *       400:
+ *         description: Transaction ID missing, type not undoable, or user lacks credits to undo a credit addition
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: >
+ *           Admin/seller role required, or a seller restriction: undoing a
+ *           non-sale, someone else's sale, or a sale older than 15 minutes
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Transaction or user not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   const dbTransaction = await sequelize.transaction();
 
   try {
@@ -323,12 +630,8 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
     }
 
     const transactionToUndo = await Transaction.findByPk(transactionId, {
-      include: [
-        { model: User, as: "user" },
-        { model: Drink, as: "drink" },
-        { model: User, as: "admin" },
-      ],
       transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
     });
 
     if (!transactionToUndo) {
@@ -353,15 +656,28 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
       }
     }
 
-    const user = transactionToUndo.user;
-    const drink = transactionToUndo.drink;
+    const user = await User.findByPk(transactionToUndo.userId, {
+      transaction: dbTransaction,
+      lock: dbTransaction.LOCK.UPDATE,
+    });
+    const drink = transactionToUndo.type === "sale"
+      ? await Drink.findByPk(transactionToUndo.drinkId, {
+          transaction: dbTransaction,
+          lock: dbTransaction.LOCK.UPDATE,
+        })
+      : null;
+
+    if (!user) {
+      await dbTransaction.rollback();
+      return res.status(404).json({ error: "User not found" });
+    }
 
     if (transactionToUndo.type === "sale") {
       // Use unchecked method to restore credits (bypass 10-credit rule for undo operations)
-      await user.addCreditsUnchecked(transactionToUndo.amount);
+      await user.addCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
 
       if (drink) {
-        await drink.addStock(transactionToUndo.quantity || 1);
+        await drink.addStock(transactionToUndo.quantity || 1, { transaction: dbTransaction });
       }
     }
     else if (transactionToUndo.type === "credit_addition") {
@@ -375,7 +691,27 @@ router.delete("/undo/:transactionId", authenticateToken, requireAdminOrSeller, a
       }
 
       // Use unchecked method to deduct credits (bypass 10-credit rule for undo operations)
-      await user.deductCreditsUnchecked(transactionToUndo.amount);
+      await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
+    }
+    else if (transactionToUndo.type === "credit_adjustment") {
+      // The amount is the signed net change of the edit, so undoing it means
+      // applying the opposite. A raised balance is deducted back; a lowered one
+      // is restored. Unchecked methods bypass the 10-credit rule, matching the
+      // other undo paths.
+      if (transactionToUndo.amount > 0) {
+        if (user.credits < transactionToUndo.amount) {
+          await dbTransaction.rollback();
+          return res.status(400).json({
+            error: "Cannot undo credit adjustment: user has insufficient credits",
+            userCredits: user.credits,
+            requiredCredits: transactionToUndo.amount,
+          });
+        }
+        await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
+      }
+      else if (transactionToUndo.amount < 0) {
+        await user.addCreditsUnchecked(-transactionToUndo.amount, { transaction: dbTransaction });
+      }
     }
     else {
       await dbTransaction.rollback();

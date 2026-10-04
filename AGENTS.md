@@ -50,10 +50,10 @@ Read these before major changes:
 - `backend/src/api/leaderboard.js`
 - `backend/src/utils/webauthn.js`
 - `backend/src/validation/contracts.js`
-- `frontend/src/main.js`
-- `frontend/src/router/index.js`
-- `frontend/src/services/api.js`
-- `frontend/src/stores/auth.js`
+- `frontend/src/main.ts`
+- `frontend/src/router/index.ts`
+- `frontend/src/services/api.ts`
+- `frontend/src/stores/auth.ts`
 - `frontend/src/components/Modal.vue`
 
 ## Toolchain And Runtime
@@ -75,6 +75,7 @@ Read these before major changes:
 - local run with env file: `pnpm --filter @beerswipe/backend run start:local`
 - production run: `pnpm --filter @beerswipe/backend start`
 - lint and fix: `pnpm --filter @beerswipe/backend run lint`
+- typecheck: `pnpm --filter @beerswipe/backend run typecheck`
 - tests: `pnpm --filter @beerswipe/backend test`
 - seed: `pnpm --filter @beerswipe/backend run seed`
 
@@ -82,6 +83,7 @@ Read these before major changes:
 - dev server: `pnpm --filter @beerswipe/frontend run dev`
 - production build: `pnpm --filter @beerswipe/frontend run build`
 - preview build: `pnpm --filter @beerswipe/frontend run preview`
+- typecheck: `pnpm --filter @beerswipe/frontend run typecheck`
 - unit tests: `pnpm --filter @beerswipe/frontend run test:unit`
 
 ### Docker workflows
@@ -102,7 +104,7 @@ Keep route responsibilities narrow:
 
 ### Auth and authorization
 - Cookie based JWT is primary auth mechanism (`authToken` httpOnly cookie).
-- `authenticateToken` must protect any non-public route.
+- `authenticateRequest` must protect any non-public route: it accepts the cookie / Bearer JWT or an `X-API-Key` header (programmatic keys managed via `/api-keys`; a key acts as its creating admin, limited to its `admin|seller` scope).
 - Use `requireAdmin` for admin-only operations.
 - Use `requireAdminOrSeller` only where seller access is intended.
 - Do not introduce localStorage token assumptions on backend or frontend.
@@ -126,25 +128,25 @@ Rollback on every early return after transaction start.
 In `backend/src/api/users.js`, static routes like `/export-csv` must remain above parameterized routes like `/:id`.
 
 ### Migrations and schema
-- Development currently relies on `sequelize.sync({ alter: true })` during startup.
-- Production schema changes should use migration files in `backend/migrations/`.
-- New migration naming pattern: `XXX-description.js` with `up()` and `down()`.
+- Schema changes go through the auto migrator: ordered, idempotent `{ name, up }` steps in `backend/src/migrate.js`, named `YYYY-MM-DD/feature`. It runs at every boot and manually via `node src/migrate.js`.
+- Do not add files to `backend/migrations/`; that directory is legacy (`002-add-passkey-support.js` predates the migrator).
+- Boot semantics: dev runs `sync({ alter: true })`; production runs `sync({ alter: false })` but still creates missing tables from models. Keep steps idempotent (check before acting) so fresh and existing databases both pass through cleanly.
 
 ## Frontend Rules
 
 ### Data flow
 Use this path for server data:
-`services/api.js` -> Pinia store action -> view/component.
+`services/api.ts` -> Pinia store action -> view/component.
 
 Do not bypass stores with ad hoc axios calls in components.
 
 ### Auth lifecycle
-- App mounts first, then `authStore.initializeAuth()` runs in `frontend/src/main.js`.
-- Route guards in `frontend/src/router/index.js` rely on store state and route meta.
+- App mounts first, then `authStore.initializeAuth()` runs in `frontend/src/main.ts`.
+- Route guards in `frontend/src/router/index.ts` rely on store state and route meta.
 - Preserve guard semantics for `requiresAuth`, `requiresAdmin`, `requiresAdminOrSeller`.
 
 ### API client constraints
-- Keep grouped API modules in `frontend/src/services/api.js` (`authAPI`, `usersAPI`, etc.).
+- Keep grouped API modules in `frontend/src/services/api.ts` (`authAPI`, `usersAPI`, etc.).
 - Keep 401 handling behavior consistent with current redirect policy.
 - Keep `withCredentials: true` enabled for cookie-based auth.
 
@@ -159,6 +161,12 @@ Do not bypass stores with ad hoc axios calls in components.
 - Emit success/close events and trigger parent/store refresh explicitly.
 
 ## Cross Cutting Guardrails
+
+### Language conventions
+New code should be TypeScript wherever the toolchain supports it.
+- `types/` is TypeScript already; keep it that way.
+- `frontend/` has the toolchain in place (`tsconfig.json`, `vue-tsc`; api/router/stores converted in #107). New modules, stores, composables and components use TypeScript (`<script setup lang="ts">` for components); avoid adding new `.js` files. Remaining conversions are tracked in #36.
+- `backend/` has the toolchain in place: `backend/tsconfig.json`, a `typecheck` script (`tsc --noEmit`), and native Node type stripping, so `.ts` files run directly (no build step, no bundler). Write new modules in TypeScript; existing `.js` files convert opportunistically (remaining conversions tracked in #35; they are included by `allowJs` but not type-checked until converted). Stripping rules: relative imports use the real file extension (`./foo.ts` after converting `foo.js`), only erasable syntax (`erasableSyntaxOnly` enforces this), and type-only imports from `@beerswipe/types` use `import type`.
 
 ### Passkeys (WebAuthn)
 - Backend challenge storage is in-memory with TTL (not persisted across restarts).
@@ -183,10 +191,10 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 3. Validate input and return clear 4xx errors for client mistakes.
 4. Add/adjust model logic as needed.
 5. Use transaction if mutating multiple entities.
-6. Verify frontend API client mapping in `frontend/src/services/api.js`.
+6. Verify frontend API client mapping in `frontend/src/services/api.ts`.
 
 ### Add or change frontend server interaction
-1. Add/adjust API function in `frontend/src/services/api.js`.
+1. Add/adjust API function in `frontend/src/services/api.ts`.
 2. Update corresponding Pinia store action and keep return shape consistent.
 3. Update view/component to use store action.
 4. Preserve loading/error handling and notification behavior.
@@ -207,8 +215,8 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 ## Verification Checklist
 
 ### Minimum checks before merging
-- backend changes: run `pnpm --filter @beerswipe/backend test` and `pnpm --filter @beerswipe/backend run lint` from repo root
-- frontend changes: run `pnpm --filter @beerswipe/frontend run test:unit` and `pnpm --filter @beerswipe/frontend run build` from repo root
+- backend changes: run `pnpm --filter @beerswipe/backend run typecheck`, `pnpm --filter @beerswipe/backend test`, and `pnpm --filter @beerswipe/backend run lint` from repo root
+- frontend changes: run `pnpm --filter @beerswipe/frontend run test:unit`, `pnpm --filter @beerswipe/frontend run build`, and `pnpm --filter @beerswipe/frontend run typecheck` from repo root
 - integration touching auth/sales/passkeys: manual smoke test across frontend + backend
 
 ### Manual smoke tests for high risk changes

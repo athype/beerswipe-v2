@@ -43,6 +43,74 @@ const MIGRATIONS = [
         defaultValue: false,
       });
       return true;
+    },
+  },
+  {
+    name: "2026-09-03/api-keys",
+    up: async (queryInterface) => {
+      let table;
+      try {
+        table = await queryInterface.describeTable("ApiKeys");
+      }
+      catch {
+        table = null;
+      }
+      // sync({ alter: false }) already creates missing tables from the model on
+      // boot; this step exists for databases whose schema is not driven by sync
+      // and for manual `node src/migrate.js` runs. Model and step stay in lockstep.
+      if (table) {
+        return false;
+      }
+      await queryInterface.createTable("ApiKeys", {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        name: { type: DataTypes.STRING(50), allowNull: false },
+        keyHash: { type: DataTypes.STRING(64), allowNull: false, unique: true },
+        prefix: { type: DataTypes.STRING(12), allowNull: false },
+        scope: {
+          type: DataTypes.ENUM("admin", "seller"),
+          allowNull: false,
+          defaultValue: "admin",
+        },
+        createdBy: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          references: { model: "Users", key: "id" },
+        },
+        isRevoked: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        expiresAt: { type: DataTypes.DATE, allowNull: true },
+        lastUsedAt: { type: DataTypes.DATE, allowNull: true },
+        createdAt: { type: DataTypes.DATE, allowNull: false },
+        updatedAt: { type: DataTypes.DATE, allowNull: false },
+      });
+      return true;
+    },
+  },
+  {
+    name: "2026-09-14/transactions-credit-adjustment-type",
+    up: async (queryInterface) => {
+      // sync() only reshapes the schema when NODE_ENV is development, so in
+      // production and in tests the enum value must be added here. On a fresh
+      // database sync() has already created the type with the value in it.
+      const [typeRows] = await queryInterface.sequelize.query(
+        "SELECT 1 FROM pg_type WHERE typname = 'enum_Transactions_type';",
+      );
+      if (typeRows.length === 0) {
+        return false;
+      }
+
+      const [valueRows] = await queryInterface.sequelize.query(
+        "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+        + "WHERE t.typname = 'enum_Transactions_type' AND e.enumlabel = 'credit_adjustment';",
+      );
+      if (valueRows.length > 0) {
+        return false;
+      }
+
+      await queryInterface.sequelize.query(
+        "ALTER TYPE \"enum_Transactions_type\" ADD VALUE IF NOT EXISTS 'credit_adjustment';",
+      );
+      return true;
+    },
   },
 ];
 

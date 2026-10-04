@@ -196,7 +196,7 @@
                   <span v-if="drink.isAlcohol" class="alcohol-tag">18+</span>
                 </h4>
                 <p class="drink-price">{{ drink.price }} credits</p>
-                <p v-if="drink.stock <= 5" class="drink-stock-low">Only {{ drink.stock }} left</p>
+                <p v-if="stockLevel(drink) === 'low'" class="drink-stock-low">Only {{ drink.stock }} left</p>
               </div>
             </div>
           </template>
@@ -325,6 +325,7 @@ import { useAuthStore } from '../stores/auth'
 import { useUsersStore } from '../stores/users'
 import { useDrinksStore } from '../stores/drinks'
 import { useSalesStore } from '../stores/sales'
+import { stockLevel } from '@/utils/stock'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
 import SaleConfirmModal from '../components/modals/SaleConfirmModal.vue'
 import UndoSaleConfirmModal from '../components/modals/UndoSaleConfirmModal.vue'
@@ -988,7 +989,7 @@ onMounted(async () => {
 }
 
 .user-type {
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   opacity: 0.8;
 }
 
@@ -1025,7 +1026,7 @@ onMounted(async () => {
 
 .age-info {
   margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   color: var(--color-grey);
 }
 
@@ -1035,7 +1036,7 @@ onMounted(async () => {
   gap: 0.5rem;
   padding: 0.5rem;
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   font-weight: 500;
 }
 
@@ -1085,7 +1086,7 @@ onMounted(async () => {
   padding: 0.75rem 1rem;
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   font-weight: 500;
   flex: 1;
   min-width: 0;
@@ -1107,7 +1108,7 @@ onMounted(async () => {
   padding: 0.75rem 1rem;
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   font-weight: 500;
   flex: 1;
   min-width: 0;
@@ -1267,7 +1268,7 @@ onMounted(async () => {
 }
 
 .item-price {
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   color: var(--green-11);
 }
 
@@ -1455,7 +1456,7 @@ onMounted(async () => {
 .search-hint,
 .list-empty,
 .checkout-hint {
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   color: var(--color-grey);
 }
 
@@ -1469,7 +1470,7 @@ onMounted(async () => {
 }
 
 .list-error {
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   color: var(--red-9);
   margin-bottom: 0.75rem;
 }

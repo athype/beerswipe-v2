@@ -70,35 +70,35 @@ User.prototype.canLogin = function () {
   return (this.userType === "admin" || this.userType === "seller") && this.password !== null;
 };
 
-User.prototype.addCredits = function (amount) {
+User.prototype.addCredits = function (amount, options) {
   // Only allow adding credits in blocks of 10
   if (amount % 10 !== 0) {
     throw new Error("Credits can only be added in blocks of 10");
   }
   this.credits += amount;
-  return this.save();
+  return this.save(options);
 };
 
-User.prototype.deductCredits = function (amount) {
+User.prototype.deductCredits = function (amount, options) {
   if (this.credits < amount) {
     throw new Error("Insufficient credits");
   }
   this.credits -= amount;
-  return this.save();
+  return this.save(options);
 };
 
 // Bypass methods for undo operations - these don't enforce the 10-credit rule
-User.prototype.addCreditsUnchecked = function (amount) {
+User.prototype.addCreditsUnchecked = function (amount, options) {
   this.credits += amount;
-  return this.save();
+  return this.save(options);
 };
 
-User.prototype.deductCreditsUnchecked = function (amount) {
+User.prototype.deductCreditsUnchecked = function (amount, options) {
   if (this.credits < amount) {
     throw new Error("Insufficient credits");
   }
   this.credits -= amount;
-  return this.save();
+  return this.save(options);
 };
 
 export default User;

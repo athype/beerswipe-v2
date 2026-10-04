@@ -11,7 +11,7 @@ COPY frontend/package.json /workspace/frontend/package.json
 COPY types/package.json /workspace/types/package.json
 
 # Install pnpm and dependencies
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.18.1
 RUN cd /workspace; pnpm install --frozen-lockfile --filter @beerswipe/frontend...
 
 # Copy package sources

@@ -31,7 +31,7 @@
       <select v-model="filterStock" @change="searchDrinks" class="filter-select">
         <option value="">All Stock</option>
         <option value="in-stock">In Stock</option>
-        <option value="low-stock">Low Stock (≤5)</option>
+        <option value="low-stock">Low Stock (≤{{ LOW_STOCK_THRESHOLD }})</option>
         <option value="out-of-stock">Out of Stock</option>
       </select>
     </div>
@@ -69,7 +69,7 @@
             </div>
             <div class="detail">
               <span class="label">Stock:</span>
-              <span class="value" :class="{ 'low-stock': drink.stock <= 5, 'out-of-stock': drink.stock === 0 }">
+              <span class="value" :class="`value--${stockLevel(drink)}`">
                 {{ drink.stock }}
               </span>
             </div>
@@ -155,6 +155,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
+import { LOW_STOCK_THRESHOLD, stockLevel } from '@/utils/stock'
 import { useDrinksStore } from '../stores/drinks'
 import StockCsvImportModal from '../components/StockCsvImportModal.vue'
 import StockCsvExportModal from '../components/StockCsvExportModal.vue'
@@ -368,6 +369,13 @@ onMounted(() => {
   max-width: 400px;
 }
 
+/* Flex items refuse to shrink below their intrinsic width by default, which is
+   what let the filters push the page wider than the viewport on mobile. */
+.search-input,
+.filter-select {
+  min-width: 0;
+}
+
 .drinks-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -476,11 +484,11 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.value.low-stock {
+.value--low {
   color: #f39c12;
 }
 
-.value.out-of-stock {
+.value--out {
   color: #e74c3c;
 }
 
@@ -525,5 +533,40 @@ onMounted(() => {
   text-align: center;
   color: #7f8c8d;
   padding: 3rem;
+}
+
+@media (max-width: 768px) {
+  .drinks-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .drinks-header h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .drinks-filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .search-input,
+  .filter-select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .drinks-grid {
+    /* 350px minimum columns don't fit a phone; minmax(0, …) keeps a single
+       card from widening the page instead of overflowing inside the track. */
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>
