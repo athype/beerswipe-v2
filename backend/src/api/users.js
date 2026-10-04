@@ -5,7 +5,9 @@ import multer from "multer";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
 import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
-import { Transaction, User } from "../models/index.js";
+import { ScanCode, Transaction, User } from "../models/index.js";
+import { generateScanCode } from "../utils/scanCodeCrypto.ts";
+import { userIdParamSchema } from "../validation/contracts.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -822,6 +824,161 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
       await dbTransaction.rollback();
     }
     console.error("Update user error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get (or lazily create) a user's scan code (admin or seller)
+/**
+ * @openapi
+ * /users/{id}/scan-code:
+ *   get:
+ *     summary: Get a user's scan code
+ *     description: >
+ *       Returns the user's scan code, creating one on first access. The code is
+ *       stored in plaintext because it is re-displayed for QR pull-up and the
+ *       ADA member page; regenerating replaces it in place.
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *       - apiKeyHeader: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: The user's scan code
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ScanCode" }
+ *       400:
+ *         description: Invalid user id
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid credentials
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Caller is not an admin or seller
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+// codeql[js/missing-rate-limiting] — deferred (design spec §14)
+router.get("/:id/scan-code", authenticateRequest, requireAdminOrSeller, async (req, res) => {
+  try {
+    const userId = userIdParamSchema.safeParse(req.params.id);
+    if (!userId.success) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+
+    const user = await User.findByPk(userId.data);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // One row per user; the unique userId plus Sequelize's re-find on a unique
+    // violation keeps concurrent first fetches on the same row.
+    const [scanCode] = await ScanCode.findOrCreate({
+      where: { userId: user.id },
+      defaults: { code: generateScanCode() },
+    });
+
+    res.json({ code: scanCode.code });
+  }
+  catch (error) {
+    console.error("Get scan code error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Rotate a user's scan code (admin or seller)
+/**
+ * @openapi
+ * /users/{id}/scan-code/regenerate:
+ *   post:
+ *     summary: Regenerate a user's scan code
+ *     description: >
+ *       Rotates the code in place, creating one if the user never had one. The
+ *       previous code stops resolving immediately.
+ *     tags: [Users]
+ *     security:
+ *       - authToken: []
+ *       - apiKeyHeader: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: The new scan code
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ScanCode" }
+ *       400:
+ *         description: Invalid user id
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       401:
+ *         description: Missing or invalid credentials
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Caller is not an admin or seller
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+// codeql[js/missing-rate-limiting] — deferred (design spec §14)
+router.post("/:id/scan-code/regenerate", authenticateRequest, requireAdminOrSeller, async (req, res) => {
+  try {
+    const userId = userIdParamSchema.safeParse(req.params.id);
+    if (!userId.success) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+
+    const user = await User.findByPk(userId.data);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const code = generateScanCode();
+    const [scanCode, created] = await ScanCode.findOrCreate({
+      where: { userId: user.id },
+      defaults: { code },
+    });
+
+    if (!created) {
+      scanCode.code = code;
+      await scanCode.save();
+    }
+
+    res.json({ code: scanCode.code });
+  }
+  catch (error) {
+    console.error("Regenerate scan code error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
