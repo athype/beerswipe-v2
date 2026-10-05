@@ -2,7 +2,7 @@
 
 Wires the window (1024x600 target panel, fullscreen option) and a demo
 driver: Enter, Space or a tap advances the placeholder flow. The real
-flow controller (NFC + API wiring) replaces the demo driver in PR B
+flow controller (scan reader + API wiring) replaces the demo driver in PR B
 (issue #125).
 """
 

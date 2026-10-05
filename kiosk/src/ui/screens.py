@@ -2,7 +2,7 @@
 
 Every screen is a placeholder that renders a centered label. The real
 layouts, styling and flow wiring land in PR B / PR C (issue #125).
-Screens deliberately know nothing about the API or NFC layers; they
+Screens deliberately know nothing about the API or scan layers; they
 only exist so the app structure and navigation can be exercised now.
 """
 
@@ -43,7 +43,7 @@ class IdleScreen(Screen):
 
 
 class GreetingScreen(Screen):
-    """Shows the tapped member and their balance (PR B wires the NFC lookup)."""
+    """Shows the scanned member and their balance (PR B wires the scan lookup)."""
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
