@@ -25,19 +25,37 @@ Kivy touch kiosk for the Beerswipe bar. Targets a Raspberry Pi with a 7"
 Python >= 3.13 with uv. From this directory:
 
     uv sync
-    KIOSK_API_KEY=<seller-scoped key> uv run python main.py
+    cp .env.example .env      # then set KIOSK_API_KEY (see Configuration)
+    uv run --env-file .env python main.py
 
-Development opens a 1024x600 window. For a fullscreen run on the Pi:
+Development opens a 1024x600 window; on the Pi set `KIOSK_FULLSCREEN=1` in
+`.env` for a fullscreen run.
 
-    KIOSK_FULLSCREEN=1 uv run python main.py
+Run it from a real console: the keyboard-wedge reader uses `msvcrt`, so an
+IDE's embedded console will not feed it typed codes.
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `KIOSK_API_URL` | `http://localhost:8080/api/v1` | Backend API base URL |
-| `KIOSK_API_KEY` | *(unset)* | Seller-scoped API key (`/api-keys` in the web UI); the scan lookup and the sale are both guarded |
+| `KIOSK_API_KEY` | *(unset)* | Seller-scoped API key, created in the web UI under `/api-keys`; the scan lookup and the sale are both guarded |
 | `KIOSK_FULLSCREEN` | *(unset)* | Set to `1` for a fullscreen run on the Pi |
+
+The kiosk reads plain environment variables — `.env.example` is the whole
+config surface. `uv run` does not read `.env` on its own, so pass it
+explicitly:
+
+    uv run --env-file .env python main.py
+
+`.env` is gitignored (the same rule the backend's root `.env` uses). For a
+one-off run you can set variables inline instead:
+
+    $env:KIOSK_API_KEY="<key>"; uv run python main.py   # PowerShell
+    set KIOSK_API_KEY=<key> && uv run python main.py    # cmd
+
+On the Pi, set the same variables in the systemd unit rather than shipping
+a file (`EnvironmentFile=/etc/beerswipe-kiosk.env`).
 
 Without `KIOSK_API_KEY` the app still boots: the drinks list works (public
 route) but every scan lands on the error screen with the backend's
