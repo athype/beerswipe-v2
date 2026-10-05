@@ -1,8 +1,9 @@
-"""Keyboard fallback NFC reader — types a UID instead of tapping a card.
+"""Keyboard-wedge scan reader — types a scan code instead of scanning it.
 
 Use this during development on a desktop machine (Windows or Linux).
-Start the reader, type a UID (e.g. ``04:AB:CD:EF:12:34``), press Enter,
-and the callback fires as if a physical card were tapped.
+Start the reader, type a code (e.g.
+``a1b2c3d4e5f60718293a4b5c6d7e8f90``), press Enter, and the callback
+fires as if the scanner had read a code.
 """
 
 import os
@@ -11,18 +12,18 @@ import sys
 import threading
 import time
 
-from .protocol import NfcReader, OnCardTap
+from .protocol import OnScanCode, ScanReader
 
 if os.name == "nt":  # pragma: no cover — Windows-only import
     import msvcrt  # mypy's posix stubs lack msvcrt attributes
 
 
-class KeyboardNfcReader(NfcReader):
-    """Reads card UIDs from stdin — no hardware needed.
+class KeyboardScanReader(ScanReader):
+    """Reads scan codes from stdin — no hardware needed.
 
     The reader runs a daemon thread that polls stdin with a short
     timeout so ``stop()`` returns promptly instead of being blocked on
-    a blocking read.  Each non-empty line is treated as a card UID.
+    a blocking read.  Each non-empty line is treated as a scan code.
 
     Platform note: POSIX uses ``select`` on stdin; Windows uses
     ``msvcrt.kbhit()`` because ``select`` does not work on Windows
@@ -33,16 +34,16 @@ class KeyboardNfcReader(NfcReader):
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
-    def start(self, *, on_card: OnCardTap) -> None:
+    def start(self, *, on_scan: OnScanCode) -> None:
         if self._thread is not None:
-            raise RuntimeError("NFC reader is already running")
+            raise RuntimeError("Scan reader is already running")
 
         self._stop_event.clear()
         self._thread = threading.Thread(
             target=self._read_loop,
-            args=(on_card,),
+            args=(on_scan,),
             daemon=True,
-            name="keyboard-nfc",
+            name="keyboard-scan",
         )
         self._thread.start()
 
@@ -58,12 +59,12 @@ class KeyboardNfcReader(NfcReader):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _normalize(uid: str) -> str:
-        """Strip whitespace and uppercase so lookups are canonical."""
-        return uid.strip().upper()
+    def _normalize(code: str) -> str:
+        """Strip whitespace and lowercase so lookups are canonical."""
+        return code.strip().lower()
 
-    def _read_loop(self, on_card: OnCardTap) -> None:
-        """Poll stdin until stopped, firing *on_card* per non-empty line."""
+    def _read_loop(self, on_scan: OnScanCode) -> None:
+        """Poll stdin until stopped, firing *on_scan* per non-empty line."""
         while not self._stop_event.is_set():
             line = self._read_line()
             if line is None:  # EOF or stop requested mid-read
@@ -71,9 +72,9 @@ class KeyboardNfcReader(NfcReader):
             if line == "":  # nothing pending yet
                 continue
 
-            uid = self._normalize(line)
-            if uid:
-                on_card(uid)
+            code = self._normalize(line)
+            if code:
+                on_scan(code)
 
     def _read_line(self) -> str | None:
         """Return the next full line, ``""`` when idle, or ``None`` on EOF.

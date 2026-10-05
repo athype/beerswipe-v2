@@ -1,37 +1,31 @@
-"""User / NFC lookup client — endpoint pending on the backend.
+"""User / scan-code lookup client.
 
-The NFC card → user mapping endpoint does not exist yet on the Beerswipe
-API.  This module provides the client-side interface so the Kivy layer
-can be built against a stable contract now, and the implementation will
-light up once the backend route is added.
-
-Expected backend route (to be created):
-    GET /api/v1/nfc/lookup/:cardUid
-    Response: { user: { id, username, credits } }
+Resolves a scanned code to the member it belongs to.  The backend route
+(GET /api/v1/scan/lookup/:code) is admin-or-seller guarded; the kiosk
+calls it with its seller-scoped API key.
 """
 
 from ..models.common import KioskResult
-from ..models.users import NfcLookupResponse
+from ..models.users import ScanCodeLookupResponse
 from .http import BeerswipeClient
 
 
 class UsersClient:
-    """Look up users, primarily via NFC card UID."""
+    """Look up users, primarily via scan code."""
 
     def __init__(self, client: BeerswipeClient) -> None:
         self._client = client
 
-    async def lookup_nfc(self, card_uid: str) -> KioskResult[NfcLookupResponse]:
-        """Look up a user by their NFC card UID.
+    async def lookup_scan_code(self, code: str) -> KioskResult[ScanCodeLookupResponse]:
+        """Look up a user by their scan code.
 
-        NOTE: the backend endpoint (GET /api/v1/nfc/lookup/:cardUid)
-        does not exist yet. This method will return an API error
-        (typically a 404 Not Found response) until the route is implemented.
-        Once the backend route exists the call will be:
-            GET /api/v1/nfc/lookup/{card_uid}
-            → { user: { id, username, credits } }
+        Calls GET /api/v1/scan/lookup/{code}, which resolves to::
+
+            { user: { id, username, credits } }
+
+        The code is accepted in any casing.
         """
         return await self._client.get_model(
-            f"/nfc/lookup/{card_uid}",
-            NfcLookupResponse,
+            f"/scan/lookup/{code}",
+            ScanCodeLookupResponse,
         )

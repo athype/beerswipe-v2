@@ -8,7 +8,7 @@ from .common import ApiError, KioskResult
 from .drinks import Drink, DrinkListResponse, Pagination
 from .leaderboard import LeaderboardEntry, LeaderboardPeriod, LeaderboardResponse
 from .sales import SellRequest, SellResponse
-from .users import NfcLookupResponse, UserInfo
+from .users import ScanCodeLookupResponse, UserInfo
 
 __all__ = [
     "ApiError",
@@ -18,8 +18,8 @@ __all__ = [
     "LeaderboardEntry",
     "LeaderboardPeriod",
     "LeaderboardResponse",
-    "NfcLookupResponse",
     "Pagination",
+    "ScanCodeLookupResponse",
     "SellRequest",
     "SellResponse",
     "UserInfo",
