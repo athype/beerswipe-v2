@@ -391,7 +391,7 @@ class FlowController:
         if token != self._token:
             return
 
-        logger.exception("Kiosk API call failed", exc_info=exc)
+        logger.error("Kiosk API call failed", exc_info=exc)
         self._fail("Something went wrong. Please scan again.")
 
     # ------------------------------------------------------------------

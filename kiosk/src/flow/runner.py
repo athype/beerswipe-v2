@@ -11,6 +11,7 @@ production implementation of it.
 """
 
 import asyncio
+import logging
 import threading
 from collections.abc import Callable, Coroutine
 from concurrent.futures import CancelledError as FutureCancelledError
@@ -18,6 +19,8 @@ from concurrent.futures import Future
 from typing import Any, TypeVar
 
 from ..client import KioskApi
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -135,6 +138,16 @@ class AsyncRunner:
 
         loop.call_soon_threadsafe(loop.stop)
         thread.join(timeout=STOP_TIMEOUT_SECONDS)
+
+        if thread.is_alive():
+            # The loop thread is wedged. Keep our references: leaving them
+            # set keeps stop() retryable, and stops a later start() from
+            # spinning up a second loop next to the stuck one.
+            logger.warning(
+                "AsyncRunner loop thread did not stop within %ss; leaving it running",
+                STOP_TIMEOUT_SECONDS,
+            )
+            return
 
         self._loop = None
         self._thread = None

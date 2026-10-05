@@ -207,11 +207,18 @@ class ConfirmScreen(Screen):
             return ""
 
         drink = view.selected_drink
+        # Display only: the backend still refuses the sale if the credits
+        # are short, this just avoids putting a negative figure on screen.
+        if view.credits_after < 0:
+            credits_after = "Not enough credits"
+        else:
+            credits_after = f"Credits after: {_credits(view.credits_after)}"
+
         return (
             f"{drink.name}\n\n"
             f"{view.quantity} x {_credits(drink.price)} credits\n\n"
             f"Total: {_credits(view.total)} credits\n"
-            f"Credits after: {_credits(view.credits_after)}"
+            f"{credits_after}"
         )
 
     def _on_confirm(self, *_args: object) -> None:
