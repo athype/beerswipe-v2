@@ -14,8 +14,9 @@ Kivy touch kiosk for the Beerswipe bar. Targets a Raspberry Pi with a 7"
   (`src/client`, `src/models`), the scan-code reader layer
   (`src/scan`: protocol + keyboard-wedge driver for development) and the
   scan-code backend (#143, `GET /api/v1/scan/lookup/:code`).
-- Next: the DESIGN.md visual pass (PR C) — screens are deliberately plain
-  until then. See issue #125 for the design and #111 for the roadmap.
+- Visual pass (PR C): the screens follow `frontend/DESIGN.md`, the "Beer
+  Machine" system — see [Design](#design) below. See issue #125 for the
+  design and #111 for the roadmap.
 
 > Historical note: the 2026-09 pivot retired the planned NFC reader (PN532)
 > in favour of a 2D scanner; `src/scan` replaces the old `src/nfc` layer.
@@ -33,6 +34,25 @@ Development opens a 1024x600 window; on the Pi set `KIOSK_FULLSCREEN=1` in
 
 Run it from a real console: the keyboard-wedge reader uses `msvcrt`, so an
 IDE's embedded console will not feed it typed codes.
+
+## Design
+
+The look mirrors `frontend/DESIGN.md` (the "Beer Machine" dark-glass
+system) onto Kivy:
+
+- `src/ui/theme.py` — palette, radius/spacing scales, the Inter type scale,
+  the bundled fonts and the two runtime textures.
+- `src/ui/widgets.py` — the shared vocabulary: the drifting backdrop, the
+  glass panel, primary/secondary buttons, the mint money label, the drink
+  row and the card divider.
+
+Kivy has no CSS and no backdrop blur, so glass is a translucent fill plus a
+1px bottle-green border with a shadow underlay, and the "alive" background
+is three tinted glow orbs drifting under a tiled noise texture — both are
+generated at runtime, so there are no image assets to ship. Inter is not a
+webfont in the web app and the Pi's Linux fallback would look off, so the
+four static weights are bundled in `assets/fonts/` (Inter 4.1, SIL Open
+Font License 1.1 — the license text is `assets/fonts/OFL.txt`).
 
 ## Configuration
 
@@ -80,12 +100,16 @@ For development without hardware, the keyboard-wedge reader
 ## Quality gates
 
     uv run mypy -p src.models -p src.client -p src.scan -p src.flow --strict
+    uv run mypy -p src.ui
     uv run ruff check src/ main.py tests/
+    uv run python -m compileall -q src/ui
     uv run pytest
 
 `src/ui` is not part of the strict mypy run because kivy ships no type
-info; `src/flow` is plain Python, so the scan-to-buy logic is both
-strictly typed and covered by the headless flow tests.
+info, so it is checked non-strict and byte-compiled instead — it cannot be
+imported without a display, which is why the visual check is a manual run.
+`src/flow` is plain Python, so the scan-to-buy logic is both strictly
+typed and covered by the headless flow tests.
 
 ## Layout
 
@@ -94,5 +118,6 @@ strictly typed and covered by the headless flow tests.
 - `src/client`: async httpx API client (single pooled connection)
 - `src/scan`: scan-code reader layer (protocol + keyboard driver)
 - `src/flow`: flow controller, state machine and async runner (no kivy)
-- `src/ui`: kivy App, ScreenManager and screens
+- `src/ui`: kivy App, ScreenManager, screens, design tokens and widgets
+- `assets/fonts`: bundled Inter weights (SIL OFL 1.1)
 - `tests`: headless flow tests (fake api, executor and scheduler)
