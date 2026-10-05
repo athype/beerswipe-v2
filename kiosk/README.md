@@ -5,16 +5,17 @@ Kivy touch kiosk for the Beerswipe bar. Targets a Raspberry Pi with a 7"
 
 ## Status
 
+- Working scan-to-buy flow (PR B): scan a code, pick a drink and a
+  quantity, confirm, and the sale is posted — the result screen shows the
+  member's remaining credits and every screen times back to idle. The
+  state machine, timeouts and error handling live in `src/flow`, which is
+  kivy-free so the flow is covered headless by `tests/test_flow.py`.
 - Merged on `feature/BS-111-kiosk`: async API client + Pydantic models
-  (`src/client`, `src/models`) and the scan-code reader layer
-  (`src/scan`: protocol + keyboard-wedge driver for development).
-- Scan-code backend merged (#143): `GET /api/v1/scan/lookup/:code`
-  resolves a scanned code to its member. The kiosk client targets that
-  route; calling it from the flow lands in PR B.
-- This shell (PR A): the app boots with placeholder screens. Enter, Space or
-  a tap walks idle -> greeting -> pick -> confirm -> result.
-- Next: flow controller + real wiring (PR B), DESIGN.md visual pass (PR C).
-  See issue #125 for the design and #111 for the full kiosk roadmap.
+  (`src/client`, `src/models`), the scan-code reader layer
+  (`src/scan`: protocol + keyboard-wedge driver for development) and the
+  scan-code backend (#143, `GET /api/v1/scan/lookup/:code`).
+- Next: the DESIGN.md visual pass (PR C) — screens are deliberately plain
+  until then. See issue #125 for the design and #111 for the roadmap.
 
 > Historical note: the 2026-09 pivot retired the planned NFC reader (PN532)
 > in favour of a 2D scanner; `src/scan` replaces the old `src/nfc` layer.
@@ -24,11 +25,23 @@ Kivy touch kiosk for the Beerswipe bar. Targets a Raspberry Pi with a 7"
 Python >= 3.13 with uv. From this directory:
 
     uv sync
-    uv run python main.py
+    KIOSK_API_KEY=<seller-scoped key> uv run python main.py
 
 Development opens a 1024x600 window. For a fullscreen run on the Pi:
 
     KIOSK_FULLSCREEN=1 uv run python main.py
+
+## Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `KIOSK_API_URL` | `http://localhost:8080/api/v1` | Backend API base URL |
+| `KIOSK_API_KEY` | *(unset)* | Seller-scoped API key (`/api-keys` in the web UI); the scan lookup and the sale are both guarded |
+| `KIOSK_FULLSCREEN` | *(unset)* | Set to `1` for a fullscreen run on the Pi |
+
+Without `KIOSK_API_KEY` the app still boots: the drinks list works (public
+route) but every scan lands on the error screen with the backend's
+message.
 
 ## Scanner hardware
 
@@ -48,10 +61,13 @@ For development without hardware, the keyboard-wedge reader
 
 ## Quality gates
 
-    uv run mypy -p src.models -p src.client -p src.scan --strict
-    uv run ruff check src/ main.py
+    uv run mypy -p src.models -p src.client -p src.scan -p src.flow --strict
+    uv run ruff check src/ main.py tests/
+    uv run pytest
 
-`src/ui` is not part of the strict mypy run because kivy ships no type info.
+`src/ui` is not part of the strict mypy run because kivy ships no type
+info; `src/flow` is plain Python, so the scan-to-buy logic is both
+strictly typed and covered by the headless flow tests.
 
 ## Layout
 
@@ -59,4 +75,6 @@ For development without hardware, the keyboard-wedge reader
 - `src/models`: Pydantic mirrors of the shared TS contracts
 - `src/client`: async httpx API client (single pooled connection)
 - `src/scan`: scan-code reader layer (protocol + keyboard driver)
+- `src/flow`: flow controller, state machine and async runner (no kivy)
 - `src/ui`: kivy App, ScreenManager and screens
+- `tests`: headless flow tests (fake api, executor and scheduler)
