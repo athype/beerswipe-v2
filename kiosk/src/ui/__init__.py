@@ -1,5 +1,7 @@
 """Kivy user interface for the Beerswipe kiosk.
 
-PR A shell: the App, the ScreenManager and placeholder screens. Real
-layouts and flow wiring land in later PRs (see issue #125).
+``app.py`` wires the flow controller to the screen manager, ``screens.py``
+renders ``FlowView`` snapshots and emits intents, and ``theme.py`` /
+``widgets.py`` carry the DESIGN.md glass look (tokens, fonts, textures and
+the shared widgets). The flow itself lives in ``src/flow`` and stays kivy-free.
 """
