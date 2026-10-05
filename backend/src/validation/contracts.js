@@ -64,3 +64,9 @@ export const createApiKeySchema = z.object({
 );
 
 export const apiKeyIdParamSchema = z.coerce.number().int().positive();
+
+// Scan codes are 32-char lowercase hex; normalize before the shape check so a
+// scanner (or a human typing one in) may send any casing or stray whitespace.
+export const scanCodeParamSchema = z.string().trim().toLowerCase().regex(/^[0-9a-f]{32}$/);
+
+export const userIdParamSchema = z.coerce.number().int().positive();

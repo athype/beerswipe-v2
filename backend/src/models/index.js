@@ -1,6 +1,7 @@
 import ApiKey from "./ApiKey.js";
 import Drink from "./Drink.js";
 import Passkey from "./Passkey.js";
+import ScanCode from "./ScanCode.ts";
 import Transaction from "./Transaction.js";
 import User from "./User.js";
 
@@ -56,10 +57,22 @@ Passkey.belongsTo(User, {
   as: "user",
 });
 
+User.hasOne(ScanCode, {
+  foreignKey: "userId",
+  as: "scanCode",
+  onDelete: "CASCADE",
+});
+
+ScanCode.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
 export {
   ApiKey,
   Drink,
   Passkey,
+  ScanCode,
   Transaction,
   User,
 };

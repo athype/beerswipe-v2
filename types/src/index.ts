@@ -7,4 +7,5 @@ export * from "./drinks.js";
 export * from "./leaderboard.js";
 export * from "./passkeys.js";
 export * from "./sales.js";
+export * from "./scanCodes.js";
 export * from "./users.js";

@@ -262,6 +262,34 @@ const createApiKeyRequestSchema = {
   required: ["name"],
 };
 
+const scanCodeSchema = {
+  type: "object",
+  description:
+    "A user's scan code: 32-char lowercase hex, stored in plaintext because it is "
+    + "re-displayed for QR pull-up and the ADA member page. Regenerating replaces it in place.",
+  properties: {
+    code: { type: "string", description: "32-character lowercase hex code" },
+  },
+  required: ["code"],
+};
+
+const scanLookupResponseSchema = {
+  type: "object",
+  description: "Kiosk resolution result: the user a scan code belongs to",
+  properties: {
+    user: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        username: { type: "string" },
+        credits: { type: "integer", minimum: 0 },
+      },
+      required: ["id", "username", "credits"],
+    },
+  },
+  required: ["user"],
+};
+
 const schemas = {
   Error: errorSchema,
   ServerError: serverErrorSchema,
@@ -283,6 +311,8 @@ const schemas = {
   ApiKey: apiKeySchema,
   ApiKeyListItem: apiKeyListItemSchema,
   CreateApiKeyRequest: createApiKeyRequestSchema,
+  ScanCode: scanCodeSchema,
+  ScanLookupResponse: scanLookupResponseSchema,
 };
 
 const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
@@ -316,6 +346,7 @@ const spec = swaggerJsdoc({
       { name: "Passkeys", description: "WebAuthn passkey registration and login" },
       { name: "Admin", description: "Admin account management" },
       { name: "Api Keys", description: "Long-lived API keys for programmatic clients" },
+      { name: "Scan", description: "Per-user scan codes and the kiosk lookup route" },
     ],
     components: {
       securitySchemes: {
@@ -345,7 +376,9 @@ const spec = swaggerJsdoc({
       },
     },
   },
-  apis: [`${apiDir}/*.js`],
+  // Route annotations live beside the routers; .ts is included for the modules
+  // written under the TypeScript-first convention.
+  apis: [`${apiDir}/*.{js,ts}`],
 });
 
 const router = express.Router();

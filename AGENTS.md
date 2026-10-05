@@ -180,7 +180,7 @@ New code should be TypeScript wherever the toolchain supports it.
 
 ### Shared contract status
 `types/` contains shared TypeScript contracts for domain and API payloads. The package is consumed as `@beerswipe/types` (workspace dependency) by both backend and frontend.
-Modules: `admin.ts`, `auth.ts`, `common.ts`, `domain.ts`, `drinks.ts`, `leaderboard.ts`, `passkeys.ts`, `sales.ts`, `users.ts` — all re-exported from `types/src/index.ts`.
+Modules: `admin.ts`, `apiKeys.ts`, `auth.ts`, `common.ts`, `domain.ts`, `drinks.ts`, `leaderboard.ts`, `passkeys.ts`, `sales.ts`, `scanCodes.ts`, `users.ts` — all re-exported from `types/src/index.ts`.
 Treat backend route responses as the runtime source of truth and keep `types/` aligned when routes change.
 
 ## Task Playbooks
