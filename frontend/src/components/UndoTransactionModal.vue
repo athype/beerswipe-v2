@@ -33,6 +33,13 @@
           <span class="value">{{ transaction?.quantity }}</span>
         </div>
 
+        <div v-if="isGroupedSale" class="detail-row">
+          <span class="label">Order:</span>
+          <span class="value">
+            Part of a multi-drink order — all {{ saleGroup.length }} lines are undone together
+          </span>
+        </div>
+
         <div class="detail-row">
           <span class="label">Description:</span>
           <span class="value">{{ transaction?.description }}</span>
@@ -55,7 +62,10 @@
           <li v-else-if="creditEffect < 0">
             Deduct {{ -creditEffect }} credits from {{ transaction?.user?.username }}
           </li>
-          <li v-if="transaction?.type === 'sale' && transaction?.drink">
+          <li v-if="isGroupedSale">
+            Restore the stock of every drink in the order
+          </li>
+          <li v-else-if="transaction?.type === 'sale' && transaction?.drink">
             Restore {{ transaction?.quantity }} units to {{ transaction?.drink?.name }} inventory
           </li>
           <li>Permanently remove this transaction from the system</li>
@@ -96,6 +106,12 @@ const props = defineProps({
   transaction: {
     type: Object,
     default: null
+  },
+  // All rows of this transaction's sale group, when it is part of a
+  // multi-drink order; the whole group is undone from any of its rows.
+  saleGroup: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -103,8 +119,17 @@ const emit = defineEmits(['close', 'confirm'])
 
 const isLoading = ref(false)
 
+const isGroupedSale = computed(() =>
+  props.transaction?.type === 'sale' && props.saleGroup.length > 1
+)
+
 // Signed change undoing this transaction makes to the user's balance.
-const creditEffect = computed(() => undoCreditDelta(props.transaction))
+const creditEffect = computed(() => {
+  if (isGroupedSale.value) {
+    return props.saleGroup.reduce((total, row) => total + row.amount, 0)
+  }
+  return undoCreditDelta(props.transaction)
+})
 
 const close = () => {
   emit('close')
