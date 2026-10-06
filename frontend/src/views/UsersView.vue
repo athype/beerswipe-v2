@@ -72,6 +72,14 @@
                   💰
                 </button>
                 <button
+                  @click="openScanCodeModal(user)"
+                  class="btn small"
+                  title="Scan Code"
+                  aria-label="Show scan code"
+                >
+                  🔳
+                </button>
+                <button
                   v-if="user.userType !== 'admin'"
                   @click="openEditModal(user)"
                   class="btn small"
@@ -128,6 +136,12 @@
       @success="closeCreditsModal"
     />
 
+    <ScanCodeModal
+      :show="showScanCodeModal"
+      :user="selectedUser"
+      @close="closeScanCodeModal"
+    />
+
     <CsvImportModal
       :show="showCSVModal"
       @close="showCSVModal = false"
@@ -152,6 +166,7 @@ import EditUserModal from '../components/EditUserModal.vue'
 import AddCreditsModal from '../components/AddCreditsModal.vue'
 import CsvImportModal from '../components/CsvImportModal.vue'
 import CsvExportModal from '../components/modals/CsvExportModal.vue'
+import ScanCodeModal from '../components/modals/ScanCodeModal.vue'
 
 const usersStore = useUsersStore()
 const { showSuccess, showError } = useNotifications()
@@ -161,6 +176,7 @@ const filterType = ref('')
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showCreditsModal = ref(false)
+const showScanCodeModal = ref(false)
 const showCSVModal = ref(false)
 const showExportModal = ref(false)
 const selectedUser = ref(null)
@@ -194,6 +210,11 @@ const handleCreateUser = async (userData) => {
 const openAddCreditsModal = (user) => {
   selectedUser.value = user
   showCreditsModal.value = true
+}
+
+const openScanCodeModal = (user) => {
+  selectedUser.value = user
+  showScanCodeModal.value = true
 }
 
 const openEditModal = (user) => {
@@ -248,6 +269,11 @@ const exportCSV = async (params = {}) => {
 
 const closeCreditsModal = () => {
   showCreditsModal.value = false
+  selectedUser.value = null
+}
+
+const closeScanCodeModal = () => {
+  showScanCodeModal.value = false
   selectedUser.value = null
 }
 

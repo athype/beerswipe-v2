@@ -65,6 +65,10 @@ export const usersAPI = {
 
   addCredits: (id: number, amount: number) => api.post<types.AddCreditsResponse>(`/users/${id}/add-credits`, { amount }),
 
+  getScanCode: (id: number) => api.get<types.ScanCodeResponse>(`/users/${id}/scan-code`),
+
+  regenerateScanCode: (id: number) => api.post<types.ScanCodeResponse>(`/users/${id}/scan-code/regenerate`),
+
   importCSV: (formData: FormData) => api.post<types.ImportUsersCsvResponse>('/users/import-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
