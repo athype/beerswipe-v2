@@ -408,7 +408,30 @@ const totalCost = computed(() => {
 })
 
 const recentSales = computed(() => {
-  return salesStore.transactions.filter(t => t.type === 'sale').slice(0, 10)
+  // One multi-drink order is several rows sharing a saleGroupId: show it as a
+  // single entry (summed credits, joined description, newest row's id).
+  // The API orders by transactionDate DESC, id DESC, so group rows arrive
+  // contiguously with the newest first.
+  const grouped = []
+  const byGroup = new Map()
+  for (const sale of salesStore.transactions) {
+    if (sale.type !== 'sale') continue
+    if (!sale.saleGroupId) {
+      grouped.push(sale)
+      continue
+    }
+    const existing = byGroup.get(sale.saleGroupId)
+    if (existing) {
+      existing.amount += sale.amount
+      existing.quantity += sale.quantity || 0
+      existing.description = `${existing.description} + ${sale.description}`
+    } else {
+      const entry = { ...sale, quantity: sale.quantity || 0 }
+      byGroup.set(sale.saleGroupId, entry)
+      grouped.push(entry)
+    }
+  }
+  return grouped.slice(0, 10)
 })
 
 const latestSale = computed(() => recentSales.value[0] || null)
@@ -673,7 +696,9 @@ const confirmUndo = async () => {
   try {
     const result = await salesStore.undoTransaction(target.id)
     if (result.success) {
-      showSuccess(`Sale undone — ${target.amount} credits restored to ${target.user?.username || 'customer'}`)
+      // The server restores the whole order; its total is authoritative.
+      const restored = result.data?.undoTransaction.amount ?? target.amount
+      showSuccess(`Sale undone — ${restored} credits restored to ${target.user?.username || 'customer'}`)
       showUndoModal.value = false
       undoTarget.value = null
       await Promise.all([
@@ -755,33 +780,28 @@ const confirmSale = async () => {
   processing.value = true
   const currentUser = selectedUser.value
   const currentCart = [...cart.value]
-  const failedItems = []
-  let soldAmount = 0
+  let sold = false
 
   try {
-    for (const item of currentCart) {
-      const result = await salesStore.makeSale({
-        userId: currentUser.id,
-        drinkId: item.drink.id,
-        quantity: item.quantity
-      })
+    // The whole cart is one atomic sale: either every line is charged or none is.
+    const result = await salesStore.makeSale({
+      userId: currentUser.id,
+      items: currentCart.map(item => ({ drinkId: item.drink.id, quantity: item.quantity }))
+    })
 
-      if (result.success) {
-        soldAmount += item.drink.price * item.quantity
-        // Remove the sold item — the cart keeps whatever failed so the sale can be retried
-        const index = cart.value.findIndex(cartItem => cartItem.drink.id === item.drink.id)
-        if (index > -1) {
-          cart.value.splice(index, 1)
-        }
-      } else {
-        failedItems.push({ name: item.drink.name, error: result.error || 'Failed to process sale' })
-      }
-    }
-
-    if (failedItems.length > 0) {
-      showError(`Sale incomplete — ${failedItems.map(f => `${f.name}: ${f.error}`).join('; ')}`)
-    } else {
+    if (result.success) {
+      const soldAmount = result.data?.transaction.totalCost
+        ?? currentCart.reduce((total, item) => total + item.drink.price * item.quantity, 0)
       showSuccess(`Sale processed successfully — ${soldAmount} credits`)
+      sold = true
+      cart.value = []
+      rememberSale(currentUser, currentCart)
+      selectedUser.value = null
+      searchQuery.value = ''
+      showConfirmModal.value = false
+    } else {
+      // All-or-nothing: nothing was charged, keep the cart so it can be retried.
+      showError(result.error || 'Failed to process sale')
     }
   } catch (error) {
     // Network-level failure: nothing was charged, keep the cart and customer so the sale can be retried
@@ -795,8 +815,8 @@ const confirmSale = async () => {
     salesStore.fetchTransactionHistory({ limit: 10 })
   ])
 
-  if (failedItems.length > 0) {
-    // Refresh balances so the remaining cart can be re-checked against authoritative credits
+  if (!sold && selectedUser.value) {
+    // Refresh balances so a retry is checked against authoritative credits
     const result = await usersStore.fetchUsers({})
     if (result.success) {
       const refreshed = usersStore.users.find(u => u.id === currentUser.id)
@@ -804,11 +824,6 @@ const confirmSale = async () => {
         selectedUser.value = refreshed
       }
     }
-  } else if (soldAmount > 0) {
-    rememberSale(currentUser, currentCart)
-    selectedUser.value = null
-    searchQuery.value = ''
-    showConfirmModal.value = false
   }
 }
 

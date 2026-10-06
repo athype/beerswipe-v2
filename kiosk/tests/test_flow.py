@@ -45,10 +45,22 @@ def sell_response(remaining_credits: int) -> SellResponse:
         "message": "Sale completed successfully",
         "transaction": {
             "id": 7,
+            "saleGroupId": "6d1f0f6e-6a1e-4f4e-9a0e-1f6f5b8f9a11",
             "user": {"id": 1, "username": "ada", "remainingCredits": remaining_credits},
             "drink": {"id": 1, "name": PILSNER, "remainingStock": 9},
             "quantity": 1,
+            "totalQuantity": 1,
             "totalCost": 4,
+            "items": [
+                {
+                    "transactionId": 7,
+                    "drinkId": 1,
+                    "drink": {"id": 1, "name": PILSNER, "remainingStock": 9},
+                    "quantity": 1,
+                    "unitPrice": 4,
+                    "totalCost": 4,
+                },
+            ],
             "admin": {"id": 9, "username": "kiosk"},
         },
     })
@@ -272,7 +284,7 @@ def h() -> Iterator[Harness]:
 # ---------------------------------------------------------------------------
 
 
-def test_scan_select_confirm_sell_result_idle(h: Harness) -> None:
+def test_scan_pick_confirm_sell_result_idle(h: Harness) -> None:
     h.scan()
     assert h.api.users.codes == [SCAN_CODE]
     assert h.state is FlowState.SELECTING
@@ -281,8 +293,8 @@ def test_scan_select_confirm_sell_result_idle(h: Harness) -> None:
 
     h.pick(1, quantity=2)
     assert h.state is FlowState.SELECTING
-    assert h.view.selected_drink is not None and h.view.selected_drink.id == 1
-    assert h.view.quantity == 2
+    assert [(line.drink.name, line.quantity) for line in h.view.items] == [(PILSNER, 2)]
+    assert h.view.focused_drink_id == 1
     assert h.view.total == 8.0
 
     h.controller.confirm()
@@ -297,8 +309,7 @@ def test_scan_select_confirm_sell_result_idle(h: Harness) -> None:
     assert len(h.api.sales.requests) == 1
     assert h.api.sales.requests[0].model_dump() == {
         "userId": 1,
-        "drinkId": 1,
-        "quantity": 2,
+        "items": [{"drinkId": 1, "quantity": 2}],
     }
     assert h.state is FlowState.RESULT
     assert h.view.remaining_credits == 36
@@ -308,6 +319,7 @@ def test_scan_select_confirm_sell_result_idle(h: Harness) -> None:
     assert h.state is FlowState.IDLE
     assert h.view.remaining_credits is None
     assert h.view.user is None
+    assert h.view.items == ()
     assert h.scheduler.delay is None  # idle has no timeout
 
 
@@ -493,8 +505,8 @@ def test_scan_after_choosing_a_drink_starts_over(h: Harness) -> None:
 
     h.scan("again")
     assert h.state is FlowState.SELECTING
-    assert h.view.selected_drink is None
-    assert h.view.quantity == 0
+    assert h.view.items == ()
+    assert h.view.focused_drink_id is None
     assert h.view.total == 0.0
     assert h.api.users.codes == [SCAN_CODE, "again"]
 
@@ -502,11 +514,11 @@ def test_scan_after_choosing_a_drink_starts_over(h: Harness) -> None:
 def test_select_drink_ignores_unknown_ids(h: Harness) -> None:
     h.scan()
     h.controller.select_drink(999)
-    assert h.view.selected_drink is None
-    assert h.view.quantity == 0
+    assert h.view.items == ()
+    assert h.view.focused_drink_id is None
 
 
-def test_confirm_without_a_drink_does_nothing(h: Harness) -> None:
+def test_confirm_with_an_empty_basket_does_nothing(h: Harness) -> None:
     h.scan()
     h.controller.confirm()
     assert h.state is FlowState.SELECTING
@@ -520,25 +532,105 @@ def test_confirm_outside_the_flow_does_nothing(h: Harness) -> None:
     assert h.api.sales.requests == []
 
 
-def test_quantity_is_clamped_to_stock(h: Harness) -> None:
+def test_tapping_a_drink_adds_it_and_clamps_to_stock(h: Harness) -> None:
     h.scan()
     h.pick(2)  # IPA: stock 3
-    assert h.view.quantity == 1
+    assert [(line.drink.name, line.quantity) for line in h.view.items] == [(IPA, 1)]
 
     h.controller.set_quantity(99)
-    assert h.view.quantity == 3
+    assert h.view.focused_line is not None and h.view.focused_line.quantity == 3
 
-    h.controller.set_quantity(0)
-    assert h.view.quantity == 1
+    # Tapping a line that is already at stock focuses it without adding more.
+    h.controller.select_drink(2)
+    assert h.view.focused_line is not None and h.view.focused_line.quantity == 3
+    assert h.view.total == 18.0
 
-    h.controller.set_quantity(-4)
-    assert h.view.quantity == 1
-    assert h.view.total == 6.0
+
+def test_basket_holds_several_drinks_in_tap_order(h: Harness) -> None:
+    h.scan()
+    h.pick(1, quantity=2)  # 2 x Pilsner
+    h.controller.select_drink(2)
+    h.controller.select_drink(2)  # a second tap merges into the same line
+
+    assert [(line.drink.name, line.quantity) for line in h.view.items] == [
+        (PILSNER, 2),
+        (IPA, 2),
+    ]
+    assert h.view.focused_drink_id == 2  # the last tap owns the stepper
+    assert h.view.total == 20.0
+
+    h.controller.confirm()
+    h.controller.confirm()
+    h.executor.run_all()
+    assert h.api.sales.requests[0].model_dump() == {
+        "userId": 1,
+        "items": [
+            {"drinkId": 1, "quantity": 2},
+            {"drinkId": 2, "quantity": 2},
+        ],
+    }
+    assert h.state is FlowState.RESULT
+
+
+def test_removing_a_line_hands_focus_to_the_next_one(h: Harness) -> None:
+    h.scan()
+    h.controller.select_drink(1)
+    h.controller.select_drink(2)
+    h.controller.select_drink(1)
+    assert h.view.focused_drink_id == 1
+
+    h.controller.set_quantity(0)  # minusing the focused line to zero removes it
+    assert [line.drink.id for line in h.view.items] == [2]
+    assert h.view.focused_drink_id == 2
+
+
+def test_removing_the_only_line_clears_the_basket(h: Harness) -> None:
+    h.scan()
+    h.pick(1, quantity=2)
+
+    h.controller.set_quantity(-1)
+    assert h.view.items == ()
+    assert h.view.focused_drink_id is None
+    assert h.view.total == 0.0
+
+    h.controller.confirm()
+    assert h.state is FlowState.SELECTING  # nothing left to ring up
+
+
+def test_back_returns_to_the_basket_with_it_intact(h: Harness) -> None:
+    h.scan()
+    h.pick(1, quantity=2)
+    h.controller.confirm()
+    assert h.state is FlowState.CONFIRMING
+
+    h.controller.back()
+    assert h.state is FlowState.SELECTING
+    assert [(line.drink.id, line.quantity) for line in h.view.items] == [(1, 2)]
+
+    # Back is ignored once the sale is in flight.
+    h.controller.confirm()
+    h.controller.confirm()
+    assert h.state is FlowState.SELLING
+    h.controller.back()
+    assert h.state is FlowState.SELLING
+
+    h.executor.run_all()
+    assert h.state is FlowState.RESULT
+
+
+def test_the_timeout_clears_the_basket(h: Harness) -> None:
+    h.scan()
+    h.pick(1, quantity=3)
+
+    h.scheduler.advance(INTERACTIVE_TIMEOUT_SECONDS)
+    assert h.state is FlowState.IDLE
+    assert h.view.items == ()
 
 
 def test_intents_are_ignored_while_idle(h: Harness) -> None:
     h.controller.select_drink(1)
     h.controller.set_quantity(5)
-    assert h.view.selected_drink is None
-    assert h.view.quantity == 0
+    h.controller.back()
+    assert h.view.items == ()
+    assert h.state is FlowState.IDLE
     assert h.executor.pending == 0

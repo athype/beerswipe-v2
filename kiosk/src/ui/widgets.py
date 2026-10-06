@@ -323,6 +323,8 @@ class DrinkRow(Button):
     """
 
     selected = BooleanProperty(False)
+    #: How many of this drink are in the basket; 0 hides the badge.
+    count = NumericProperty(0)
 
     def __init__(
         self,
@@ -343,6 +345,7 @@ class DrinkRow(Button):
         self.background_disabled_normal = ""
         self.background_disabled_down = ""
 
+        self._name_text = name
         self._name = make_label(
             name,
             "title",
@@ -372,8 +375,15 @@ class DrinkRow(Button):
             state=self._refresh,
             selected=self._refresh,
             disabled=self._refresh,
+            count=self._refresh_name,
         )
         self._refresh()
+
+    def _refresh_name(self, *_args: object) -> None:
+        """Show the basket count as a ×N badge next to the name."""
+        self._name.text = (
+            f"{self._name_text}  ×{self.count}" if self.count > 0 else self._name_text
+        )
 
     def _refresh(self, *_args: object) -> None:
         if self.selected:

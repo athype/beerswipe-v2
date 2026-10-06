@@ -123,6 +123,7 @@ Rollback on every early return after transaction start.
 - Undo flows intentionally use unchecked credit methods to reverse historical effects.
 - Stock may never go negative.
 - Keep transaction audit trail complete for credit and sale operations.
+- One sale is 1..N `Transaction` rows sharing a `saleGroupId` (one row per drink in the basket, charged atomically). `DELETE /sales/undo/:id` reverses the whole group from any of its rows; rows with a null group (credit rows, pre-grouping sales) undo singly. Lock rows ascending by id — multi-row locking on this path must stay ordered to avoid deadlocks.
 
 ### Route ordering caveat
 In `backend/src/api/users.js`, static routes like `/export-csv` must remain above parameterized routes like `/:id`.

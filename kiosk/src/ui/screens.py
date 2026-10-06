@@ -126,7 +126,7 @@ class GreetingScreen(Screen):
 
 
 class PickScreen(Screen):
-    """Drink list, then a quantity stepper for the selected drink."""
+    """Drink list with a basket: tap a row to add, stepper edits the last."""
 
     def __init__(self, *, intents: FlowController, **kwargs: object) -> None:
         super().__init__(**kwargs)
@@ -142,7 +142,11 @@ class PickScreen(Screen):
         self._scroll = ScrollView(bar_width=8)
         self._scroll.add_widget(self._drinks_box)
 
-        self._quantity_label = make_label("Tap a drink to select it", "body", color=theme.MIST)
+        self._quantity_label = make_label("Tap a drink to add it", "body", color=theme.MIST)
+
+        self._basket_label = make_label(
+            "", "label", color=theme.MINT_BRIGHT, halign="left", size_hint_y=None, height=24
+        )
 
         minus = SecondaryButton(text="-", size_hint=(None, None), size=(64, 64))
         minus.bind(on_release=partial(self._change_quantity, -1))
@@ -150,7 +154,7 @@ class PickScreen(Screen):
         plus.bind(on_release=partial(self._change_quantity, 1))
         self._continue = PrimaryButton(text="Continue", size_hint=(None, None), size=(220, 64))
         self._continue.bind(on_release=self._on_continue)
-        self._stepper_buttons = (minus, plus, self._continue)
+        self._minus, self._plus = minus, plus
 
         stepper = BoxLayout(size_hint_y=None, height=72, spacing=theme.SPACE_MD)
         stepper.add_widget(minus)
@@ -163,6 +167,7 @@ class PickScreen(Screen):
         )
         layout.add_widget(self._header)
         layout.add_widget(self._scroll)
+        layout.add_widget(self._basket_label)
         layout.add_widget(stepper)
         self.add_widget(layout)
 
@@ -175,21 +180,32 @@ class PickScreen(Screen):
             self._rebuild_rows(view.drinks)
             self._rendered_drink_ids = drink_ids
 
-        selected = view.selected_drink
+        counts = {line.drink.id: line.quantity for line in view.items}
         for drink_id, row in self._rows.items():
-            row.selected = selected is not None and selected.id == drink_id
+            row.selected = view.focused_drink_id == drink_id
+            row.count = counts.get(drink_id, 0)
 
-        if selected is None:
-            self._quantity_label.text = "Tap a drink to select it"
+        focused = view.focused_line
+        if focused is None:
+            self._quantity_label.text = "Tap a drink to add it"
             self._quantity_label.color = theme.MIST
             self._quantity_label.font_name = theme.FONT["regular"]
         else:
-            self._quantity_label.text = f"{selected.name}: quantity {view.quantity}"
+            self._quantity_label.text = f"{focused.drink.name}: quantity {focused.quantity}"
             self._quantity_label.color = theme.SLATE_SOFT
             self._quantity_label.font_name = theme.FONT["semibold"]
 
-        for button in self._stepper_buttons:
-            button.disabled = selected is None
+        if view.items:
+            total_items = sum(line.quantity for line in view.items)
+            noun = "item" if total_items == 1 else "items"
+            self._basket_label.text = f"{total_items} {noun}  |  {_credits(view.total)} credits"
+        else:
+            self._basket_label.text = ""
+
+        # Minus removes the focused line once its quantity is down to one.
+        self._minus.disabled = focused is None
+        self._plus.disabled = focused is None or focused.quantity >= focused.drink.stock
+        self._continue.disabled = not view.items
 
     # -- internals ------------------------------------------------------
 
@@ -213,14 +229,17 @@ class PickScreen(Screen):
         self._intents.select_drink(drink_id)
 
     def _change_quantity(self, delta: int, *_args: object) -> None:
-        self._intents.set_quantity(self._view.quantity + delta)
+        focused = self._view.focused_line
+        if focused is None:
+            return
+        self._intents.set_quantity(focused.quantity + delta)
 
     def _on_continue(self, *_args: object) -> None:
         self._intents.confirm()
 
 
 class ConfirmScreen(Screen):
-    """Sale summary: drink, quantity, total, credits after purchase."""
+    """Sale summary: every basket line, total, credits after purchase."""
 
     def __init__(self, *, intents: FlowController, **kwargs: object) -> None:
         super().__init__(**kwargs)
@@ -235,13 +254,27 @@ class ConfirmScreen(Screen):
             text="Confirm sale",
             size_hint=(None, None),
             size=(280, 64),
-            pos_hint={"center_x": 0.5},
         )
         self._confirm.bind(on_release=self._on_confirm)
+        self._back = SecondaryButton(
+            text="Back",
+            size_hint=(None, None),
+            size=(200, 64),
+        )
+        self._back.bind(on_release=self._on_back)
+
+        buttons = BoxLayout(
+            orientation="horizontal", size_hint=(None, None), width=720, height=64,
+            spacing=theme.SPACE_MD,
+        )
+        buttons.add_widget(Widget(size_hint_x=1))
+        buttons.add_widget(self._back)
+        buttons.add_widget(self._confirm)
+        buttons.add_widget(Widget(size_hint_x=1))
 
         column = BoxLayout(orientation="vertical", size_hint=(None, None), width=720, spacing=theme.SPACE_MD)
         column.add_widget(self._panel)
-        column.add_widget(self._confirm)
+        column.add_widget(buttons)
         fit_content(column)
         self.add_widget(_centered(column))
 
@@ -255,22 +288,39 @@ class ConfirmScreen(Screen):
             self._fill_summary(view)
         # Disabled while the sale is in flight; the controller also ignores
         # a second confirm, this just makes it visible.
-        self._confirm.disabled = view.state is not FlowState.CONFIRMING
+        is_confirming = view.state is FlowState.CONFIRMING
+        self._confirm.disabled = not is_confirming
+        self._back.disabled = not is_confirming
 
     def _fill_summary(self, view: FlowView) -> None:
-        if view.selected_drink is None:
+        if not view.items:
             return
 
-        drink = view.selected_drink
-        self._panel.add_widget(make_label(drink.name, "title", size_hint_y=None, height=32))
-        self._panel.add_widget(
-            make_label(
-                f"{view.quantity} x {_credits(drink.price)} credits",
-                "body",
-                size_hint_y=None,
-                height=28,
+        for line in view.items:
+            row = BoxLayout(
+                orientation="horizontal", size_hint_y=None, height=36, spacing=theme.SPACE_MD
             )
-        )
+            row.add_widget(
+                make_label(
+                    f"{line.quantity} x {line.drink.name}",
+                    "body",
+                    halign="left",
+                    size_hint_y=None,
+                    height=36,
+                )
+            )
+            row.add_widget(
+                make_label(
+                    f"{_credits(line.drink.price * line.quantity)} credits",
+                    "body",
+                    color=theme.SLATE_SOFT,
+                    halign="right",
+                    size_hint_y=None,
+                    height=36,
+                )
+            )
+            self._panel.add_widget(row)
+
         self._panel.add_widget(Divider())
 
         total_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=56, spacing=theme.SPACE_MD)
@@ -296,6 +346,9 @@ class ConfirmScreen(Screen):
 
     def _on_confirm(self, *_args: object) -> None:
         self._intents.confirm()
+
+    def _on_back(self, *_args: object) -> None:
+        self._intents.back()
 
 
 class ResultScreen(Screen):

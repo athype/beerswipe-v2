@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
-import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
+import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.js";
 import { Drink, Transaction, User } from "../models/index.js";
 import { sellRequestSchema } from "../validation/contracts.js";
 
@@ -11,7 +12,8 @@ const router = express.Router();
 const SELLER_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
 function calculateAge(dateOfBirth) {
-  if (!dateOfBirth) return null;
+  if (!dateOfBirth)
+    return null;
 
   let birthYear;
   let birthMonth;
@@ -22,9 +24,11 @@ function calculateAge(dateOfBirth) {
     birthYear = y;
     birthMonth = m;
     birthDay = d;
-  } else {
+  }
+  else {
     const birthDate = new Date(dateOfBirth);
-    if (Number.isNaN(birthDate.getTime())) return null;
+    if (Number.isNaN(birthDate.getTime()))
+      return null;
     birthYear = birthDate.getUTCFullYear();
     birthMonth = birthDate.getUTCMonth() + 1;
     birthDay = birthDate.getUTCDate();
@@ -43,6 +47,20 @@ function calculateAge(dateOfBirth) {
   return age;
 }
 
+/**
+ * Normalize a sell body into an ordered Map of drinkId -> quantity.
+ * Accepts the legacy single-drink shape and the multi-item `items` shape;
+ * duplicate drinkIds are merged (summed, first-seen order kept).
+ */
+function normalizeSaleItems(body) {
+  const rawItems = body.items ?? [{ drinkId: body.drinkId, quantity: body.quantity }];
+  const merged = new Map();
+  for (const { drinkId, quantity } of rawItems) {
+    merged.set(drinkId, (merged.get(drinkId) ?? 0) + quantity);
+  }
+  return merged;
+}
+
 // Make a sale (admin or seller)
 /**
  * @openapi
@@ -50,8 +68,10 @@ function calculateAge(dateOfBirth) {
  *   post:
  *     summary: Sell drinks to a user
  *     description: >
- *       Atomically deducts credits from the user, stock from the drink, and
- *       records a `sale` transaction row. Sellers and admins.
+ *       Atomically deducts credits from the user, stock from every drink, and records one
+ *       `sale` transaction row per drink — all of them sharing a `saleGroupId` — in a single
+ *       database transaction. Either the legacy single-drink shape or a multi-item basket
+ *       (`items`); either way the whole request succeeds or nothing is charged. Sellers and admins.
  *     tags: [Sales]
  *     security:
  *       - authToken: []
@@ -86,8 +106,27 @@ function calculateAge(dateOfBirth) {
  *                         id: { type: integer }
  *                         name: { type: string }
  *                         remainingStock: { type: integer }
- *                     quantity: { type: integer }
- *                     totalCost: { type: integer }
+ *                     quantity: { type: integer, description: "First item's quantity (legacy field)" }
+ *                     saleGroupId: { type: string, format: uuid, description: Groups this order's rows }
+ *                     totalQuantity: { type: integer }
+ *                     totalCost: { type: integer, description: Order total }
+ *                     items:
+ *                       type: array
+ *                       description: Every line of the order
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           transactionId: { type: integer }
+ *                           drinkId: { type: integer }
+ *                           drink:
+ *                             type: object
+ *                             properties:
+ *                               id: { type: integer }
+ *                               name: { type: string }
+ *                               remainingStock: { type: integer }
+ *                           quantity: { type: integer }
+ *                           unitPrice: { type: integer }
+ *                           totalCost: { type: integer }
  *                     admin:
  *                       type: object
  *                       properties:
@@ -135,6 +174,7 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
       const hasUserIdError = issues.some(issue => issue.path[0] === "userId");
       const hasDrinkIdError = issues.some(issue => issue.path[0] === "drinkId");
       const hasQuantityError = issues.some(issue => issue.path[0] === "quantity");
+      const hasItemsError = issues.some(issue => issue.path[0] === "items");
 
       const isMissingField = field => req.body?.[field] === undefined || req.body?.[field] === null || req.body?.[field] === "";
       const mappedErrors = [];
@@ -148,6 +188,9 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
       if (hasQuantityError) {
         mappedErrors.push("Quantity must be a positive integer");
       }
+      if (hasItemsError) {
+        mappedErrors.push("Items must be a non-empty array of drinkId and quantity");
+      }
 
       return res.status(400).json({
         error: mappedErrors.length > 0
@@ -156,26 +199,34 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
       });
     }
 
-    const { userId, drinkId, quantity } = parsedBody.data;
+    const { userId } = parsedBody.data;
+    const items = normalizeSaleItems(parsedBody.data);
 
     transaction = await sequelize.transaction();
 
     const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
-    const drink = await Drink.findByPk(drinkId, { transaction, lock: transaction.LOCK.UPDATE });
 
     if (!user) {
       await transaction.rollback();
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (!drink) {
-      await transaction.rollback();
-      return res.status(404).json({ error: "Drink not found" });
+    // Lock every drink one at a time, ascending by id: a single findAll with
+    // `lock` does not guarantee the order rows are locked in, and two baskets
+    // sharing drinks could deadlock on the money path.
+    const drinks = new Map();
+    for (const drinkId of [...items.keys()].sort((a, b) => a - b)) {
+      const drink = await Drink.findByPk(drinkId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!drink) {
+        await transaction.rollback();
+        return res.status(404).json({ error: "Drink not found", drinkId });
+      }
+      drinks.set(drinkId, drink);
     }
 
     // Legal gate: alcohol may only be sold to customers aged 18+ (Dutch law).
     // Never trust the client — enforce on the server.
-    if (drink.isAlcohol) {
+    if ([...drinks.values()].some(drink => drink.isAlcohol)) {
       const age = user.dateOfBirth ? calculateAge(user.dateOfBirth) : null;
       if (age === null || age < 18) {
         await transaction.rollback();
@@ -187,12 +238,30 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
       }
     }
 
-    if (!drink.isInStock() || drink.stock < quantity) {
-      await transaction.rollback();
-      return res.status(400).json({ error: "Insufficient stock or drink not available" });
+    const unavailable = [];
+    for (const [drinkId, quantity] of items) {
+      const drink = drinks.get(drinkId);
+      if (!drink.isInStock() || drink.stock < quantity) {
+        unavailable.push({ drinkId, name: drink.name, requested: quantity, available: drink.stock });
+      }
     }
 
-    const totalCost = drink.price * quantity;
+    if (unavailable.length > 0) {
+      await transaction.rollback();
+      if (items.size === 1) {
+        return res.status(400).json({ error: "Insufficient stock or drink not available" });
+      }
+      return res.status(400).json({
+        error: `Insufficient stock or drink not available: ${unavailable.map(item => item.name).join(", ")}`,
+        unavailable,
+      });
+    }
+
+    const totalCost = [...items].reduce(
+      (sum, [drinkId, quantity]) => sum + drinks.get(drinkId).price * quantity,
+      0,
+    );
+    const totalQuantity = [...items.values()].reduce((sum, quantity) => sum + quantity, 0);
 
     if (user.credits < totalCost) {
       await transaction.rollback();
@@ -204,36 +273,65 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
     }
 
     await user.deductCredits(totalCost, { transaction });
-    await drink.deductStock(quantity, { transaction });
 
-    const saleTransaction = await Transaction.create({
-      userId: user.id,
-      drinkId: drink.id,
-      adminId: req.user.id,
-      type: "sale",
-      amount: totalCost,
-      quantity,
-      description: `Sale: ${quantity}x ${drink.name}`,
-    }, { transaction });
+    const saleGroupId = randomUUID();
+    for (const [drinkId, quantity] of items) {
+      await drinks.get(drinkId).deductStock(quantity, { transaction });
+    }
+
+    // One row per drink, sharing saleGroupId, so the audit trail stays
+    // per-drink while undo can still reverse the whole order.
+    const saleTransactions = await Transaction.bulkCreate(
+      [...items].map(([drinkId, quantity]) => {
+        const drink = drinks.get(drinkId);
+        return {
+          userId: user.id,
+          drinkId,
+          adminId: req.user.id,
+          type: "sale",
+          amount: drink.price * quantity,
+          quantity,
+          saleGroupId,
+          description: `Sale: ${quantity}x ${drink.name}`,
+        };
+      }),
+      { transaction },
+    );
 
     await transaction.commit();
 
-    res.json({
-      message: "Sale completed successfully",
-      transaction: {
-        id: saleTransaction.id,
-        user: {
-          id: user.id,
-          username: user.username,
-          remainingCredits: user.credits,
-        },
+    const responseItems = [...items].map(([drinkId, quantity], index) => {
+      const drink = drinks.get(drinkId);
+      return {
+        transactionId: saleTransactions[index].id,
+        drinkId,
         drink: {
           id: drink.id,
           name: drink.name,
           remainingStock: drink.stock,
         },
         quantity,
+        unitPrice: drink.price,
+        totalCost: drink.price * quantity,
+      };
+    });
+
+    res.json({
+      message: "Sale completed successfully",
+      transaction: {
+        id: responseItems[0].transactionId,
+        saleGroupId,
+        user: {
+          id: user.id,
+          username: user.username,
+          remainingCredits: user.credits,
+        },
+        // The legacy fields describe the first item; `items` is the full order.
+        drink: responseItems[0].drink,
+        quantity: responseItems[0].quantity,
+        totalQuantity,
         totalCost,
+        items: responseItems,
         admin: {
           id: req.user.id,
           username: req.user.username,
@@ -389,7 +487,9 @@ router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, re
       ],
       limit: Number.parseInt(limit),
       offset: Number.parseInt(offset),
-      order: [["transactionDate", "DESC"]],
+      // id breaks the tie between rows of one sale group, which share a
+      // transactionDate, so a multi-drink order never interleaves.
+      order: [["transactionDate", "DESC"], ["id", "DESC"]],
     });
 
     res.json({
@@ -494,7 +594,9 @@ router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res)
     const salesStats = await Transaction.findAll({
       where: { ...whereClause, type: "sale" },
       attributes: [
-        [sequelize.fn("COUNT", sequelize.col("id")), "totalSales"],
+        // One multi-drink order is several rows sharing a saleGroupId, so
+        // count distinct orders rather than rows.
+        [sequelize.literal(`COUNT(DISTINCT COALESCE("saleGroupId"::text, "id"::text))`), "totalSales"],
         [sequelize.fn("SUM", sequelize.col("amount")), "totalRevenue"],
         [sequelize.fn("SUM", sequelize.col("quantity")), "totalItemsSold"],
       ],
@@ -548,9 +650,13 @@ router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res)
  *       Reverses a sale (credits and stock restored, bypassing the block-of-10
  *       rule), a credit addition (credits deducted back), or a credit adjustment
  *       (the signed net change of an admin balance edit is applied in reverse),
- *       then deletes the transaction row. Admins may undo any transaction;
- *       sellers may only undo their own sales, within 15 minutes of the sale,
- *       and never credit additions or adjustments.
+ *       then deletes the transaction row(s). A sale that belongs to a multi-drink
+ *       order (non-null `saleGroupId`) is undone as a whole — passing any of its
+ *       row ids restores the summed credits and every drink's stock and deletes
+ *       all of the order's rows. Admins may undo any transaction;
+ *       sellers may only undo their own sales, within 15 minutes of the sale
+ *       (measured from the order's oldest row), and never credit additions or
+ *       adjustments.
  *     tags: [Sales]
  *     security:
  *       - authToken: []
@@ -571,10 +677,28 @@ router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res)
  *                 undoTransaction:
  *                   type: object
  *                   properties:
- *                     id: { type: integer }
+ *                     id: { type: integer, description: The id that was passed }
+ *                     saleGroupId: { type: string, format: uuid, nullable: true }
  *                     type: { type: string, enum: [sale, credit_addition, credit_adjustment] }
- *                     amount: { type: integer }
- *                     quantity: { type: integer, nullable: true }
+ *                     amount: { type: integer, description: Summed across the undone order }
+ *                     quantity: { type: integer, nullable: true, description: Summed across the undone order }
+ *                     items:
+ *                       type: array
+ *                       description: One entry per undone sale row (empty for credit rows)
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           transactionId: { type: integer }
+ *                           drinkId: { type: integer, nullable: true }
+ *                           quantity: { type: integer, nullable: true }
+ *                           amount: { type: integer }
+ *                           drink:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               id: { type: integer }
+ *                               name: { type: string }
+ *                               newStock: { type: integer }
  *                     user:
  *                       type: object
  *                       properties:
@@ -629,88 +753,150 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
       return res.status(400).json({ error: "Transaction ID is required" });
     }
 
-    const transactionToUndo = await Transaction.findByPk(transactionId, {
+    // Read the row without a lock first: which rows to lock depends on the
+    // sale group, and locking this row before its siblings would let two
+    // undos entering on different rows of the same sale deadlock.
+    const requestedTransaction = await Transaction.findByPk(transactionId, {
       transaction: dbTransaction,
-      lock: dbTransaction.LOCK.UPDATE,
     });
 
-    if (!transactionToUndo) {
+    if (!requestedTransaction) {
       await dbTransaction.rollback();
       return res.status(404).json({ error: "Transaction not found" });
     }
 
+    // A sale with a saleGroupId is one line of a multi-drink purchase: undo
+    // reverses the whole order. Legacy rows (null group) undo singly.
+    const groupIds = requestedTransaction.type === "sale" && requestedTransaction.saleGroupId
+      ? (await Transaction.findAll({
+          where: { saleGroupId: requestedTransaction.saleGroupId },
+          attributes: ["id"],
+          order: [["id", "ASC"]],
+          transaction: dbTransaction,
+        })).map(row => row.id)
+      : [requestedTransaction.id];
+
+    // The unlocked read can observe a row that a concurrent undo deletes
+    // before the group query runs; an empty group means that undo won.
+    if (groupIds.length === 0) {
+      await dbTransaction.rollback();
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    const transactionsToUndo = [];
+    for (const id of groupIds) {
+      const row = await Transaction.findByPk(id, {
+        transaction: dbTransaction,
+        lock: dbTransaction.LOCK.UPDATE,
+      });
+      if (!row) {
+        await dbTransaction.rollback();
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+      transactionsToUndo.push(row);
+    }
+
+    const primaryTransaction = transactionsToUndo.find(row => row.id === requestedTransaction.id)
+      ?? transactionsToUndo[0];
+    const isSale = primaryTransaction.type === "sale";
+
     // Sellers: only their own sales, only within the correction window.
     if (req.user.userType !== "admin") {
-      if (transactionToUndo.type !== "sale") {
+      if (transactionsToUndo.some(row => row.type !== "sale")) {
         await dbTransaction.rollback();
         return res.status(403).json({ error: "Sellers can only undo sales" });
       }
-      if (transactionToUndo.adminId !== req.user.id) {
+      if (transactionsToUndo.some(row => row.adminId !== req.user.id)) {
         await dbTransaction.rollback();
         return res.status(403).json({ error: "You can only undo your own sales" });
       }
-      const ageMs = Date.now() - new Date(transactionToUndo.transactionDate).getTime();
-      if (ageMs > SELLER_UNDO_WINDOW_MS) {
+      // The rows of one group share a transactionDate, but check the oldest so
+      // a longer-running order can never slip past the window mid-group.
+      const oldestSaleMs = Math.min(
+        ...transactionsToUndo.map(row => new Date(row.transactionDate).getTime()),
+      );
+      if (Date.now() - oldestSaleMs > SELLER_UNDO_WINDOW_MS) {
         await dbTransaction.rollback();
         return res.status(403).json({ error: "Sales older than 15 minutes can only be undone by an admin" });
       }
     }
 
-    const user = await User.findByPk(transactionToUndo.userId, {
+    const user = await User.findByPk(primaryTransaction.userId, {
       transaction: dbTransaction,
       lock: dbTransaction.LOCK.UPDATE,
     });
-    const drink = transactionToUndo.type === "sale"
-      ? await Drink.findByPk(transactionToUndo.drinkId, {
-          transaction: dbTransaction,
-          lock: dbTransaction.LOCK.UPDATE,
-        })
-      : null;
 
     if (!user) {
       await dbTransaction.rollback();
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (transactionToUndo.type === "sale") {
-      // Use unchecked method to restore credits (bypass 10-credit rule for undo operations)
-      await user.addCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
-
-      if (drink) {
-        await drink.addStock(transactionToUndo.quantity || 1, { transaction: dbTransaction });
+    // Per-drink stock to restore, plus the drink rows to report back. Locked
+    // ascending by id, one at a time — the same order the sell route uses.
+    const stockByDrinkId = new Map();
+    const drinks = new Map();
+    if (isSale) {
+      for (const row of transactionsToUndo) {
+        if (row.drinkId === null)
+          continue;
+        stockByDrinkId.set(row.drinkId, (stockByDrinkId.get(row.drinkId) ?? 0) + (row.quantity || 1));
+      }
+      for (const drinkId of [...stockByDrinkId.keys()].sort((a, b) => a - b)) {
+        drinks.set(drinkId, await Drink.findByPk(drinkId, {
+          transaction: dbTransaction,
+          lock: dbTransaction.LOCK.UPDATE,
+        }));
       }
     }
-    else if (transactionToUndo.type === "credit_addition") {
-      if (user.credits < transactionToUndo.amount) {
+
+    let undoneAmount = primaryTransaction.amount;
+    let undoneQuantity = primaryTransaction.quantity;
+
+    if (isSale) {
+      undoneAmount = transactionsToUndo.reduce((sum, row) => sum + row.amount, 0);
+      undoneQuantity = transactionsToUndo.reduce((sum, row) => sum + (row.quantity || 1), 0);
+
+      // Use unchecked method to restore credits (bypass 10-credit rule for undo operations)
+      await user.addCreditsUnchecked(undoneAmount, { transaction: dbTransaction });
+
+      for (const [drinkId, quantity] of stockByDrinkId) {
+        const drink = drinks.get(drinkId);
+        if (drink) {
+          await drink.addStock(quantity, { transaction: dbTransaction });
+        }
+      }
+    }
+    else if (primaryTransaction.type === "credit_addition") {
+      if (user.credits < primaryTransaction.amount) {
         await dbTransaction.rollback();
         return res.status(400).json({
           error: "Cannot undo credit addition: user has insufficient credits",
           userCredits: user.credits,
-          requiredCredits: transactionToUndo.amount,
+          requiredCredits: primaryTransaction.amount,
         });
       }
 
       // Use unchecked method to deduct credits (bypass 10-credit rule for undo operations)
-      await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
+      await user.deductCreditsUnchecked(primaryTransaction.amount, { transaction: dbTransaction });
     }
-    else if (transactionToUndo.type === "credit_adjustment") {
+    else if (primaryTransaction.type === "credit_adjustment") {
       // The amount is the signed net change of the edit, so undoing it means
       // applying the opposite. A raised balance is deducted back; a lowered one
       // is restored. Unchecked methods bypass the 10-credit rule, matching the
       // other undo paths.
-      if (transactionToUndo.amount > 0) {
-        if (user.credits < transactionToUndo.amount) {
+      if (primaryTransaction.amount > 0) {
+        if (user.credits < primaryTransaction.amount) {
           await dbTransaction.rollback();
           return res.status(400).json({
             error: "Cannot undo credit adjustment: user has insufficient credits",
             userCredits: user.credits,
-            requiredCredits: transactionToUndo.amount,
+            requiredCredits: primaryTransaction.amount,
           });
         }
-        await user.deductCreditsUnchecked(transactionToUndo.amount, { transaction: dbTransaction });
+        await user.deductCreditsUnchecked(primaryTransaction.amount, { transaction: dbTransaction });
       }
-      else if (transactionToUndo.amount < 0) {
-        await user.addCreditsUnchecked(-transactionToUndo.amount, { transaction: dbTransaction });
+      else if (primaryTransaction.amount < 0) {
+        await user.addCreditsUnchecked(-primaryTransaction.amount, { transaction: dbTransaction });
       }
     }
     else {
@@ -718,29 +904,48 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
       return res.status(400).json({ error: "Cannot undo this transaction type" });
     }
 
-    await transactionToUndo.destroy({ transaction: dbTransaction });
+    const undoItems = isSale
+      ? transactionsToUndo.map((row) => {
+          const drink = row.drinkId === null ? null : drinks.get(row.drinkId);
+          return {
+            transactionId: row.id,
+            drinkId: row.drinkId,
+            quantity: row.quantity,
+            amount: row.amount,
+            drink: drink
+              ? {
+                  id: drink.id,
+                  name: drink.name,
+                  newStock: drink.stock,
+                }
+              : null,
+          };
+        })
+      : [];
+
+    await Transaction.destroy({
+      where: { id: transactionsToUndo.map(row => row.id) },
+      transaction: dbTransaction,
+    });
 
     await dbTransaction.commit();
 
     res.json({
       message: "Transaction undone successfully",
       undoTransaction: {
-        id: transactionToUndo.id,
-        type: transactionToUndo.type,
-        amount: transactionToUndo.amount,
-        quantity: transactionToUndo.quantity,
+        id: requestedTransaction.id,
+        saleGroupId: requestedTransaction.saleGroupId ?? null,
+        type: primaryTransaction.type,
+        amount: undoneAmount,
+        quantity: undoneQuantity,
         user: {
           id: user.id,
           username: user.username,
           newCredits: user.credits,
         },
-        drink: drink
-          ? {
-              id: drink.id,
-              name: drink.name,
-              newStock: drink.stock,
-            }
-          : null,
+        // The legacy field describes the first line; `items` is the full order.
+        drink: undoItems.length > 0 ? undoItems[0].drink : null,
+        items: undoItems,
         undoneBy: {
           id: req.user.id,
           username: req.user.username,

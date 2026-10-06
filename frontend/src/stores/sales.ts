@@ -93,10 +93,15 @@ export const useSalesStore = defineStore('sales', {
       
       try {
         const response = await salesAPI.undoTransaction(transactionId);
-        
-        this.transactions = this.transactions.filter(t => t.id !== transactionId);
-        this.pagination.total = Math.max(0, this.pagination.total - 1);
-        
+
+        // Undoing any row of a multi-drink order removes the whole group.
+        const { saleGroupId } = response.data.undoTransaction;
+        const before = this.transactions.length;
+        this.transactions = saleGroupId
+          ? this.transactions.filter(t => t.saleGroupId !== saleGroupId)
+          : this.transactions.filter(t => t.id !== transactionId);
+        this.pagination.total = Math.max(0, this.pagination.total - (before - this.transactions.length));
+
         return { success: true, data: response.data };
       } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: string } } };

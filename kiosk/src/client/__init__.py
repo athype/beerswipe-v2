@@ -3,6 +3,7 @@
 Usage::
 
     from src.client import KioskApi
+    from src.models import SellItem, SellRequest
 
     api = KioskApi(base_url="http://localhost:8080/api/v1", api_key="...")
 
@@ -12,8 +13,10 @@ Usage::
         for drink in result.data.drinks:
             print(drink.name, drink.stock)
 
-    # Authenticated endpoint
-    sale = await api.sales.submit(SellRequest(userId=1, drinkId=3, quantity=2))
+    # Authenticated endpoint — the whole basket is one atomic sale
+    sale = await api.sales.submit(
+        SellRequest(userId=1, items=[SellItem(drinkId=3, quantity=2)])
+    )
 
     # Clean shutdown (releases the connection pool)
     await api.aclose()
