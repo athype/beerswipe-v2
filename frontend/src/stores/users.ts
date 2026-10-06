@@ -6,6 +6,7 @@ import type {
   ImportUsersCsvResponse,
   ListUsersQuery,
   PaginationMeta,
+  ScanCodeResponse,
   StoreActionResult,
   UpdateUserRequest,
   UpdateUserResponse,
@@ -87,6 +88,38 @@ export const useUsersStore = defineStore('users', {
       } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: string } } };
         this.error = err.response?.data?.error || 'Failed to add credits';
+        return { success: false, error: this.error };
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchScanCode(userId: number): Promise<StoreActionResult<ScanCodeResponse>> {
+      this.loading = true;
+      this.error = null;
+
+      try {
+        const response = await usersAPI.getScanCode(userId);
+        return { success: true, data: response.data };
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to fetch scan code';
+        return { success: false, error: this.error };
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async regenerateScanCode(userId: number): Promise<StoreActionResult<ScanCodeResponse>> {
+      this.loading = true;
+      this.error = null;
+
+      try {
+        const response = await usersAPI.regenerateScanCode(userId);
+        return { success: true, data: response.data };
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { error?: string } } };
+        this.error = err.response?.data?.error || 'Failed to regenerate scan code';
         return { success: false, error: this.error };
       } finally {
         this.loading = false;
