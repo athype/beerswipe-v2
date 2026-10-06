@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import express from "express";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
@@ -171,14 +170,35 @@ const loginRequestSchema = {
   required: ["username", "password"],
 };
 
-const sellRequestSchema = {
+const sellItemSchema = {
   type: "object",
+  description: "One line of a basket: a drink and how many of it",
   properties: {
-    userId: { type: "integer", description: "Buying user" },
     drinkId: { type: "integer" },
     quantity: { type: "integer", minimum: 1, default: 1 },
   },
-  required: ["userId", "drinkId"],
+  required: ["drinkId"],
+};
+
+const sellRequestSchema = {
+  type: "object",
+  description:
+    "Either the legacy single-drink shape (`drinkId` with optional `quantity`) or a "
+    + "multi-item basket (`items`, 1-50 lines, duplicate drinkIds merged). `items` wins "
+    + "when both are present. One basket is one atomic sale: credits and stock are charged "
+    + "together and every line row shares a `saleGroupId`.",
+  properties: {
+    userId: { type: "integer", description: "Buying user" },
+    items: {
+      type: "array",
+      items: { $ref: "#/components/schemas/SellItem" },
+      minItems: 1,
+      maxItems: 50,
+    },
+    drinkId: { type: "integer", description: "Legacy single-drink shape" },
+    quantity: { type: "integer", minimum: 1, default: 1, description: "Legacy single-drink shape" },
+  },
+  required: ["userId"],
 };
 
 const transactionSchema = {
@@ -196,7 +216,19 @@ const transactionSchema = {
         "Credits involved. Positive for sales and credit additions; for credit_adjustment "
         + "the signed net change, negative when the edit lowered the balance.",
     },
-    quantity: { type: "integer", nullable: true, description: "Number of drinks, for sales" },
+    quantity: {
+      type: "integer",
+      nullable: true,
+      description: "Number of drinks, for sales (one row per drink of a basket)",
+    },
+    saleGroupId: {
+      type: "string",
+      format: "uuid",
+      nullable: true,
+      description:
+        "Groups the rows of one multi-drink purchase; null on credit rows and on sales "
+        + "that predate sale grouping (those undo on their own)",
+    },
     description: { type: "string", nullable: true },
     transactionDate: { type: "string", format: "date-time" },
     createdAt: { type: "string", format: "date-time" },
@@ -306,6 +338,7 @@ const schemas = {
   UserList: userListSchema,
   LoginRequest: loginRequestSchema,
   SellRequest: sellRequestSchema,
+  SellItem: sellItemSchema,
   Transaction: transactionSchema,
   Passkey: passkeySchema,
   ApiKey: apiKeySchema,

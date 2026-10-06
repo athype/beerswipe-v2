@@ -27,7 +27,7 @@ const MIGRATIONS = [
       }
       if (table.isAlcohol) {
         if (table.isAlcohol.allowNull) {
-          await queryInterface.sequelize.query('UPDATE "Drinks" SET "isAlcohol" = false WHERE "isAlcohol" IS NULL;');
+          await queryInterface.sequelize.query("UPDATE \"Drinks\" SET \"isAlcohol\" = false WHERE \"isAlcohol\" IS NULL;");
           await queryInterface.changeColumn("Drinks", "isAlcohol", {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -142,6 +142,39 @@ const MIGRATIONS = [
         updatedAt: { type: DataTypes.DATE, allowNull: false },
       });
       return true;
+    },
+  },
+  {
+    name: "2026-10-06/sale-groups",
+    up: async (queryInterface) => {
+      let table;
+      try {
+        table = await queryInterface.describeTable("Transactions");
+      }
+      catch {
+        // Table does not exist yet — sync() creates it (column + index) from the model.
+        return false;
+      }
+
+      let applied = false;
+      if (!table.saleGroupId) {
+        await queryInterface.addColumn("Transactions", "saleGroupId", {
+          type: DataTypes.UUID,
+          allowNull: true,
+        });
+        applied = true;
+      }
+
+      // Checked separately: dev's sync({ alter: true }) can add the column
+      // without creating the model's index.
+      const indexes = await queryInterface.showIndex("Transactions");
+      if (!indexes.some(index => index.name === "transactions_sale_group_id")) {
+        await queryInterface.addIndex("Transactions", ["saleGroupId"], {
+          name: "transactions_sale_group_id",
+        });
+        applied = true;
+      }
+      return applied;
     },
   },
 ];

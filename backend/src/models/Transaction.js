@@ -46,6 +46,12 @@ const Transaction = sequelize.define("Transaction", {
     allowNull: true,
     defaultValue: 1,
   },
+  saleGroupId: {
+    // Groups the rows of one multi-drink purchase so undo can reverse the
+    // whole order. Null on credit rows and on sales predating the column.
+    type: DataTypes.UUID,
+    allowNull: true,
+  },
   description: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -55,6 +61,10 @@ const Transaction = sequelize.define("Transaction", {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
+}, {
+  indexes: [
+    { name: "transactions_sale_group_id", fields: ["saleGroupId"] },
+  ],
 });
 
 export default Transaction;
