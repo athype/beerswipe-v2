@@ -5,11 +5,20 @@ Kivy touch kiosk for the Beerswipe bar. Targets a Raspberry Pi with a 7"
 
 ## Status
 
-- Working scan-to-buy flow (PR B): scan a code, pick a drink and a
-  quantity, confirm, and the sale is posted — the result screen shows the
-  member's remaining credits and every screen times back to idle. The
+- Working scan-to-buy flow: scan a code, build a basket of drinks, confirm,
+  and the whole order is posted as one atomic sale — the result screen shows
+  the member's remaining credits and every screen times back to idle. The
   state machine, timeouts and error handling live in `src/flow`, which is
   kivy-free so the flow is covered headless by `tests/test_flow.py`.
+- Basket picking: **tap a drink to add one** (tap again to add more — the row
+  shows a `×N` badge). The bottom stepper edits the **last-tapped** line:
+  `-` at one removes that line (focus moves to a neighbouring line), `+` is
+  capped at the drink's stock. `Continue` opens the itemised summary; `Back`
+  returns to the basket with it intact. Re-scanning or idling for 60 s clears
+  everything.
+- Multi-drink orders post `POST /api/v1/sales/sell` once with `items[]`; the
+  backend charges credits and every drink's stock in one transaction and undo
+  reverses the whole order (see the root README and `AGENTS.md`).
 - Merged on `feature/BS-111-kiosk`: async API client + Pydantic models
   (`src/client`, `src/models`), the scan-code reader layer
   (`src/scan`: protocol + keyboard-wedge driver for development) and the

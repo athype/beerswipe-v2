@@ -18,7 +18,7 @@ from typing import Any, Protocol, TypeVar
 
 from ..models.common import KioskResult
 from ..models.drinks import Drink, DrinkListResponse
-from ..models.sales import SellRequest, SellResponse
+from ..models.sales import SellItem, SellRequest, SellResponse
 from ..models.users import ScanCodeLookupResponse, UserInfo
 
 logger = logging.getLogger(__name__)
@@ -68,9 +68,19 @@ STATE_TIMEOUTS: dict[FlowState, float] = {
 
 
 @dataclass(frozen=True)
+class BasketLine:
+    """One drink line of the basket: a drink and how many of it."""
+
+    drink: Drink
+    quantity: int
+
+
+@dataclass(frozen=True)
 class FlowView:
     """Immutable snapshot of everything the screens render.
 
+    ``items`` is the basket in the order the member added its lines;
+    ``focused_drink_id`` is the line the quantity stepper edits.
     ``total`` and ``credits_after`` are display figures only — the backend
     stays the authority on credits and stock, these just save the Kivy
     layer from doing arithmetic.
@@ -79,12 +89,20 @@ class FlowView:
     state: FlowState
     user: UserInfo | None = None
     drinks: tuple[Drink, ...] = ()
-    selected_drink: Drink | None = None
-    quantity: int = 0
+    items: tuple[BasketLine, ...] = ()
+    focused_drink_id: int | None = None
     total: float = 0.0
     credits_after: float = 0.0
     remaining_credits: int | None = None
     error: str | None = None
+
+    @property
+    def focused_line(self) -> BasketLine | None:
+        """The basket line the stepper edits, if there is one."""
+        for line in self.items:
+            if line.drink.id == self.focused_drink_id:
+                return line
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -191,9 +209,10 @@ class _SaleDone:
 class FlowController:
     """Owns the kiosk state machine, timeouts and API calls.
 
-    Intents (``scan``, ``select_drink``, ``set_quantity``, ``confirm``) are
-    called on the UI thread; each one either moves the flow on or is
-    ignored for the current state. Every change is pushed to *on_change*.
+    Intents (``scan``, ``select_drink``, ``set_quantity``, ``back``,
+    ``confirm``) are called on the UI thread; each one either moves the
+    flow on or is ignored for the current state. Every change is pushed to
+    *on_change*.
     """
 
     def __init__(
@@ -210,8 +229,9 @@ class FlowController:
         self._state = FlowState.IDLE
         self._user: UserInfo | None = None
         self._drinks: tuple[Drink, ...] = ()
-        self._selected: Drink | None = None
-        self._quantity = 0
+        # Basket: drink_id -> quantity, in the order lines were added.
+        self._items: dict[int, int] = {}
+        self._focused_id: int | None = None
         self._remaining_credits: int | None = None
         self._error: str | None = None
 
@@ -228,14 +248,15 @@ class FlowController:
     @property
     def view(self) -> FlowView:
         """The current state as an immutable snapshot for the screens."""
-        total = self._selected.price * self._quantity if self._selected else 0.0
+        items = self._basket_lines()
+        total = sum(line.drink.price * line.quantity for line in items)
         credits_after = self._user.credits - total if self._user else 0.0
         return FlowView(
             state=self._state,
             user=self._user,
             drinks=self._drinks,
-            selected_drink=self._selected,
-            quantity=self._quantity,
+            items=items,
+            focused_drink_id=self._focused_id,
             total=total,
             credits_after=credits_after,
             remaining_credits=self._remaining_credits,
@@ -258,8 +279,7 @@ class FlowController:
         self._token += 1
         self._user = None
         self._drinks = ()
-        self._selected = None
-        self._quantity = 0
+        self._clear_basket()
         self._remaining_credits = None
         self._error = None
         self._transition(FlowState.IDLE)
@@ -275,8 +295,7 @@ class FlowController:
 
         self._user = None
         self._drinks = ()
-        self._selected = None
-        self._quantity = 0
+        self._clear_basket()
         self._remaining_credits = None
         self._error = None
         self._token += 1
@@ -290,36 +309,56 @@ class FlowController:
         )
 
     def select_drink(self, drink_id: int) -> None:
-        """Pick a drink from the list; the quantity starts at one."""
+        """Add one of a drink to the basket, clamped to what is in stock.
+
+        The tapped drink always becomes the line the stepper edits, so a
+        second tap on an existing line raises its quantity instead of
+        replacing anything.
+        """
         if self._state is not FlowState.SELECTING:
             return
 
-        drink = next((d for d in self._drinks if d.id == drink_id), None)
+        drink = self._drink(drink_id)
         if drink is None:
             return
 
-        self._selected = drink
-        self._quantity = 1
+        current = self._items.get(drink_id, 0)
+        if current < drink.stock:
+            self._items[drink_id] = current + 1
+        self._focused_id = drink_id
         self._restart_timeout()
         self._publish()
 
     def set_quantity(self, quantity: int) -> None:
-        """Set the quantity, clamped to what the selected drink has in stock."""
-        if self._state is not FlowState.SELECTING or self._selected is None:
+        """Set the focused line's quantity; zero removes the line."""
+        if self._state is not FlowState.SELECTING or self._focused_id is None:
             return
 
-        self._quantity = max(1, min(quantity, self._selected.stock))
+        drink = self._drink(self._focused_id)
+        if drink is None:
+            return
+
+        if quantity <= 0:
+            self._remove_line(self._focused_id)
+        else:
+            self._items[self._focused_id] = min(quantity, drink.stock)
+
         self._restart_timeout()
         self._publish()
 
+    def back(self) -> None:
+        """Leave the summary and return to the basket, keeping it intact."""
+        if self._state is FlowState.CONFIRMING:
+            self._transition(FlowState.SELECTING)
+
     def confirm(self) -> None:
-        """Advance the current step: pick -> summary, summary -> sale.
+        """Advance the current step: basket -> summary, summary -> sale.
 
         Ignored in every other state. During SELLING it is explicitly a
         no-op: the state flips synchronously when the sale is submitted,
         so a double tap cannot ring up two sales.
         """
-        if self._state is FlowState.SELECTING and self._selected is not None:
+        if self._state is FlowState.SELECTING and self._items:
             self._transition(FlowState.CONFIRMING)
         elif self._state is FlowState.CONFIRMING:
             self._start_sale()
@@ -398,8 +437,41 @@ class FlowController:
     # Internals
     # ------------------------------------------------------------------
 
+    def _drink(self, drink_id: int) -> Drink | None:
+        return next((d for d in self._drinks if d.id == drink_id), None)
+
+    def _basket_lines(self) -> tuple[BasketLine, ...]:
+        """The basket as view lines, in the order lines were added."""
+        lines = []
+        for drink_id, quantity in self._items.items():
+            drink = self._drink(drink_id)
+            if drink is not None:
+                lines.append(BasketLine(drink=drink, quantity=quantity))
+        return tuple(lines)
+
+    def _remove_line(self, drink_id: int) -> None:
+        """Drop a line and hand focus to the next line, else the previous."""
+        if drink_id not in self._items:
+            return
+
+        order = list(self._items)
+        index = order.index(drink_id)
+        del self._items[drink_id]
+
+        remaining = list(self._items)
+        if not remaining:
+            self._focused_id = None
+        elif index < len(remaining):
+            self._focused_id = remaining[index]
+        else:
+            self._focused_id = remaining[-1]
+
+    def _clear_basket(self) -> None:
+        self._items = {}
+        self._focused_id = None
+
     def _start_sale(self) -> None:
-        if self._user is None or self._selected is None:
+        if self._user is None or not self._items:
             return
 
         # Flip to SELLING before submitting: the guard is this state
@@ -411,8 +483,10 @@ class FlowController:
 
         request = SellRequest(
             userId=self._user.id,
-            drinkId=self._selected.id,
-            quantity=self._quantity,
+            items=[
+                SellItem(drinkId=drink_id, quantity=quantity)
+                for drink_id, quantity in self._items.items()
+            ],
         )
         self._executor.submit(
             self._submit_sale(request),
