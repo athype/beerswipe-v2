@@ -14,15 +14,23 @@ from collections.abc import Callable
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.screenmanager import FadeTransition
 
 from ..flow import AsyncRunner, FlowController, FlowView, TimerHandle
 from ..scan import KeyboardScanReader, ScanReader
+from . import theme
 from .screens import RootScreenManager
+from .widgets import Backdrop
 
 logger = logging.getLogger(__name__)
 
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 600
+
+#: State transitions are the only sanctioned content motion (besides the
+#: credit count-up); keep them short.
+TRANSITION_SECONDS = 0.15
 
 FULLSCREEN_ENV = "KIOSK_FULLSCREEN"
 API_URL_ENV = "KIOSK_API_URL"
@@ -43,7 +51,7 @@ class BeerswipeKioskApp(App):
 
     title = "Beerswipe Kiosk"
 
-    def build(self) -> RootScreenManager:
+    def build(self) -> FloatLayout:
         if os.environ.get(FULLSCREEN_ENV) == "1":
             Window.fullscreen = "auto"
         else:
@@ -54,6 +62,11 @@ class BeerswipeKioskApp(App):
         # request is a dozen lines of httpcore tracing otherwise.
         logging.getLogger("httpx").setLevel(logging.WARNING)
         logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+        # Fonts first: the screens create their labels while the manager
+        # is being built below.
+        theme.register_fonts()
+        Window.clearcolor = theme.NIGHT_BLACK
 
         api_key = os.environ.get(API_KEY_ENV) or None
         if api_key is None:
@@ -71,12 +84,18 @@ class BeerswipeKioskApp(App):
             scheduler=_ClockScheduler(),
             on_change=self._on_view,
         )
+        # The backdrop is added first so every screen draws above it and
+        # the orbs stay visible through the glass.
+        root = FloatLayout()
+        root.add_widget(Backdrop())
         self._manager = RootScreenManager(intents=self._controller)
+        self._manager.transition = FadeTransition(duration=TRANSITION_SECONDS)
+        root.add_widget(self._manager)
         self._controller.start()
 
         self._reader: ScanReader = KeyboardScanReader()
         self._reader.start(on_scan=self._on_scan)
-        return self._manager
+        return root
 
     def on_stop(self) -> None:
         """Stop the reader thread, then the loop thread."""

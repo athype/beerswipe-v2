@@ -4,21 +4,35 @@ Screens never call the API and never await anything: a tap goes straight
 to the flow controller through the injected intents, and the controller
 pushes a fresh FlowView back through ``RootScreenManager.render``.
 
-Styling is deliberately plain (default Kivy widgets, a couple of colours);
-the DESIGN.md glass/glow pass is PR C.
+The look follows ``frontend/DESIGN.md`` ("Beer Machine") as mapped onto
+Kivy in :mod:`src.ui.theme` and :mod:`src.ui.widgets`: a night-black
+canvas with drifting glow behind glass panels, a 1px bottle-green edge on
+every surface, mint for every credit figure and deep-green primary
+actions.
 """
 
 from collections.abc import Iterable
 from functools import partial
 
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
 
 from ..flow import FlowController, FlowState, FlowView
 from ..models.drinks import Drink
+from . import theme
+from .widgets import (
+    Divider,
+    DrinkRow,
+    GlassPanel,
+    MoneyLabel,
+    PrimaryButton,
+    SecondaryButton,
+    fit_content,
+    make_label,
+)
 
 SCREEN_IDLE = "idle"
 SCREEN_GREETING = "greeting"
@@ -39,24 +53,10 @@ STATE_SCREENS: dict[FlowState, str] = {
     FlowState.ERROR: SCREEN_ERROR,
 }
 
-ROW_COLOR = (0.22, 0.22, 0.26, 1)
-ROW_COLOR_SELECTED = (0.16, 0.52, 0.33, 1)
-
 
 def _credits(value: float) -> str:
     """Format a credit figure the way the web UI does: plain, no padding."""
     return f"{value:g}"
-
-
-def _label(text: str = "", **kwargs) -> Label:
-    """Label that wraps with its widget instead of overflowing it."""
-    label = Label(text=text, halign="center", valign="middle", **kwargs)
-    label.bind(size=label.setter("text_size"))
-    return label
-
-
-def _screen_title(text: str) -> Label:
-    return _label(text, size_hint_y=None, height=48, font_size="24sp")
 
 
 def _greeting_text(view: FlowView) -> str:
@@ -66,12 +66,26 @@ def _greeting_text(view: FlowView) -> str:
     return f"Hi {view.user.username}, {view.user.credits} credits"
 
 
+def _centered(widget: Widget) -> AnchorLayout:
+    """Wrap a fixed-size widget in a centering anchor."""
+    anchor = AnchorLayout(anchor_x="center", anchor_y="center", padding=theme.SPACE_LG)
+    anchor.add_widget(widget)
+    return anchor
+
+
 class IdleScreen(Screen):
     """Attract screen: branding and the scan prompt."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        self.add_widget(_label("Beerswipe\n\nScan your code"))
+        layout = BoxLayout(orientation="vertical", padding=theme.SPACE_XL, spacing=theme.SPACE_SM)
+        layout.add_widget(Widget())
+        layout.add_widget(make_label("Beerswipe", "display", size_hint_y=None, height=64))
+        layout.add_widget(
+            make_label("Scan your code", "body", color=theme.MIST, size_hint_y=None, height=32)
+        )
+        layout.add_widget(Widget())
+        self.add_widget(layout)
 
     def render(self, view: FlowView) -> None:
         """Nothing on this screen depends on the flow state."""
@@ -80,49 +94,73 @@ class IdleScreen(Screen):
 class GreetingScreen(Screen):
     """Greeting and balance; also serves the RESOLVING lookup."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        self._label = _label(font_size="28sp")
-        self.add_widget(self._label)
+        self._panel = GlassPanel(
+            orientation="vertical",
+            padding=theme.SPACE_XL,
+            spacing=theme.SPACE_SM,
+            size_hint_x=None,
+            width=560,
+        )
+        fit_content(self._panel)
+        self.add_widget(_centered(self._panel))
 
     def render(self, view: FlowView) -> None:
-        self._label.text = _greeting_text(view)
+        # RESOLVING has no balance yet: the lookup placeholder stands alone.
+        self._panel.clear_widgets()
+        if view.user is None:
+            self._panel.add_widget(
+                make_label("Looking you up...", "body", color=theme.MIST, size_hint_y=None, height=28)
+            )
+            return
+        self._panel.add_widget(
+            make_label(f"Hi {view.user.username}", "title", size_hint_y=None, height=32)
+        )
+        balance = MoneyLabel(size_hint_y=None, height=64)
+        self._panel.add_widget(balance)
+        self._panel.add_widget(
+            make_label("credits", "body", color=theme.MIST, size_hint_y=None, height=28)
+        )
+        balance.set_value(float(view.user.credits))
 
 
 class PickScreen(Screen):
     """Drink list, then a quantity stepper for the selected drink."""
 
-    def __init__(self, *, intents: FlowController, **kwargs) -> None:
+    def __init__(self, *, intents: FlowController, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._intents = intents
         self._view = FlowView(state=FlowState.SELECTING)
-        self._rows: dict[int, Button] = {}
+        self._rows: dict[int, DrinkRow] = {}
         self._rendered_drink_ids: tuple[int, ...] = ()
 
-        self._header = _screen_title("")
+        self._header = make_label("", "body", color=theme.MIST, halign="left", size_hint_y=None, height=28)
 
-        self._drinks_box = BoxLayout(orientation="vertical", size_hint_y=None, spacing=8)
+        self._drinks_box = BoxLayout(orientation="vertical", size_hint_y=None, spacing=theme.SPACE_SM)
         self._drinks_box.bind(minimum_height=self._drinks_box.setter("height"))
         self._scroll = ScrollView(bar_width=8)
         self._scroll.add_widget(self._drinks_box)
 
-        self._quantity_label = _label("Tap a drink to select it", font_size="20sp")
+        self._quantity_label = make_label("Tap a drink to select it", "body", color=theme.MIST)
 
-        minus = Button(text="-", size_hint_x=None, width=72)
+        minus = SecondaryButton(text="-", size_hint=(None, None), size=(64, 64))
         minus.bind(on_release=partial(self._change_quantity, -1))
-        plus = Button(text="+", size_hint_x=None, width=72)
+        plus = SecondaryButton(text="+", size_hint=(None, None), size=(64, 64))
         plus.bind(on_release=partial(self._change_quantity, 1))
-        self._continue = Button(text="Continue", size_hint_x=None, width=220)
+        self._continue = PrimaryButton(text="Continue", size_hint=(None, None), size=(220, 64))
         self._continue.bind(on_release=self._on_continue)
         self._stepper_buttons = (minus, plus, self._continue)
 
-        stepper = BoxLayout(size_hint_y=None, height=72, spacing=12)
+        stepper = BoxLayout(size_hint_y=None, height=72, spacing=theme.SPACE_MD)
         stepper.add_widget(minus)
         stepper.add_widget(self._quantity_label)
         stepper.add_widget(plus)
         stepper.add_widget(self._continue)
 
-        layout = BoxLayout(orientation="vertical", padding=20, spacing=12)
+        layout = BoxLayout(
+            orientation="vertical", padding=theme.SPACE_LG, spacing=theme.SPACE_MD
+        )
         layout.add_widget(self._header)
         layout.add_widget(self._scroll)
         layout.add_widget(stepper)
@@ -139,13 +177,16 @@ class PickScreen(Screen):
 
         selected = view.selected_drink
         for drink_id, row in self._rows.items():
-            chosen = selected is not None and selected.id == drink_id
-            row.background_color = ROW_COLOR_SELECTED if chosen else ROW_COLOR
+            row.selected = selected is not None and selected.id == drink_id
 
         if selected is None:
             self._quantity_label.text = "Tap a drink to select it"
+            self._quantity_label.color = theme.MIST
+            self._quantity_label.font_name = theme.FONT["regular"]
         else:
             self._quantity_label.text = f"{selected.name}: quantity {view.quantity}"
+            self._quantity_label.color = theme.SLATE_SOFT
+            self._quantity_label.font_name = theme.FONT["semibold"]
 
         for button in self._stepper_buttons:
             button.disabled = selected is None
@@ -156,11 +197,11 @@ class PickScreen(Screen):
         self._drinks_box.clear_widgets()
         self._rows.clear()
         for drink in drinks:
-            row = Button(
-                text=f"{drink.name}\n{_credits(drink.price)} credits - {drink.stock} left",
-                size_hint_y=None,
-                height=76,
-                background_color=ROW_COLOR,
+            row = DrinkRow(
+                name=drink.name,
+                price=f"{_credits(drink.price)} credits",
+                stock=f"{drink.stock} left",
+                low_stock=drink.stock <= theme.LOW_STOCK,
             )
             row.bind(on_release=partial(self._on_drink_pressed, drink.id))
             self._rows[drink.id] = row
@@ -181,44 +222,76 @@ class PickScreen(Screen):
 class ConfirmScreen(Screen):
     """Sale summary: drink, quantity, total, credits after purchase."""
 
-    def __init__(self, *, intents: FlowController, **kwargs) -> None:
+    def __init__(self, *, intents: FlowController, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._intents = intents
-        self._detail = _label(font_size="26sp")
-        self._confirm = Button(text="Confirm sale", size_hint_y=None, height=84)
+        self._panel = GlassPanel(
+            orientation="vertical",
+            padding=theme.SPACE_XL,
+            spacing=theme.SPACE_MD,
+        )
+        fit_content(self._panel)
+        self._confirm = PrimaryButton(
+            text="Confirm sale",
+            size_hint=(None, None),
+            size=(280, 64),
+            pos_hint={"center_x": 0.5},
+        )
         self._confirm.bind(on_release=self._on_confirm)
 
-        layout = BoxLayout(orientation="vertical", padding=20, spacing=12)
-        layout.add_widget(self._detail)
-        layout.add_widget(self._confirm)
-        self.add_widget(layout)
+        column = BoxLayout(orientation="vertical", size_hint=(None, None), width=720, spacing=theme.SPACE_MD)
+        column.add_widget(self._panel)
+        column.add_widget(self._confirm)
+        fit_content(column)
+        self.add_widget(_centered(column))
 
     def render(self, view: FlowView) -> None:
-        self._detail.text = self._detail_text(view)
+        self._panel.clear_widgets()
+        if view.state is FlowState.SELLING:
+            self._panel.add_widget(
+                make_label("Selling...", "body", color=theme.MIST, size_hint_y=None, height=28)
+            )
+        else:
+            self._fill_summary(view)
         # Disabled while the sale is in flight; the controller also ignores
         # a second confirm, this just makes it visible.
         self._confirm.disabled = view.state is not FlowState.CONFIRMING
 
-    @staticmethod
-    def _detail_text(view: FlowView) -> str:
-        if view.state is FlowState.SELLING:
-            return "Selling..."
+    def _fill_summary(self, view: FlowView) -> None:
         if view.selected_drink is None:
-            return ""
+            return
 
         drink = view.selected_drink
+        self._panel.add_widget(make_label(drink.name, "title", size_hint_y=None, height=32))
+        self._panel.add_widget(
+            make_label(
+                f"{view.quantity} x {_credits(drink.price)} credits",
+                "body",
+                size_hint_y=None,
+                height=28,
+            )
+        )
+        self._panel.add_widget(Divider())
+
+        total_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=56, spacing=theme.SPACE_MD)
+        total_row.add_widget(
+            make_label("Total", "title", color=theme.SLATE_SOFT, halign="left", size_hint_y=None, height=56)
+        )
+        total = MoneyLabel(size_hint=(None, None), width=180, height=56)
+        total.set_value(view.total, animate=False)
+        total_row.add_widget(total)
+        self._panel.add_widget(total_row)
+
         # Display only: the backend still refuses the sale if the credits
         # are short, this just avoids putting a negative figure on screen.
         if view.credits_after < 0:
-            credits_after = "Not enough credits"
+            after_text = "Not enough credits"
+            after_color = theme.SIGNAL_RED
         else:
-            credits_after = f"Credits after: {_credits(view.credits_after)}"
-
-        return (
-            f"{drink.name}\n\n"
-            f"{view.quantity} x {_credits(drink.price)} credits\n\n"
-            f"Total: {_credits(view.total)} credits\n"
-            f"{credits_after}"
+            after_text = f"Credits after: {_credits(view.credits_after)}"
+            after_color = theme.MINT_BRIGHT
+        self._panel.add_widget(
+            make_label(after_text, "body", color=after_color, size_hint_y=None, height=28)
         )
 
     def _on_confirm(self, *_args: object) -> None:
@@ -228,32 +301,58 @@ class ConfirmScreen(Screen):
 class ResultScreen(Screen):
     """Post-sale confirmation, shown until the flow times back to idle."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        self._label = _label(font_size="32sp")
-        self.add_widget(self._label)
+        self._panel = GlassPanel(
+            orientation="vertical",
+            padding=theme.SPACE_XL,
+            spacing=theme.SPACE_SM,
+            size_hint_x=None,
+            width=520,
+        )
+        fit_content(self._panel)
+        self.add_widget(_centered(self._panel))
 
     def render(self, view: FlowView) -> None:
+        self._panel.clear_widgets()
+        self._panel.add_widget(make_label("Done", "headline", size_hint_y=None, height=44))
         remaining = view.remaining_credits
-        self._label.text = "Done" if remaining is None else f"Done\n\n{remaining} credits left"
+        if remaining is None:
+            return
+        balance = MoneyLabel(size_hint_y=None, height=64)
+        self._panel.add_widget(balance)
+        self._panel.add_widget(
+            make_label("credits left", "body", color=theme.MIST, size_hint_y=None, height=28)
+        )
+        balance.set_value(float(remaining))
 
 
 class ErrorScreen(Screen):
     """Unknown code, failed sale, unreachable backend — then back to idle."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        self._label = _label(font_size="28sp")
-        self.add_widget(self._label)
+        self._message = make_label("", "body", color=theme.SLATE_SOFT)
+        self._panel = GlassPanel(
+            orientation="vertical",
+            padding=theme.SPACE_XL,
+            spacing=theme.SPACE_MD,
+            size_hint=(None, None),
+            width=640,
+            height=200,
+            border_color=theme.SIGNAL_RED,
+        )
+        self._panel.add_widget(self._message)
+        self.add_widget(_centered(self._panel))
 
     def render(self, view: FlowView) -> None:
-        self._label.text = view.error or "Something went wrong"
+        self._message.text = view.error or "Something went wrong"
 
 
 class RootScreenManager(ScreenManager):
     """Owns every screen; switches on FlowState and renders the view."""
 
-    def __init__(self, *, intents: FlowController, **kwargs) -> None:
+    def __init__(self, *, intents: FlowController, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._screens: dict[str, Screen] = {
             SCREEN_IDLE: IdleScreen(name=SCREEN_IDLE),
