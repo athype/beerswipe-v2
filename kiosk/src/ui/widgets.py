@@ -26,8 +26,7 @@ from . import theme
 #: Count-up length for :class:`MoneyLabel`, from the stat-card spec.
 COUNT_UP_SECONDS = 0.6
 
-#: The kiosk runs on a touch panel: controls stay at or above these.
-TOUCH_TARGET = 56
+#: The kiosk runs on a touch panel: drink rows stay generous.
 ROW_HEIGHT = 72
 
 #: Backdrop orb drift: the web's 18–26s loops, ±40px.
@@ -285,23 +284,27 @@ def _format_amount(value: float) -> str:
 class MoneyLabel(Label):
     """A credit figure in mint (the Mint-Is-Money rule).
 
-    :meth:`set_value` runs a short count-up from the figure currently on
-    screen, which is the one sanctioned bit of content motion besides the
-    screen transitions.
+    :meth:`set_value` runs a short count-up from the label's current value
+    (zero on a fresh label), which is the one sanctioned bit of content
+    motion besides the screen transitions.
     """
 
     value = NumericProperty(0.0)
 
     def __init__(self, **kwargs: object) -> None:
-        kwargs.setdefault("font_name", theme.FONT["black"])
-        kwargs.setdefault("font_size", "40sp")
-        kwargs.setdefault("color", theme.MINT_BRIGHT)
+        family, size, color = theme.TYPE["stat"]
+        kwargs.setdefault("font_name", family)
+        kwargs.setdefault("font_size", f"{size}sp")
+        kwargs.setdefault("color", color)
         super().__init__(**kwargs)
         self.bind(value=self._render_value)
         self.text = _format_amount(0.0)
 
     def set_value(self, value: float, *, animate: bool = True) -> None:
-        """Show *value*, counting up from the current figure unless disabled."""
+        """Show *value*, counting up from the label's current value.
+
+        Pass ``animate=False`` to skip the count-up.
+        """
         Animation.cancel_all(self, "value")
         if not animate or value == self.value:
             self.value = value

@@ -117,22 +117,27 @@ _registered = False
 
 
 def register_fonts() -> None:
-    """Register the bundled Inter weights with Kivy (idempotent).
+    """Register the bundled Inter weights with Kivy.
 
     Kivy falls back to its default font silently when a family is unknown,
     which is exactly the kind of thing that ships by accident — so a
-    missing file is logged loudly here instead.
+    missing file is logged loudly here instead, and a pass that could not
+    register every weight is not marked done so a later call retries.
     """
     global _registered
     if _registered:
         return
+    missing = False
     for weight, family in FONT.items():
         path = FONT_DIR / FONT_FILES[weight]
         if not path.is_file():
             logger.warning("Inter font file missing: %s (using the Kivy default)", path)
+            missing = True
             continue
         LabelBase.register(name=family, fn_regular=str(path))
-    _registered = True
+    # Only a fully successful pass counts as registered, so a later call
+    # retries instead of no-oping when a file was missing.
+    _registered = not missing
 
 
 # ---------------------------------------------------------------------------
