@@ -41,8 +41,9 @@ Python >= 3.13 with uv. From this directory:
 Development opens a 1024x600 window; on the Pi set `KIOSK_FULLSCREEN=1` in
 `.env` for a fullscreen run.
 
-Run it from a real console: the keyboard-wedge reader uses `msvcrt`, so an
-IDE's embedded console will not feed it typed codes.
+Run it from a real console: the default keyboard reader uses `msvcrt`, so an
+IDE's embedded console will not feed it typed codes. Typing into the window
+(`KIOSK_SCAN_READER=window`) works anywhere.
 
 ## Design
 
@@ -70,6 +71,7 @@ Font License 1.1 — the license text is `assets/fonts/OFL.txt`).
 | `KIOSK_API_URL` | `http://localhost:8080/api/v1` | Backend API base URL |
 | `KIOSK_API_KEY` | *(unset)* | Seller-scoped API key, created in the web UI under `/api-keys`; the scan lookup and the sale are both guarded |
 | `KIOSK_FULLSCREEN` | *(unset)* | Set to `1` for a fullscreen run on the Pi |
+| `KIOSK_SCAN_READER` | `keyboard` | Where scans come from: `keyboard` reads typed codes from stdin (development), `window` takes the HID scanner's keystrokes from the Kivy window (the Pi — see [Scanner hardware](#scanner-hardware)) |
 
 The kiosk reads plain environment variables — `.env.example` is the whole
 config surface. `uv run` does not read `.env` on its own, so pass it
@@ -92,19 +94,28 @@ message.
 
 ## Scanner hardware
 
-Honeywell Xenon XP 1950g, configured as a HID keyboard wedge on Windows:
-scan "Add CR Suffix" so every scan ends with Enter, which is what the
-keyboard-wedge reader expects. On Windows, install the Honeywell serial
-driver *before* scanning any "USB Serial" or other configuration barcode —
-configuring the scanner for serial without the driver in place can leave it
-unable to scan configuration barcodes.
+Honeywell Xenon XP 1950g, configured as a **HID keyboard wedge** with "Add
+CR Suffix" scanned on the unit, so every scan arrives as the 32-character
+code followed by Enter. HID is the interface for both development and the
+Pi — decided 2026-10-06; the "USB serial" alternative is dropped, so there
+is no `pyserial` dependency and no serial reader.
 
-The Pi interface (HID vs USB serial) is still open — see issue #111. If the
-scanner ends up on USB serial there, a serial reader lands alongside
-`src/scan/keyboard.py` (and `pyserial` comes back with it).
+The Pi runs the kiosk with `KIOSK_SCAN_READER=window`, which takes the
+scanner's keystrokes from the Kivy window (`src/scan/window.py`): behind a
+fullscreen window they never reach stdin, which is all the keyboard reader
+sees anyway (under systemd stdin is `/dev/null`). The window reader consumes
+every key a scan produces, so the Enter that ends a scan cannot activate the
+button that was tapped just before it.
 
-For development without hardware, the keyboard-wedge reader
-(`src/scan/keyboard.py`) feeds a typed code followed by Enter as a scan.
+`KIOSK_SCAN_READER=keyboard` (the default) reads typed codes from stdin
+instead — the desktop path when no unit is attached. With the window reader
+you can also simply type into the kiosk window.
+
+Windows note, and only relevant if the unit is ever deliberately switched to
+serial: install the Honeywell serial driver *before* scanning any "USB
+Serial" or other configuration barcode — configuring the scanner for serial
+without the driver in place can leave it unable to scan configuration
+barcodes. The HID path needs no driver.
 
 ## Quality gates
 
@@ -125,8 +136,8 @@ typed and covered by the headless flow tests.
 - `main.py`: entry point
 - `src/models`: Pydantic mirrors of the shared TS contracts
 - `src/client`: async httpx API client (single pooled connection)
-- `src/scan`: scan-code reader layer (protocol + keyboard driver)
+- `src/scan`: scan-code reader layer (protocol + keyboard and window drivers)
 - `src/flow`: flow controller, state machine and async runner (no kivy)
 - `src/ui`: kivy App, ScreenManager, screens, design tokens and widgets
 - `assets/fonts`: bundled Inter weights (SIL OFL 1.1)
-- `tests`: headless flow tests (fake api, executor and scheduler)
+- `tests`: headless flow and scan reader tests (fake api, executor and scheduler)

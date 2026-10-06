@@ -1,13 +1,14 @@
 """Scan reader abstraction for the Beerswipe kiosk.
 
 Provides a pluggable scan-code reader interface so the Kivy app works on
-both desktop (keyboard-wedge fallback) and the Raspberry Pi (2D scanner).
+both the Raspberry Pi (the HID scanner feeding the Kivy window) and
+desktop development (a keyboard-wedge fallback reading stdin).
 
 Usage::
 
-    from src.scan import KeyboardScanReader, ScanReader
+    from src.scan import KeyboardScanReader, ScanReader, WindowScanReader
 
-    reader: ScanReader = KeyboardScanReader()
+    reader: ScanReader = WindowScanReader()
 
     def on_scan(code: str) -> None:
         print(f"Code scanned: {code}")
@@ -19,9 +20,11 @@ Usage::
 
 from .keyboard import KeyboardScanReader
 from .protocol import OnScanCode, ScanReader
+from .window import WindowScanReader
 
 __all__ = [
     "KeyboardScanReader",
     "OnScanCode",
     "ScanReader",
+    "WindowScanReader",
 ]
