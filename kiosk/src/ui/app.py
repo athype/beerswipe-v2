@@ -54,6 +54,10 @@ def _build_scan_reader() -> ScanReader:
     ``keyboard`` (or unset) reads typed codes from stdin — the desktop
     path.  ``window`` takes the HID scanner's keystrokes from the Kivy
     window, which is how the Pi runs (see the README's Scanner hardware).
+
+    An unrecognized value raises rather than falling back: on the Pi a
+    typo would otherwise select the stdin reader, which sees ``/dev/null``
+    under systemd — the kiosk would boot and never scan.
     """
     choice = os.environ.get(SCAN_READER_ENV, "").strip().lower()
     if choice in ("", "keyboard"):
@@ -61,12 +65,9 @@ def _build_scan_reader() -> ScanReader:
     if choice == "window":
         return WindowScanReader()
 
-    logger.warning(
-        "Unknown %s=%r; falling back to the keyboard reader",
-        SCAN_READER_ENV,
-        choice,
+    raise ValueError(
+        f"Unknown {SCAN_READER_ENV}={choice!r}; expected 'keyboard' or 'window'"
     )
-    return KeyboardScanReader()
 
 
 class BeerswipeKioskApp(App):
@@ -147,5 +148,10 @@ class BeerswipeKioskApp(App):
         self._manager.render(view)
 
     def _on_scan(self, code: str) -> None:
-        """Scan callback: runs on the reader thread, hop to the Kivy thread."""
+        """Scan callback; the Clock hop covers both readers' call sites.
+
+        The keyboard reader calls from its own thread, the window reader
+        from the Kivy thread during event dispatch — deferring to the next
+        frame is right for both.
+        """
         Clock.schedule_once(lambda _dt: self._controller.scan(code), 0)

@@ -100,16 +100,19 @@ code followed by Enter. HID is the interface for both development and the
 Pi — decided 2026-10-06; the "USB serial" alternative is dropped, so there
 is no `pyserial` dependency and no serial reader.
 
-The Pi runs the kiosk with `KIOSK_SCAN_READER=window`, which takes the
+The Pi **must** run the kiosk with `KIOSK_SCAN_READER=window`, which takes the
 scanner's keystrokes from the Kivy window (`src/scan/window.py`): behind a
 fullscreen window they never reach stdin, which is all the keyboard reader
 sees anyway (under systemd stdin is `/dev/null`). The window reader consumes
 every key a scan produces, so the Enter that ends a scan cannot activate the
-button that was tapped just before it.
+button that was tapped just before it. A typo in the setting is a startup
+error rather than a silent fallback to the reader that sees nothing.
 
 `KIOSK_SCAN_READER=keyboard` (the default) reads typed codes from stdin
-instead — the desktop path when no unit is attached. With the window reader
-you can also simply type into the kiosk window.
+instead, and is the **desktop-only** path — for developing on a machine with
+no unit attached. With the window reader you can also simply type into the
+kiosk window: the reader captures those keystrokes (characters plus Enter) as
+a scan, since the kiosk has no text-input widgets.
 
 Windows note, and only relevant if the unit is ever deliberately switched to
 serial: install the Honeywell serial driver *before* scanning any "USB

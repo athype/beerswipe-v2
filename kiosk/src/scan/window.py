@@ -12,12 +12,15 @@ display; the parsing lives in the kivy-free ``_feed``/``_flush`` pair so
 tests can drive it directly.
 """
 
+import logging
 import time
 from collections import deque
 from collections.abc import Callable
 from typing import Any
 
 from .protocol import OnScanCode, ScanReader
+
+logger = logging.getLogger(__name__)
 
 #: Kivy (SDL2) keycodes for the two Enter keys: main Return and keypad Enter.
 ENTER_KEYCODES = frozenset({13, 271})
@@ -50,6 +53,7 @@ class WindowScanReader(ScanReader):
         self._on_scan: OnScanCode | None = None
         self._window: Any = None
         self._last_input_at = 0.0
+        self._overflow_logged = False
         self._started = False
 
     def start(self, *, on_scan: OnScanCode) -> None:
@@ -129,6 +133,14 @@ class WindowScanReader(ScanReader):
             if char in "\r\n":
                 self._flush()
             elif char.isprintable():
+                if len(self._buffer) == BUFFER_LIMIT and not self._overflow_logged:
+                    # One breadcrumb per scan: something is typing without
+                    # ever sending Enter, and the oldest input is going.
+                    logger.warning(
+                        "Scan buffer full (%d chars); dropping the oldest input",
+                        BUFFER_LIMIT,
+                    )
+                    self._overflow_logged = True
                 self._buffer.append(char)
 
     def _flush(self) -> None:
@@ -136,5 +148,6 @@ class WindowScanReader(ScanReader):
         # Same normalization as KeyboardScanReader: strip and lowercase.
         code = "".join(self._buffer).strip().lower()
         self._buffer.clear()
+        self._overflow_logged = False
         if code and self._on_scan is not None:
             self._on_scan(code)
