@@ -31,9 +31,12 @@ jobs:
     name: Code Review
     steps:
       - name: DeepSeek Code Review
-        uses: hustcer/deepseek-review@eccde2e9781008d795e366b951e313e37af88dd5
+        # Vendored copy of hustcer/deepseek-review with one change: thinking
+        # mode enabled, see .github/actions/deepseek-review/README.md
+        uses: ./.github/actions/deepseek-review
         with:
           chat-token: ${{ secrets.CHAT_TOKEN }}
+          # No-op while thinking mode is on; kept for a no-thinking fallback.
           temperature: 0.2
           watch-mention: '@github-actions'
           sys-prompt: |
