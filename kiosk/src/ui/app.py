@@ -18,7 +18,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.screenmanager import FadeTransition
 
 from ..flow import AsyncRunner, FlowController, FlowView, TimerHandle
-from ..scan import KeyboardScanReader, ScanReader
+from ..scan import KeyboardScanReader, ScanReader, WindowScanReader
 from . import theme
 from .screens import RootScreenManager
 from .widgets import Backdrop
@@ -35,6 +35,8 @@ TRANSITION_SECONDS = 0.15
 FULLSCREEN_ENV = "KIOSK_FULLSCREEN"
 API_URL_ENV = "KIOSK_API_URL"
 API_KEY_ENV = "KIOSK_API_KEY"
+SCAN_READER_ENV = "KIOSK_SCAN_READER"
+
 
 DEFAULT_API_URL = "http://localhost:8080/api/v1"
 
@@ -44,6 +46,28 @@ class _ClockScheduler:
 
     def schedule(self, delay: float, callback: Callable[[], None]) -> TimerHandle:
         return Clock.schedule_once(lambda _dt: callback(), delay)
+
+
+def _build_scan_reader() -> ScanReader:
+    """Pick the scan reader named by ``KIOSK_SCAN_READER``.
+
+    ``keyboard`` (or unset) reads typed codes from stdin — the desktop
+    path.  ``window`` takes the HID scanner's keystrokes from the Kivy
+    window, which is how the Pi runs (see the README's Scanner hardware).
+
+    An unrecognized value raises rather than falling back: on the Pi a
+    typo would otherwise select the stdin reader, which sees ``/dev/null``
+    under systemd — the kiosk would boot and never scan.
+    """
+    choice = os.environ.get(SCAN_READER_ENV, "").strip().lower()
+    if choice in ("", "keyboard"):
+        return KeyboardScanReader()
+    if choice == "window":
+        return WindowScanReader()
+
+    raise ValueError(
+        f"Unknown {SCAN_READER_ENV}={choice!r}; expected 'keyboard' or 'window'"
+    )
 
 
 class BeerswipeKioskApp(App):
@@ -84,6 +108,12 @@ class BeerswipeKioskApp(App):
             scheduler=_ClockScheduler(),
             on_change=self._on_view,
         )
+        # Start the reader before the screens are built: its key handlers
+        # must be bound before any widget can take focus, and the handlers
+        # consume the scanner's keys so they never reach one.
+        self._reader: ScanReader = _build_scan_reader()
+        self._reader.start(on_scan=self._on_scan)
+
         # The backdrop is added first so every screen draws above it and
         # the orbs stay visible through the glass.
         root = FloatLayout()
@@ -93,8 +123,6 @@ class BeerswipeKioskApp(App):
         root.add_widget(self._manager)
         self._controller.start()
 
-        self._reader: ScanReader = KeyboardScanReader()
-        self._reader.start(on_scan=self._on_scan)
         return root
 
     def on_stop(self) -> None:
@@ -120,5 +148,10 @@ class BeerswipeKioskApp(App):
         self._manager.render(view)
 
     def _on_scan(self, code: str) -> None:
-        """Scan callback: runs on the reader thread, hop to the Kivy thread."""
+        """Scan callback; the Clock hop covers both readers' call sites.
+
+        The keyboard reader calls from its own thread, the window reader
+        from the Kivy thread during event dispatch — deferring to the next
+        frame is right for both.
+        """
         Clock.schedule_once(lambda _dt: self._controller.scan(code), 0)
