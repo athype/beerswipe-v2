@@ -22,6 +22,14 @@ export async function initializeDatabase() {
     await sequelize.authenticate();
     console.log("Database connection has been established successfully.");
 
+    // Migrate before sync. Production syncs with `alter: false`, so it never
+    // adds a column to an existing table — but it does reconcile the model's
+    // declared indexes on every boot. An index whose column only the migrator
+    // adds (Transactions.saleGroupId) must therefore land first, or sync fails
+    // with `column ... does not exist` and the container never starts.
+    const { runMigrations } = await import("../migrate.js");
+    await runMigrations();
+
     await sequelize.sync({ alter: env.NODE_ENV === "development" });
     console.log("All models were synchronized successfully.");
 

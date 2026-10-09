@@ -129,9 +129,10 @@ Rollback on every early return after transaction start.
 In `backend/src/api/users.js`, static routes like `/export-csv` must remain above parameterized routes like `/:id`.
 
 ### Migrations and schema
-- Schema changes go through the auto migrator: ordered, idempotent `{ name, up }` steps in `backend/src/migrate.js`, named `YYYY-MM-DD/feature`. It runs at every boot and manually via `node src/migrate.js`.
+- Schema changes go through the auto migrator: ordered, idempotent `{ name, up }` steps in `backend/src/migrate.js`, named `YYYY-MM-DD/feature`. It runs at every boot (`initializeDatabase`, before `sync()`), and manually via `node src/migrate.js`.
 - Do not add files to `backend/migrations/`; that directory is legacy (`002-add-passkey-support.js` predates the migrator).
 - Boot semantics: dev runs `sync({ alter: true })`; production runs `sync({ alter: false })` but still creates missing tables from models. Keep steps idempotent (check before acting) so fresh and existing databases both pass through cleanly.
+- Migrations run **before** `sync()`, because sync still reconciles model-declared indexes when `alter: false`: an index on a column that only a migration adds must exist by the time sync runs, or boot fails with `column ... does not exist` (see the 2026-10-09 `saleGroupId` deploy failure). Correspondingly, steps that create a table with a foreign key must no-op on a fresh database (no `Users` table) and let sync create it from the models.
 
 ## Frontend Rules
 
