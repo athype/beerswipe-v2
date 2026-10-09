@@ -7,10 +7,15 @@ import { sequelize } from "./config/database.js";
 // never changes shape by itself — every schema change after the initial sync
 // belongs here as a step. Steps are idempotent (check before acting), so they
 // are safe to run on every container start, in dev (where sync already alters)
-// and against a fresh database (where sync created the column from the model).
+// and against a fresh database (where sync creates everything from the models
+// after the migrator has run).
 //
-// Steps run in order at every backend boot (see app.js) and can also be
-// triggered manually:
+// Steps run at every backend boot, *before* `sequelize.sync()` (see
+// config/database.js). The order matters: sync never adds a column to an
+// existing table, but it does create the model's declared indexes on every
+// boot, so an index whose column the migrator adds must already exist when
+// sync runs — that is the 2026-10-09 `Transactions.saleGroupId` boot failure.
+// They can also be triggered manually:
 //   node src/migrate.js
 //   docker exec beermachine_backend node src/migrate.js
 const MIGRATIONS = [
@@ -48,6 +53,19 @@ const MIGRATIONS = [
   {
     name: "2026-09-03/api-keys",
     up: async (queryInterface) => {
+      // A database without Users is fresh: sync() creates every table — this
+      // one and the FK it points at — from the models right after the migrator.
+      let users;
+      try {
+        users = await queryInterface.describeTable("Users");
+      }
+      catch {
+        users = null;
+      }
+      if (!users) {
+        return false;
+      }
+
       let table;
       try {
         table = await queryInterface.describeTable("ApiKeys");
@@ -55,9 +73,8 @@ const MIGRATIONS = [
       catch {
         table = null;
       }
-      // sync({ alter: false }) already creates missing tables from the model on
-      // boot; this step exists for databases whose schema is not driven by sync
-      // and for manual `node src/migrate.js` runs. Model and step stay in lockstep.
+      // Model and step stay in lockstep: this step is what creates the table on
+      // an initialized database.
       if (table) {
         return false;
       }
@@ -115,6 +132,19 @@ const MIGRATIONS = [
   {
     name: "2026-10-04/scan-codes",
     up: async (queryInterface) => {
+      // A database without Users is fresh: sync() creates every table — this
+      // one and the FK it points at — from the models right after the migrator.
+      let users;
+      try {
+        users = await queryInterface.describeTable("Users");
+      }
+      catch {
+        users = null;
+      }
+      if (!users) {
+        return false;
+      }
+
       let table;
       try {
         table = await queryInterface.describeTable("ScanCodes");
@@ -122,9 +152,8 @@ const MIGRATIONS = [
       catch {
         table = null;
       }
-      // sync({ alter: false }) already creates missing tables from the model on
-      // boot; this step exists for databases whose schema is not driven by sync
-      // and for manual `node src/migrate.js` runs. Model and step stay in lockstep.
+      // Model and step stay in lockstep: this step is what creates the table on
+      // an initialized database.
       if (table) {
         return false;
       }
