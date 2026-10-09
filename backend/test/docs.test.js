@@ -17,7 +17,7 @@ afterEach(() => {
   process.env.NODE_ENV = ORIGINAL_ENV.NODE_ENV;
 });
 
-// Every route declared in backend/src/api/*.js, as [openapi path, method].
+// Every route declared in backend/src/api/*.js and *.ts, as [openapi path, method].
 // A route added without OpenAPI docs fails the "documents every endpoint"
 // test below.
 const EXPECTED_OPERATIONS = [
@@ -73,6 +73,10 @@ const EXPECTED_OPERATIONS = [
   ["/api-keys", "post"],
   ["/api-keys/{id}/revoke", "post"],
   ["/api-keys/{id}", "delete"],
+  // scan codes
+  ["/scan/lookup/{code}", "get"],
+  ["/users/{id}/scan-code", "get"],
+  ["/users/{id}/scan-code/regenerate", "post"],
 ];
 
 // Mounts the docs router exactly like production does (api/index.js mounts

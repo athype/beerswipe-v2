@@ -105,7 +105,9 @@ router.get("/monthly", authenticateRequest, async (req, res) => {
       }],
       attributes: [
         "userId",
-        [sequelize.fn("COUNT", sequelize.col("Transaction.id")), "transactionCount"],
+        // One multi-drink order is several rows sharing a saleGroupId, so
+        // count distinct orders rather than rows.
+        [sequelize.literal(`COUNT(DISTINCT COALESCE("Transaction"."saleGroupId"::text, "Transaction"."id"::text))`), "transactionCount"],
         [sequelize.fn("SUM", sequelize.col("quantity")), "totalDrinks"],
         [sequelize.fn("SUM", sequelize.col("amount")), "totalSpent"],
       ],

@@ -3,28 +3,53 @@ import type { TransactionType, UserType } from "./domain.js";
 
 export type SqlAggregateNumber = number | string | null;
 
-export interface SellRequest {
-  userId: number;
+export interface SellItem {
   drinkId: number;
   quantity?: number;
+}
+
+// One purchase is a basket: 1..50 lines, charged atomically. The legacy
+// single-drink shape ({ userId, drinkId, quantity }) is still accepted by the
+// backend for third-party API-key callers, but first-party clients send items.
+export interface SellRequest {
+  userId: number;
+  items: SellItem[];
+}
+
+export interface SellResponseItem {
+  transactionId: number;
+  drinkId: number;
+  drink: {
+    id: number;
+    name: string;
+    remainingStock: number;
+  };
+  quantity: number;
+  unitPrice: number;
+  totalCost: number;
 }
 
 export interface SellResponse {
   message: string;
   transaction: {
     id: number;
+    // Groups the rows of one basket; every new sale carries one.
+    saleGroupId: string;
     user: {
       id: number;
       username: string;
       remainingCredits: number;
     };
+    // Legacy fields describing the first line; `items` is the full order.
     drink: {
       id: number;
       name: string;
       remainingStock: number;
     };
     quantity: number;
+    totalQuantity: number;
     totalCost: number;
+    items: SellResponseItem[];
     admin: {
       id: number;
       username: string;
@@ -49,6 +74,9 @@ export interface TransactionHistoryItem {
   type: TransactionType;
   amount: number;
   quantity: number | null;
+  // Set on every sale row since multi-item baskets; null on credit rows and
+  // sales that predate grouping (those undo on their own).
+  saleGroupId: string | null;
   description: string | null;
   transactionDate: ISODateString;
   createdAt?: ISODateString;
@@ -107,13 +135,28 @@ export interface SalesStatsResponse {
   topDrinks: TopDrinkStat[];
 }
 
+export interface UndoTransactionItem {
+  transactionId: number;
+  drinkId: number | null;
+  quantity: number | null;
+  amount: number;
+  drink: {
+    id: number;
+    name: string;
+    newStock: number;
+  } | null;
+}
+
 export interface UndoTransactionResponse {
   message: string;
   undoTransaction: {
     id: number;
+    // Non-null for sale rows: the whole order was undone, not just this line.
+    saleGroupId: string | null;
     type: TransactionType;
     amount: number;
     quantity: number | null;
+    items: UndoTransactionItem[];
     user: {
       id: number;
       username: string;

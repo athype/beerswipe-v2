@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import express from "express";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
@@ -171,14 +170,35 @@ const loginRequestSchema = {
   required: ["username", "password"],
 };
 
-const sellRequestSchema = {
+const sellItemSchema = {
   type: "object",
+  description: "One line of a basket: a drink and how many of it",
   properties: {
-    userId: { type: "integer", description: "Buying user" },
     drinkId: { type: "integer" },
     quantity: { type: "integer", minimum: 1, default: 1 },
   },
-  required: ["userId", "drinkId"],
+  required: ["drinkId"],
+};
+
+const sellRequestSchema = {
+  type: "object",
+  description:
+    "Either the legacy single-drink shape (`drinkId` with optional `quantity`) or a "
+    + "multi-item basket (`items`, 1-50 lines, duplicate drinkIds merged). `items` wins "
+    + "when both are present. One basket is one atomic sale: credits and stock are charged "
+    + "together and every line row shares a `saleGroupId`.",
+  properties: {
+    userId: { type: "integer", description: "Buying user" },
+    items: {
+      type: "array",
+      items: { $ref: "#/components/schemas/SellItem" },
+      minItems: 1,
+      maxItems: 50,
+    },
+    drinkId: { type: "integer", description: "Legacy single-drink shape" },
+    quantity: { type: "integer", minimum: 1, default: 1, description: "Legacy single-drink shape" },
+  },
+  required: ["userId"],
 };
 
 const transactionSchema = {
@@ -196,7 +216,19 @@ const transactionSchema = {
         "Credits involved. Positive for sales and credit additions; for credit_adjustment "
         + "the signed net change, negative when the edit lowered the balance.",
     },
-    quantity: { type: "integer", nullable: true, description: "Number of drinks, for sales" },
+    quantity: {
+      type: "integer",
+      nullable: true,
+      description: "Number of drinks, for sales (one row per drink of a basket)",
+    },
+    saleGroupId: {
+      type: "string",
+      format: "uuid",
+      nullable: true,
+      description:
+        "Groups the rows of one multi-drink purchase; null on credit rows and on sales "
+        + "that predate sale grouping (those undo on their own)",
+    },
     description: { type: "string", nullable: true },
     transactionDate: { type: "string", format: "date-time" },
     createdAt: { type: "string", format: "date-time" },
@@ -262,6 +294,34 @@ const createApiKeyRequestSchema = {
   required: ["name"],
 };
 
+const scanCodeSchema = {
+  type: "object",
+  description:
+    "A user's scan code: 32-char lowercase hex, stored in plaintext because it is "
+    + "re-displayed for QR pull-up and the ADA member page. Regenerating replaces it in place.",
+  properties: {
+    code: { type: "string", description: "32-character lowercase hex code" },
+  },
+  required: ["code"],
+};
+
+const scanLookupResponseSchema = {
+  type: "object",
+  description: "Kiosk resolution result: the user a scan code belongs to",
+  properties: {
+    user: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        username: { type: "string" },
+        credits: { type: "integer", minimum: 0 },
+      },
+      required: ["id", "username", "credits"],
+    },
+  },
+  required: ["user"],
+};
+
 const schemas = {
   Error: errorSchema,
   ServerError: serverErrorSchema,
@@ -278,11 +338,14 @@ const schemas = {
   UserList: userListSchema,
   LoginRequest: loginRequestSchema,
   SellRequest: sellRequestSchema,
+  SellItem: sellItemSchema,
   Transaction: transactionSchema,
   Passkey: passkeySchema,
   ApiKey: apiKeySchema,
   ApiKeyListItem: apiKeyListItemSchema,
   CreateApiKeyRequest: createApiKeyRequestSchema,
+  ScanCode: scanCodeSchema,
+  ScanLookupResponse: scanLookupResponseSchema,
 };
 
 const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
@@ -316,6 +379,7 @@ const spec = swaggerJsdoc({
       { name: "Passkeys", description: "WebAuthn passkey registration and login" },
       { name: "Admin", description: "Admin account management" },
       { name: "Api Keys", description: "Long-lived API keys for programmatic clients" },
+      { name: "Scan", description: "Per-user scan codes and the kiosk lookup route" },
     ],
     components: {
       securitySchemes: {
@@ -345,7 +409,9 @@ const spec = swaggerJsdoc({
       },
     },
   },
-  apis: [`${apiDir}/*.js`],
+  // Route annotations live beside the routers; .ts is included for the modules
+  // written under the TypeScript-first convention.
+  apis: [`${apiDir}/*.{js,ts}`],
 });
 
 const router = express.Router();

@@ -168,6 +168,7 @@
     <UndoTransactionModal
       :show="showUndoModal"
       :transaction="selectedTransaction"
+      :sale-group="selectedSaleGroup"
       @close="closeUndoModal"
       @confirm="handleUndoTransaction"
     />
@@ -324,6 +325,14 @@ const clearFilters = () => {
   applyFilters()
 }
 
+// Rows of the same multi-drink order that are on the loaded page — the undo
+// itself reverses the whole group server-side, this only shapes the warning.
+const selectedSaleGroup = computed(() => {
+  const transaction = selectedTransaction.value
+  if (!transaction?.saleGroupId) return []
+  return salesStore.transactions.filter(t => t.saleGroupId === transaction.saleGroupId)
+})
+
 const openUndoModal = (transaction) => {
   selectedTransaction.value = transaction
   showUndoModal.value = true
@@ -340,7 +349,11 @@ const handleUndoTransaction = async (transaction) => {
 
     if (result.success) {
       closeUndoModal()
-      const delta = undoCreditDelta(transaction)
+      // A sale undo restores the whole order; the server's total is authoritative.
+      const serverAmount = result.data?.undoTransaction.amount
+      const delta = transaction?.type === 'sale' && serverAmount !== undefined
+        ? serverAmount
+        : undoCreditDelta(transaction)
       const amount = Math.abs(delta)
       showSuccess(`Transaction undone successfully! ${
         delta >= 0

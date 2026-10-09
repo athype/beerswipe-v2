@@ -352,9 +352,10 @@ john_doe,0,15-03-1995,false
 - `DELETE /api/v1/drinks/:id` - Delete drink
 
 **Sales** (Admin/Seller)
-- `POST /api/v1/sales/sell` - Process sale
+- `POST /api/v1/sales/sell` - Process sale. Takes either a single drink (`{ userId, drinkId, quantity }`, kept for third-party API-key callers) or a basket (`{ userId, items: [{ drinkId, quantity }] }`, 1-50 lines, duplicates merged). A basket is charged atomically — credits and every drink's stock together — and writes one `Transaction` row per drink sharing a `saleGroupId`
 - `GET /api/v1/sales/history` - Transaction history
-- `GET /api/v1/sales/stats` - Sales statistics
+- `GET /api/v1/sales/stats` - Sales statistics (`totalSales` counts orders, not rows)
+- `DELETE /api/v1/sales/undo/:transactionId` - Undo a sale: a row with a `saleGroupId` reverses the whole order (any of its row ids works); legacy rows undo on their own
 
 ## CSV Import/Export
 

@@ -5,10 +5,28 @@ export const loginRequestSchema = z.object({
   password: z.string().min(1),
 });
 
-export const sellRequestSchema = z.object({
-  userId: z.coerce.number().int().positive(),
+export const MAX_SALE_ITEMS = 50;
+
+const sellItemSchema = z.object({
   drinkId: z.coerce.number().int().positive(),
   quantity: z.coerce.number().int().positive().optional().default(1),
+});
+
+// Two accepted shapes: the legacy single-drink body and the canonical
+// multi-item basket. `items` wins when both are present.
+export const sellRequestSchema = z.object({
+  userId: z.coerce.number().int().positive(),
+  items: z.array(sellItemSchema).min(1).max(MAX_SALE_ITEMS).optional(),
+  drinkId: z.coerce.number().int().positive().optional(),
+  quantity: z.coerce.number().int().positive().optional().default(1),
+}).superRefine((data, ctx) => {
+  if (data.items === undefined && data.drinkId === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Required",
+      path: ["drinkId"],
+    });
+  }
 });
 
 const registrationCredentialSchema = z.object({
@@ -64,3 +82,9 @@ export const createApiKeySchema = z.object({
 );
 
 export const apiKeyIdParamSchema = z.coerce.number().int().positive();
+
+// Scan codes are 32-char lowercase hex; normalize before the shape check so a
+// scanner (or a human typing one in) may send any casing or stray whitespace.
+export const scanCodeParamSchema = z.string().trim().toLowerCase().regex(/^[0-9a-f]{32}$/);
+
+export const userIdParamSchema = z.coerce.number().int().positive();
