@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - feature/BS-111-kiosk
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: beermachine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: beermachine
+      DB_USER: postgres
+      DB_PASSWORD: test
+      JWT_SECRET: ci-only-secret
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.1
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --filter @beerswipe/backend run typecheck
+      - name: Run tests
+        run: pnpm --filter @beerswipe/backend run test
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.1
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build shared types
+        run: pnpm run build:types
+      - name: Unit tests
+        run: pnpm --filter @beerswipe/frontend run test:unit
+      - name: Typecheck
+        run: pnpm --filter @beerswipe/frontend run typecheck
+      - name: Build
+        run: pnpm --filter @beerswipe/frontend run build
+
+  kiosk:
+    name: kiosk
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: kiosk
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --frozen
+      - name: Run tests
+        run: uv run pytest
+      - name: Typecheck (strict)
+        run: uv run mypy -p src.models -p src.client -p src.scan --strict
+      - name: Typecheck (ui)
+        run: uv run mypy -p src.ui
+      - name: Lint
+        run: uv run ruff check src/ main.py
