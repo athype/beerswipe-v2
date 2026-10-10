@@ -220,6 +220,7 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 - backend changes: run `pnpm --filter @beerswipe/backend run typecheck`, `pnpm --filter @beerswipe/backend test`, and `pnpm --filter @beerswipe/backend run lint` from repo root
 - frontend changes: run `pnpm --filter @beerswipe/frontend run test:unit`, `pnpm --filter @beerswipe/frontend run build`, and `pnpm --filter @beerswipe/frontend run typecheck` from repo root
 - integration touching auth/sales/passkeys: manual smoke test across frontend + backend
+- all of the above run automatically on every pull request via CI (`.github/workflows/ci.yml`); lint is not yet enforced there
 
 ### Manual smoke tests for high risk changes
 - login/logout via password and protected route redirects
@@ -229,8 +230,6 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 - CSV import/export routes still function
 
 ## Known Gaps And Cautions
-- `backend/test/api.test.js` and `backend/test/app.test.js` appear to contain legacy expectations that may not reflect current route responses.
-- Do not treat those two tests as canonical API behavior without reviewing current route code.
 - If you update API response shapes, align frontend store expectations immediately.
 - `backend/README.md` is stale: its endpoint list references old routes (e.g. `/sales/purchase` instead of `/sales/sell`) and is incomplete. Always consult `backend/src/api/index.js` and the route modules for the current API surface.
 
