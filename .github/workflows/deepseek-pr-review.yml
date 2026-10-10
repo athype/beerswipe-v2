@@ -1,24 +1,76 @@
 name: Code Review
+
 on:
   pull_request_target:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, ready_for_review]
+  issue_comment:
+    types: [created]
 
 permissions:
   pull-requests: write
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
   setup-deepseek-review:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Same-repo PRs only (never forks); drafts are skipped and picked up by
+    # the ready_for_review trigger. Commenting "@github-actions ..." on a PR
+    # requests an on-demand review; the comment text is passed to the model
+    # as additional context.
+    if: >-
+      (github.event_name == 'pull_request_target'
+        && github.event.pull_request.head.repo.full_name == github.repository
+        && !github.event.pull_request.draft)
+      || (github.event_name == 'issue_comment'
+        && github.event.issue.pull_request != null)
     timeout-minutes: 30
     runs-on: ubuntu-latest
     name: Code Review
     steps:
       - name: DeepSeek Code Review
-        uses: hustcer/deepseek-review@eccde2e9781008d795e366b951e313e37af88dd5
+        # Vendored copy of hustcer/deepseek-review with one change: thinking
+        # mode enabled, see .github/actions/deepseek-review/README.md
+        uses: ./.github/actions/deepseek-review
         with:
           chat-token: ${{ secrets.CHAT_TOKEN }}
+          # No-op while thinking mode is on; kept for a no-thinking fallback.
+          temperature: 0.2
+          watch-mention: '@github-actions'
+          sys-prompt: |
+            You are a senior engineer reviewing a pull request in the Beerswipe
+            repository, a production system handling real credits, stock and
+            sales (Express + TypeScript backend, Vue frontend, Python 3.13 /
+            Kivy 2.3.1 kiosk). CI already runs lint, type checks and tests: do
+            not report style, formatting, naming or typing concerns, and do not
+            comment on anything those checks cover.
+
+            Review only the diff below and follow these rules:
+
+            - Evidence: every finding must cite the exact file and line in the
+              diff and explain the concrete input or state that makes it a
+              problem. If a claim depends on code or third-party behavior that
+              is not visible in the diff, either omit it or move it to a short
+              "Unverified questions" list (max 3). Do not state library or
+              framework behavior as fact without evidence.
+            - Scope: report only findings that affect correctness, security,
+              data integrity, or meaningful maintainability.
+            - Restraint: fewer high-confidence findings beat many speculative
+              ones; at most 7 findings. If nothing is blocking, reply "No
+              blocking issues" and stop. Do not invent requirements; judge the
+              changes only against the diff and the stated intent of the pull
+              request. For small or mechanical diffs, keep the review brief.
+            - Format: sections "Blocking", "Should fix", "Notes"; each item
+              states what is wrong, where, why it breaks, and the smallest fix,
+              in one or two sentences.
+
+            Avoid nitpicks: false positives cost more than a missed minor issue.
+          user-prompt: |
+            Review this pull request. Its title and description state the intent.
+
+            Title: ${{ github.event.pull_request.title || github.event.issue.title }}
+
+            Description:
+            ${{ github.event.pull_request.body || github.event.issue.body }}
