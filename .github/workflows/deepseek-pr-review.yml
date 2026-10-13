@@ -30,6 +30,13 @@ jobs:
     runs-on: ubuntu-latest
     name: Code Review
     steps:
+      # Local actions resolve from the runner workspace, so the repo must be
+      # checked out first. Default ref: the base branch for pull_request_target
+      # and the default branch for issue_comment; both carry the vendored action.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: DeepSeek Code Review
         # Vendored copy of hustcer/deepseek-review with one change: thinking
         # mode enabled, see .github/actions/deepseek-review/README.md

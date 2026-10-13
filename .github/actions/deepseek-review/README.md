@@ -2,7 +2,9 @@
 
 Vendored copy of [hustcer/deepseek-review](https://github.com/hustcer/deepseek-review)
 at commit [`c9f59718ab3579ee1c8e8c9d29147d5b8f811123`](https://github.com/hustcer/deepseek-review/commit/c9f59718ab3579ee1c8e8c9d29147d5b8f811123)
-(MIT license, see `LICENSE`), used by `.github/workflows/deepseek-pr-review.yml`.
+(MIT license, see `LICENSE`), used by `.github/workflows/deepseek-pr-review.yml`,
+which runs `actions/checkout` before it: local actions resolve from the
+runner workspace, not from the repo ref.
 
 One deliberate change, in `nu/review.nu`:
 
