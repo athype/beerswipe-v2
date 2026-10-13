@@ -40,7 +40,7 @@ const getMedalColor = (rank) => {
     <div v-if="topThree.length === 0" class="empty-podium">
       <p>No top performers yet this month</p>
     </div>
-    
+
     <div v-else class="podium">
       <!-- 2nd Place (Left) -->
       <div v-if="topThree[1]" class="podium-position" :style="{ order: 1 }">
@@ -200,7 +200,7 @@ const getMedalColor = (rank) => {
 }
 
 .rank-badge {
-  background: rgba(5, 94, 104, 0.8);
+  background: var(--green-5);
   color: var(--color-white);
   padding: var(--spacing-xs) var(--spacing-md);
   border-radius: var(--radius-md);
@@ -236,7 +236,7 @@ const getMedalColor = (rank) => {
 
 .drinks-count {
   font-size: var(--font-size-sm);
-  color: var(--color-teal);
+  color: var(--green-11);
   font-weight: 600;
 }
 
@@ -267,35 +267,35 @@ const getMedalColor = (rank) => {
     padding: var(--spacing-md);
     min-height: 300px;
   }
-  
+
   .podium-position {
     max-width: 140px;
   }
-  
+
   .podium-position.champion {
     max-width: 160px;
   }
-  
+
   .crown {
     font-size: 2rem;
   }
-  
+
   .medal-icon {
     font-size: 2rem;
   }
-  
+
   .champion .medal-icon {
     font-size: 2.5rem;
   }
-  
+
   .username {
     font-size: var(--font-size-sm);
   }
-  
+
   .champion .username {
     font-size: var(--font-size-base);
   }
-  
+
   .drinks-count {
     font-size: var(--font-size-xs);
   }

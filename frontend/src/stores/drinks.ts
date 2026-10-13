@@ -111,6 +111,7 @@ export const useDrinksStore = defineStore('drinks', {
         const drinkIndex = this.drinks.findIndex(d => d.id === drinkId);
         if (drinkIndex !== -1) {
           this.drinks[drinkIndex].stock = response.data.drink.stock;
+          this.drinks[drinkIndex].lastRestockedAt = response.data.drink.lastRestockedAt;
         }
         
         return { success: true, data: response.data };

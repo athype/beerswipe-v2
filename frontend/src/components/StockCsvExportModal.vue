@@ -184,12 +184,12 @@ const handleExport = async () => {
 }
 
 .btn-primary {
-  background: var(--color-teal);
+  background: var(--green-3);
   color: white;
 }
 
 .btn-primary:hover {
-  background: #04747f;
+  background: var(--green-5);
 }
 
 .btn:disabled {

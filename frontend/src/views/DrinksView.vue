@@ -78,6 +78,7 @@
               <span class="value">{{ drink.category }}</span>
             </div>
           </div>
+          <p class="last-restocked">{{ formatRestocked(drink.lastRestockedAt) }}</p>
         </div>
 
         <div class="drink-actions">
@@ -185,6 +186,15 @@ const drinkForm = reactive({
   isActive: true,
   isAlcohol: false
 })
+
+const formatRestocked = (date) => {
+  if (!date) return 'Never restocked'
+  return `Last restocked: ${new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })}`
+}
 
 const searchDrinks = async () => {
   const params = {}
@@ -484,6 +494,14 @@ onMounted(() => {
   font-weight: 500;
 }
 
+/* Quiet companion to the stock number: small and muted on purpose. */
+.last-restocked {
+  margin-top: 0.75rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-grey);
+  opacity: 0.8;
+}
+
 .value--low {
   color: #f39c12;
 }
@@ -511,7 +529,7 @@ onMounted(() => {
 }
 
 .btn.success:hover {
-  background: var(--color-teal-dark);
+  background: var(--green-5);
 }
 
 .btn:disabled {

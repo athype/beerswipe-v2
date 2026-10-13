@@ -460,7 +460,7 @@ a:hover {
 }
 
 .table tbody tr:hover {
-  background: rgba(5, 94, 104, 0.15);
+  background: var(--green-4);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }

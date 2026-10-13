@@ -1,4 +1,4 @@
-import type { PaginationMeta } from "./common.js";
+import type { ISODateString, PaginationMeta } from "./common.js";
 import type { Drink } from "./domain.js";
 
 export interface ListDrinksQuery {
@@ -55,6 +55,7 @@ export interface AddStockResponse {
     id: number;
     name: string;
     stock: number;
+    lastRestockedAt: ISODateString | null;
   };
 }
 
