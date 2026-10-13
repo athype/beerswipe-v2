@@ -70,7 +70,7 @@ const authStore = useAuthStore()
 
 .hero {
   padding: 4rem 2rem;
-  background: linear-gradient(135deg, var(--color-teal) 0%, var(--color-green) 100%);
+  background: linear-gradient(135deg, var(--green-3) 0%, var(--color-green) 100%);
   border-radius: 20px;
   margin-bottom: 4rem;
   color: white;
@@ -106,7 +106,7 @@ const authStore = useAuthStore()
 .btn {
   display: inline-block;
   padding: 1rem 2rem;
-  background: var(--color-teal);
+  background: var(--green-3);
   color: white;
   text-decoration: none;
   border-radius: 8px;
@@ -121,9 +121,9 @@ const authStore = useAuthStore()
 }
 
 .btn.primary {
-  background: var(--color-teal);
+  background: var(--green-3);
   color: var(--color-white);
-  border-color: var(--color-teal);
+  border-color: var(--green-7);
 }
 
 .btn.primary:hover {

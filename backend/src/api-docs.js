@@ -54,6 +54,12 @@ const drinkSchema = {
     isActive: { type: "boolean", description: "false = soft-deleted" },
     isAlcohol: { type: "boolean", description: "true = alcohol; buyer must be 18+, enforced at sale time" },
     category: { type: "string", nullable: true },
+    lastRestockedAt: {
+      type: "string",
+      format: "date-time",
+      nullable: true,
+      description: "When stock last increased through a restock write path; null = never restocked",
+    },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },

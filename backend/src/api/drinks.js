@@ -272,13 +272,17 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Drink with this name already exists" });
     }
 
+    const parsedStock = Number.parseInt(stock);
+
     const drink = await Drink.create({
       name,
       description,
       price: Number.parseInt(price),
-      stock: Number.parseInt(stock),
+      stock: parsedStock,
       category,
       isAlcohol: isAlcohol === true || isAlcohol === "true",
+      // Created with stock in it, so it was restocked just now.
+      lastRestockedAt: parsedStock > 0 ? new Date() : null,
     });
 
     res.status(201).json({
@@ -355,14 +359,20 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "Drink not found" });
     }
 
+    const previousStock = drink.stock;
+    const nextStock = stock !== undefined ? Number.parseInt(stock) : previousStock;
+
     const updatedDrink = await drink.update({
       name: name || drink.name,
       description: description !== undefined ? description : drink.description,
       price: price !== undefined ? Number.parseInt(price) : drink.price,
-      stock: stock !== undefined ? Number.parseInt(stock) : drink.stock,
+      stock: nextStock,
       category: category || drink.category,
       isActive: isActive !== undefined ? isActive : drink.isActive,
       isAlcohol: isAlcohol !== undefined ? isAlcohol === true || isAlcohol === "true" : drink.isAlcohol,
+      // Raising stock here is a restock; writes that leave it equal or lower
+      // keep the previous stamp.
+      lastRestockedAt: nextStock > previousStock ? new Date() : drink.lastRestockedAt,
     });
 
     res.json({
@@ -411,6 +421,7 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
  *                     id: { type: integer }
  *                     name: { type: string }
  *                     stock: { type: integer }
+ *                     lastRestockedAt: { type: string, format: date-time, nullable: true }
  *       400:
  *         description: Quantity must be a positive number
  *         content:
@@ -447,6 +458,9 @@ router.post("/:id/add-stock", authenticateRequest, requireAdmin, async (req, res
       return res.status(404).json({ error: "Drink not found" });
     }
 
+    // The explicit restock action, so it always stamps — unlike the stock
+    // raises that undo performs through the same model method.
+    drink.lastRestockedAt = new Date();
     await drink.addStock(Number.parseInt(quantity));
 
     res.json({
@@ -455,6 +469,7 @@ router.post("/:id/add-stock", authenticateRequest, requireAdmin, async (req, res
         id: drink.id,
         name: drink.name,
         stock: drink.stock,
+        lastRestockedAt: drink.lastRestockedAt,
       },
     });
   }
@@ -531,100 +546,103 @@ router.post("/:id/add-stock", authenticateRequest, requireAdmin, async (req, res
  *         $ref: "#/components/responses/InternalError"
  */
 router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csvFile"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "CSV file is required" });
+  }
+
+  const results = [];
+  const errors = [];
+  let lineNumber = 0;
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "CSV file is required" });
+    // Lines are awaited as they are parsed, so the response reports the writes
+    // that actually landed. It also keeps file order, which lets a name
+    // repeated in one file update the row its earlier line created.
+    for await (const data of Readable.from(req.file.buffer).pipe(csv({ headers: false }))) {
+      lineNumber++;
+      try {
+        const [name, description, price, stock, category, isActive, isAlcohol] = Object.values(data);
+
+        if (!name) {
+          errors.push(`Line ${lineNumber}: Name is required`);
+          continue;
+        }
+
+        // Check if drink exists
+        let drink = await Drink.findOne({ where: { name: name.trim() } });
+
+        if (drink) {
+          // Update existing drink's stock
+          const previousStock = drink.stock;
+          const parsedStock = Number.parseInt(stock) || 0;
+          const parsedPrice = Number.parseInt(price) || drink.price;
+          const parsedIsActive = isActive === "true";
+          const hasIsAlcohol = isAlcohol !== undefined && isAlcohol !== "";
+
+          await drink.update({
+            description: description?.trim() || drink.description,
+            price: parsedPrice,
+            stock: parsedStock,
+            category: category?.trim() || drink.category,
+            isActive: parsedIsActive,
+            isAlcohol: hasIsAlcohol ? isAlcohol === "true" : drink.isAlcohol,
+            // Only a line that raises stock counts as a restock.
+            lastRestockedAt: parsedStock > previousStock ? new Date() : drink.lastRestockedAt,
+          });
+
+          results.push({
+            name: drink.name,
+            action: "updated",
+            stock: drink.stock,
+          });
+        }
+        else {
+          // Create new drink
+          if (!price || Number.parseInt(price) <= 0) {
+            errors.push(`Line ${lineNumber}: Valid price is required for new drink "${name}"`);
+            continue;
+          }
+
+          const createdStock = Number.parseInt(stock) || 0;
+
+          drink = await Drink.create({
+            name: name.trim(),
+            description: description?.trim() || null,
+            price: Number.parseInt(price),
+            stock: createdStock,
+            category: category?.trim() || "beverage",
+            isActive: isActive === "true",
+            isAlcohol: isAlcohol === "true",
+            // Same as POST /drinks: arriving with stock means stocked now.
+            lastRestockedAt: createdStock > 0 ? new Date() : null,
+          });
+
+          results.push({
+            name: drink.name,
+            action: "created",
+            stock: drink.stock,
+          });
+        }
+      }
+      catch (error) {
+        errors.push(`Line ${lineNumber}: ${error.message}`);
+      }
     }
-
-    const results = [];
-    const errors = [];
-    let lineNumber = 0;
-
-    const stream = Readable.from(req.file.buffer);
-
-    stream
-      .pipe(csv({ headers: false }))
-      .on("data", async (data) => {
-        lineNumber++;
-        try {
-          const [name, description, price, stock, category, isActive, isAlcohol] = Object.values(data);
-
-          if (!name) {
-            errors.push(`Line ${lineNumber}: Name is required`);
-            return;
-          }
-
-          // Check if drink exists
-          let drink = await Drink.findOne({ where: { name: name.trim() } });
-
-          if (drink) {
-            // Update existing drink's stock
-            const parsedStock = Number.parseInt(stock) || 0;
-            const parsedPrice = Number.parseInt(price) || drink.price;
-            const parsedIsActive = isActive === "true";
-            const hasIsAlcohol = isAlcohol !== undefined && isAlcohol !== "";
-
-            await drink.update({
-              description: description?.trim() || drink.description,
-              price: parsedPrice,
-              stock: parsedStock,
-              category: category?.trim() || drink.category,
-              isActive: parsedIsActive,
-              isAlcohol: hasIsAlcohol ? isAlcohol === "true" : drink.isAlcohol,
-            });
-
-            results.push({
-              name: drink.name,
-              action: "updated",
-              stock: drink.stock,
-            });
-          }
-          else {
-            // Create new drink
-            if (!price || Number.parseInt(price) <= 0) {
-              errors.push(`Line ${lineNumber}: Valid price is required for new drink "${name}"`);
-              return;
-            }
-
-            drink = await Drink.create({
-              name: name.trim(),
-              description: description?.trim() || null,
-              price: Number.parseInt(price),
-              stock: Number.parseInt(stock) || 0,
-              category: category?.trim() || "beverage",
-              isActive: isActive === "true",
-              isAlcohol: isAlcohol === "true",
-            });
-
-            results.push({
-              name: drink.name,
-              action: "created",
-              stock: drink.stock,
-            });
-          }
-        }
-        catch (error) {
-          errors.push(`Line ${lineNumber}: ${error.message}`);
-        }
-      })
-      .on("end", () => {
-        res.json({
-          message: "CSV import completed",
-          imported: results.length,
-          errors: errors.length,
-          results,
-          errorDetails: errors,
-        });
-      })
-      .on("error", (error) => {
-        console.error("CSV import error:", error);
-        res.status(500).json({ error: "Failed to process CSV file" });
-      });
   }
   catch (error) {
+    // Reading the upload failed — a malformed CSV, not a bad row, which the
+    // per-line catch above handles.
     console.error("CSV import error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Failed to process CSV file" });
   }
+
+  res.json({
+    message: "CSV import completed",
+    imported: results.length,
+    errors: errors.length,
+    results,
+    errorDetails: errors,
+  });
 });
 
 // Delete drink (admin only)

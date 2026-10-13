@@ -228,7 +228,7 @@ onMounted(async () => {
 }
 
 .stat-card {
-  border-left: 4px solid var(--color-teal);
+  border-left: 4px solid var(--green-7);
 }
 
 .stat-number {

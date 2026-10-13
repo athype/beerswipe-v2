@@ -206,6 +206,30 @@ const MIGRATIONS = [
       return applied;
     },
   },
+  {
+    name: "2026-10-09/drinks-lastRestockedAt",
+    up: async (queryInterface) => {
+      let table;
+      try {
+        table = await queryInterface.describeTable("Drinks");
+      }
+      catch {
+        // Table does not exist yet — sync() creates it with the column from the model.
+        return false;
+      }
+      if (table.lastRestockedAt) {
+        return false;
+      }
+      // No backfill: existing drinks have no known restock moment and read as
+      // "never restocked" until the next stock increase.
+      await queryInterface.addColumn("Drinks", "lastRestockedAt", {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+      });
+      return true;
+    },
+  },
 ];
 
 export async function runMigrations() {

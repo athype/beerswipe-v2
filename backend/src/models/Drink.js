@@ -49,6 +49,14 @@ const Drink = sequelize.define("Drink", {
     allowNull: true,
     defaultValue: "beverage",
   },
+  // When stock last went up through a restock write path (add-stock, edit,
+  // import, create). Null until the first one; deducts and the stock raises
+  // that undo performs never touch it.
+  lastRestockedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+  },
 });
 
 // Instance methods
