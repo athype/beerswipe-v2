@@ -151,8 +151,9 @@ function normalizeSaleItems(body) {
  *             schema: { $ref: "#/components/schemas/Error" }
  *       403:
  *         description: >
- *           Admin or seller access required, or — for alcohol drinks — the
- *           buyer has no date of birth on file or is under 18 (legal age gate)
+ *           Admin or seller access required, the buyer's account is deactivated,
+ *           or — for alcohol drinks — the buyer has no date of birth on file or is under 18
+ *           (legal age gate)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/Error" }
@@ -209,6 +210,13 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
     if (!user) {
       await transaction.rollback();
       return res.status(404).json({ error: "User not found" });
+    }
+
+    // Deactivated members must not be charged, whatever the client believes:
+    // the same gate the kiosk scan lookup applies.
+    if (!user.isActive) {
+      await transaction.rollback();
+      return res.status(403).json({ error: "User is inactive" });
     }
 
     // Lock every drink one at a time, ascending by id: a single findAll with

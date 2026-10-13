@@ -32,6 +32,10 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         schema: { type: string }
  *         description: Case-insensitive username substring search
  *       - in: query
+ *         name: isActive
+ *         schema: { type: string, enum: ["true", "false"] }
+ *         description: Filter by active flag; omitted returns active and inactive users
+ *       - in: query
  *         name: page
  *         schema: { type: integer, minimum: 1, default: 1 }
  *       - in: query
@@ -64,7 +68,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
-    const { type, search, page = 1, limit = 50 } = req.query;
+    const { type, search, isActive, page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
 
     const whereClause = {};
@@ -73,6 +77,14 @@ router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
     }
     if (search) {
       whereClause.username = { [Op.iLike]: `%${search}%` };
+    }
+    // Absent keeps the unfiltered list, so the admin Users view still shows
+    // deactivated members alongside the rest.
+    if (isActive === "true") {
+      whereClause.isActive = true;
+    }
+    else if (isActive === "false") {
+      whereClause.isActive = false;
     }
 
     const { count, rows } = await User.findAndCountAll({

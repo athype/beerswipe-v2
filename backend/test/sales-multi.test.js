@@ -430,6 +430,27 @@ describe("POST /api/v1/sales/sell multi-item under concurrency", () => {
   });
 });
 
+describe("POST /api/v1/sales/sell inactive-buyer gate", () => {
+  it("refuses a deactivated buyer and charges nothing", async () => {
+    const { token } = await makeSeller();
+    const user = await makeUser({ credits: 50 });
+    const drink = await makeDrink({ price: 4, stock: 10 });
+    await user.update({ isActive: false });
+
+    const res = await sell(token, { userId: user.id, drinkId: drink.id, quantity: 1 });
+
+    // Same refusal the kiosk scan lookup gives, so both sales channels agree.
+    expect(res.status, JSON.stringify(res.body)).toBe(403);
+    expect(res.body.error).toBe("User is inactive");
+
+    await user.reload();
+    await drink.reload();
+    expect(user.credits).toBe(50);
+    expect(drink.stock).toBe(10);
+    expect(await Transaction.count({ where: { userId: user.id } })).toBe(0);
+  });
+});
+
 afterAll(async () => {
   // Best-effort cleanup: remove sale rows first, then the fixtures.
   try {
