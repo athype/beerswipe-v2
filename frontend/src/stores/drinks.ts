@@ -124,20 +124,20 @@ export const useDrinksStore = defineStore('drinks', {
       }
     },
 
-    async deleteDrink(drinkId: number): Promise<StoreActionResult> {
+    async deleteDrinkPermanently(drinkId: number): Promise<StoreActionResult<DeleteDrinkResponse>> {
       this.loading = true;
       this.error = null;
-      
+
       try {
-        await drinksAPI.delete(drinkId);
-        
-        // Update the drink as inactive in our local state
+        const response = await drinksAPI.deletePermanent(drinkId);
+
+        // The row is gone for good: drop it from the list rather than flagging it.
         const drinkIndex = this.drinks.findIndex(d => d.id === drinkId);
         if (drinkIndex !== -1) {
-          this.drinks[drinkIndex].isActive = false;
+          this.drinks.splice(drinkIndex, 1);
         }
-        
-        return { success: true };
+
+        return { success: true, data: response.data };
       } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: string } } };
         this.error = err.response?.data?.error || 'Failed to delete drink';

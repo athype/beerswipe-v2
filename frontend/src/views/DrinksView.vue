@@ -95,6 +95,12 @@
           >
             {{ drink.isActive ? 'Deactivate' : 'Activate' }}
           </button>
+          <button
+            @click="openDeleteModal(drink)"
+            class="btn small danger-outline"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>
@@ -138,6 +144,14 @@
       @submit="addStock"
     />
 
+    <DeleteDrinkConfirmModal
+      :show="showDeleteModal"
+      :drink="selectedDrink"
+      :loading="deleteLoading"
+      @close="closeDeleteModal"
+      @confirm="deleteDrinkPermanently"
+    />
+
     <!-- Stock CSV Import/Export Modals -->
     <StockCsvImportModal
       :show="showImportModal"
@@ -162,6 +176,7 @@ import StockCsvImportModal from '../components/StockCsvImportModal.vue'
 import StockCsvExportModal from '../components/StockCsvExportModal.vue'
 import AddStockModal from '../components/modals/AddStockModal.vue'
 import CreateEditDrinkModal from '../components/modals/CreateEditDrinkModal.vue'
+import DeleteDrinkConfirmModal from '../components/modals/DeleteDrinkConfirmModal.vue'
 
 const drinksStore = useDrinksStore()
 const { showSuccess, showError } = useNotifications()
@@ -174,6 +189,8 @@ const showEditModal = ref(false)
 const showStockModal = ref(false)
 const showImportModal = ref(false)
 const showExportModal = ref(false)
+const showDeleteModal = ref(false)
+const deleteLoading = ref(false)
 const selectedDrink = ref(null)
 const stockQuantity = ref(1)
 
@@ -295,6 +312,40 @@ const closeStockModal = () => {
   showStockModal.value = false
   selectedDrink.value = null
   stockQuantity.value = 1
+}
+
+const openDeleteModal = (drink) => {
+  if (deleteLoading.value) return
+  selectedDrink.value = drink
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  if (!deleteLoading.value) {
+    showDeleteModal.value = false
+    selectedDrink.value = null
+  }
+}
+
+const deleteDrinkPermanently = async () => {
+  if (deleteLoading.value) return
+  deleteLoading.value = true
+  const drink = selectedDrink.value
+
+  try {
+    const result = await drinksStore.deleteDrinkPermanently(drink.id)
+    if (result.success) {
+      showDeleteModal.value = false
+      selectedDrink.value = null
+      showSuccess(`${drink.name} permanently deleted`)
+    } else {
+      // Refusals (e.g. the drink has sales history) keep the modal open so the
+      // reason stays next to the action that triggered it.
+      showError(result.error)
+    }
+  } finally {
+    deleteLoading.value = false
+  }
 }
 
 const handleImportCSV = async (file) => {
@@ -522,6 +573,19 @@ onMounted(() => {
 
 .btn.danger:hover {
   background: #c0392b;
+}
+
+/* Outlined so the irreversible delete does not read as a second red toggle
+   next to Deactivate. */
+.btn.danger-outline {
+  background: transparent;
+  border-color: rgba(231, 76, 60, 0.6);
+  color: #e74c3c;
+}
+
+.btn.danger-outline:hover {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: #e74c3c;
 }
 
 .btn.success {

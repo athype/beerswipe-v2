@@ -3,8 +3,9 @@ import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
+import { sequelize } from "../config/database.js";
 import { authenticateRequest, requireAdmin } from "../middleware/auth.js";
-import { Drink } from "../models/index.js";
+import { Drink, Transaction } from "../models/index.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -698,6 +699,92 @@ router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   }
   catch (error) {
     console.error("Delete drink error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Permanently delete drink (admin only)
+/**
+ * @openapi
+ * /drinks/{id}/permanent:
+ *   delete:
+ *     summary: Permanently delete a drink
+ *     description: >
+ *       Removes the row for good — for typo'd, duplicate or test drinks. Refused with 409
+ *       when the drink has sale history: `transactions.drinkId` references it, and the audit
+ *       trail outlives the product. Undo those sales first, or deactivate the drink instead.
+ *     tags: [Drinks]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Drink permanently deleted
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Message" }
+ *       401:
+ *         description: Missing or invalid authToken cookie
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       403:
+ *         description: Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       404:
+ *         description: Drink not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       409:
+ *         description: Drink has sales history; deactivate it instead
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/Error" }
+ *       500:
+ *         $ref: "#/components/responses/InternalError"
+ */
+router.delete("/:id/permanent", authenticateRequest, requireAdmin, async (req, res) => {
+  let transaction;
+  try {
+    transaction = await sequelize.transaction();
+
+    // Locking the drink serializes against the sale path, which locks the same
+    // rows before it writes transactions — so no sale can slip in between the
+    // history count and the destroy.
+    const drink = await Drink.findByPk(req.params.id, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!drink) {
+      await transaction.rollback();
+      return res.status(404).json({ error: "Drink not found" });
+    }
+
+    const salesCount = await Transaction.count({
+      where: { drinkId: drink.id },
+      transaction,
+    });
+    if (salesCount > 0) {
+      await transaction.rollback();
+      return res.status(409).json({ error: "Drink has sales history; deactivate it instead" });
+    }
+
+    await drink.destroy({ transaction });
+    await transaction.commit();
+
+    res.json({ message: "Drink permanently deleted" });
+  }
+  catch (error) {
+    if (transaction)
+      await transaction.rollback();
+    console.error("Permanently delete drink error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

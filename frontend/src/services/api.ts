@@ -91,7 +91,9 @@ export const drinksAPI = {
   addStock: (id: number, quantity: number) => api.post<types.AddStockResponse>(`/drinks/${id}/add-stock`, { quantity }),
   
   delete: (id: number) => api.delete<types.DeleteDrinkResponse>(`/drinks/${id}`),
-  
+
+  deletePermanent: (id: number) => api.delete<types.DeleteDrinkResponse>(`/drinks/${id}/permanent`),
+
   importCSV: (formData: FormData) => api.post<types.ImportDrinksCsvResponse>('/drinks/import-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),

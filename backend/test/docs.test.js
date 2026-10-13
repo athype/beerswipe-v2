@@ -45,6 +45,7 @@ const EXPECTED_OPERATIONS = [
   ["/drinks/{id}/add-stock", "post"],
   ["/drinks/import-csv", "post"],
   ["/drinks/{id}", "delete"],
+  ["/drinks/{id}/permanent", "delete"],
   // sales
   ["/sales/sell", "post"],
   ["/sales/history", "get"],
