@@ -199,6 +199,11 @@ const drinksStore = useDrinksStore()
 
 const showShoppingList = ref(false)
 
+// The strip and the shopping list read the whole catalogue, so ask for more
+// than the list route's default page of 50. Raise this if the catalogue ever
+// grows past it, or both views will quietly show only the first page.
+const DASHBOARD_DRINKS_LIMIT = 200
+
 const recentTransactions = computed(() =>
   salesStore.transactions.slice(0, 5)
 )
@@ -233,9 +238,7 @@ onMounted(async () => {
   await Promise.all([
     salesStore.fetchStats(),
     salesStore.fetchTransactionHistory({ limit: 5 }),
-    // The strip and the shopping list both read the whole catalogue, so ask for
-    // more than the API's default page of 50.
-    drinksStore.fetchDrinks({ limit: 200 })
+    drinksStore.fetchDrinks({ limit: DASHBOARD_DRINKS_LIMIT })
   ])
 })
 </script>
