@@ -37,25 +37,24 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import type { Drink } from '@beerswipe/types'
 import Modal from '../Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  drink: {
-    type: Object,
-    default: null
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  drink?: Drink | null
+  loading?: boolean
+}>(), {
+  show: false,
+  drink: null,
+  loading: false,
 })
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits<{
+  close: []
+  confirm: []
+}>()
 
 const close = () => {
   if (!props.loading) {
