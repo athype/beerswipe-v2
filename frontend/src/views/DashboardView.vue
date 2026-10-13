@@ -71,8 +71,16 @@
       </div>
     </div>
     <div class="card card-warning mt-lg">
-      <div class="card-header">
+      <div class="card-header stock-glance-header">
         <h3 class="qa-sign-title">Stock at a glance</h3>
+        <button
+          type="button"
+          class="btn"
+          :disabled="drinksStore.loading"
+          @click="showShoppingList = true"
+        >
+          Get shopping list
+        </button>
       </div>
       <div class="card-body">
         <template v-for="group in stockGroups" :key="group.key">
@@ -161,6 +169,13 @@
         </div>
       </div>
     </div>
+
+    <ShoppingListModal
+      :show="showShoppingList"
+      :out="groupedDrinks.out"
+      :low="groupedDrinks.low"
+      @close="showShoppingList = false"
+    />
   </div>
 </template>
 
@@ -171,6 +186,7 @@ import { useAuthStore } from '@/stores/auth.js'
 import { useSalesStore } from '@/stores/sales.js'
 import { useDrinksStore } from '@/stores/drinks.js'
 import CountUp from '@/vue-bits-animations/CountUp/CountUp.vue'
+import ShoppingListModal from '@/components/ShoppingListModal.vue'
 import {
   transactionTypeDashboardBadgeClass,
   transactionTypeShortLabel,
@@ -180,6 +196,8 @@ import { stockLevel } from '@/utils/stock'
 const authStore = useAuthStore()
 const salesStore = useSalesStore()
 const drinksStore = useDrinksStore()
+
+const showShoppingList = ref(false)
 
 const recentTransactions = computed(() =>
   salesStore.transactions.slice(0, 5)
@@ -215,7 +233,9 @@ onMounted(async () => {
   await Promise.all([
     salesStore.fetchStats(),
     salesStore.fetchTransactionHistory({ limit: 5 }),
-    drinksStore.fetchDrinks()
+    // The strip and the shopping list both read the whole catalogue, so ask for
+    // more than the API's default page of 50.
+    drinksStore.fetchDrinks({ limit: 200 })
   ])
 })
 </script>
@@ -254,6 +274,19 @@ onMounted(async () => {
   letter-spacing: 0.02em;
   color: #ffffff;
   text-shadow: 0 0 11px rgba(48, 164, 108, 0.55), 0 0 2px rgba(177, 241, 203, 0.5), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.stock-glance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+/* The title's own bottom margin would push the button off centre. */
+.stock-glance-header .qa-sign-title {
+  margin-bottom: 0;
 }
 
 .qa-menu {
