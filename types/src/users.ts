@@ -6,6 +6,7 @@ export type UsersListTypeFilter = "admin" | "member" | "non-member";
 export interface ListUsersQuery {
   type?: UsersListTypeFilter;
   search?: string;
+  isActive?: boolean | "true" | "false";
   page?: number;
   limit?: number;
 }

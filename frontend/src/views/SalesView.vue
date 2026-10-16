@@ -356,7 +356,10 @@ const filteredUsers = computed(() => {
   if (!searchQuery.value) return []
   return usersStore.users.filter(user =>
     user.username.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
-    user.userType !== 'admin'
+    user.userType !== 'admin' &&
+    // The server already filters, but a list fetched before the member was
+    // deactivated must not re-offer them here.
+    user.isActive !== false
   )
 })
 
@@ -502,7 +505,7 @@ const searchUsers = () => {
   clearTimeout(searchUsersTimer)
   searchUsersTimer = setTimeout(async () => {
     if (searchQuery.value.length > 2) {
-      await usersStore.fetchUsers({ search: searchQuery.value })
+      await usersStore.fetchUsers({ search: searchQuery.value, isActive: true })
     }
   }, 300)
 }
@@ -530,7 +533,7 @@ const loadRecentCustomers = () => {
 
 const selectRecentCustomer = async (customer) => {
   if (processing.value) return
-  const result = await usersStore.fetchUsers({ search: customer.username })
+  const result = await usersStore.fetchUsers({ search: customer.username, isActive: true })
   if (!result.success) {
     showError('Could not load customer — search manually')
     return
@@ -647,7 +650,7 @@ const restoreTerminalState = async () => {
   if (!state || (!state.cart?.length && !state.user)) return
 
   if (state.user) {
-    const result = await usersStore.fetchUsers({ search: state.user.username })
+    const result = await usersStore.fetchUsers({ search: state.user.username, isActive: true })
     if (result.success) {
       const user = usersStore.users.find(u => u.id === state.user.id)
       if (user) {
@@ -704,7 +707,7 @@ const confirmUndo = async () => {
       await Promise.all([
         drinksStore.fetchDrinks({ inStock: true }),
         salesStore.fetchTransactionHistory({ limit: 10 }),
-        usersStore.fetchUsers({})
+        usersStore.fetchUsers({ isActive: true })
       ])
     } else {
       showError(result.error || 'Failed to undo sale')
@@ -817,7 +820,7 @@ const confirmSale = async () => {
 
   if (!sold && selectedUser.value) {
     // Refresh balances so a retry is checked against authoritative credits
-    const result = await usersStore.fetchUsers({})
+    const result = await usersStore.fetchUsers({ isActive: true })
     if (result.success) {
       const refreshed = usersStore.users.find(u => u.id === currentUser.id)
       if (refreshed) {

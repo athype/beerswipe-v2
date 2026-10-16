@@ -203,3 +203,63 @@ describe("PUT /api/v1/users/:id", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("GET /api/v1/users isActive filter", () => {
+  // Two members sharing a search stem, so the filter is the only difference
+  // between what each request returns.
+  async function makePair() {
+    const admin = await createUser("admin");
+    const stem = `active-filter-${uniqueSuffix()}`;
+    const active = await createUser("member", { username: `${stem}-on`, isActive: true });
+    const inactive = await createUser("member", { username: `${stem}-off`, isActive: false });
+    return { admin, stem, active, inactive };
+  }
+
+  function list(admin, params) {
+    return request(app)
+      .get("/api/v1/users")
+      .query({ search: params.stem, ...(params.isActive === undefined ? {} : { isActive: params.isActive }) })
+      .set("Cookie", cookieFor(admin));
+  }
+
+  function usernames(res) {
+    return res.body.users.map(user => user.username).sort();
+  }
+
+  it("returns both active and inactive users when isActive is absent", async () => {
+    const { admin, stem, active, inactive } = await makePair();
+
+    const res = await list(admin, { stem });
+
+    expect(res.status).toBe(200);
+    // The admin Users view depends on this: deactivated members stay listed.
+    expect(usernames(res)).toEqual([active.username, inactive.username].sort());
+  });
+
+  it("returns only active users for isActive=true", async () => {
+    const { admin, stem, active } = await makePair();
+
+    const res = await list(admin, { stem, isActive: "true" });
+
+    expect(res.status).toBe(200);
+    expect(usernames(res)).toEqual([active.username]);
+  });
+
+  it("returns only deactivated users for isActive=false", async () => {
+    const { admin, stem, inactive } = await makePair();
+
+    const res = await list(admin, { stem, isActive: "false" });
+
+    expect(res.status).toBe(200);
+    expect(usernames(res)).toEqual([inactive.username]);
+  });
+
+  it("ignores any other value", async () => {
+    const { admin, stem, active, inactive } = await makePair();
+
+    const res = await list(admin, { stem, isActive: "maybe" });
+
+    expect(res.status).toBe(200);
+    expect(usernames(res)).toEqual([active.username, inactive.username].sort());
+  });
+});
