@@ -45,7 +45,7 @@ There is no build step. Node strips types at runtime (`engines: >=22.18.0`; Dock
 
 1. **Real extensions.** A converted file is imported as `./env.ts`, including from files that are still `.js`. `src/models/index.js` already imports `./ScanCode.ts`; that is the pattern.
 2. **Type-only imports use `import type`.** `verbatimModuleSyntax` is on, so a value import used only as a type fails.
-3. **Erasable syntax only.** No `enum`, `namespace`, parameter properties, or decorators in backend code. `erasableSyntaxOnly` enforces this. Reuse unions from `@beerswipe/types` (for example `UserType`) instead of inventing enums.
+3. **Erasable syntax only.** No runtime `enum`, `namespace`, parameter properties, or decorators in backend code. `erasableSyntaxOnly` enforces this. Ambient declarations in `.d.ts` files, including the Express request augmentation in segment 4, are type-only and allowed. Reuse unions from `@beerswipe/types` (for example `UserType`) instead of inventing enums.
 4. **Strict is already on.** Every converted file must be strict-clean immediately. Do not add `// @ts-nocheck`, and do not relax `tsconfig.json`.
 5. **Keep every `@openapi` block byte-identical.** `test/docs.test.js` asserts that every route is documented, and `api-docs.js` scans `src/api/*.{js,ts}`.
 6. **No behavior changes.** This migration renames files and adds types. Route order, guards, transaction handling, response shapes, and credit rules must not move.
@@ -105,7 +105,7 @@ pnpm --filter @beerswipe/backend add -D \
   @types/swagger-ui-express
 ```
 
-`csv-parser` and `helmet` ship their own declarations; do not add `@types` packages for them (`@types/csv-parser` does not exist).
+`csv-parser` and `helmet` ship their own declarations; do not add `@types` packages for them (`@types/csv-parser` does not exist, and `csv-parser` 3.2.1 ships `index.d.ts`).
 
 Commit `backend/package.json` and `pnpm-lock.yaml` together, then confirm the baseline:
 
@@ -160,16 +160,16 @@ const User = sequelize.define<UserInstance, UserAttributes>("User", { /* ... */ 
 
 // Sequelize 6 types the prototype as Model<any, any>; cast once for the assignments.
 const userPrototype = User.prototype as UserInstance;
-userPrototype.validatePassword = async function (password: string): Promise<boolean> {
+userPrototype.validatePassword = async function (this: UserInstance, password: string): Promise<boolean> {
   // ...
 };
 ```
 
-The second generic is required. `sequelize.define<UserInstance>` alone infers `Model<any, any>` and every prototype assignment fails. Verify this against the installed typings before changing the pattern.
+The second generic is required. `sequelize.define<UserInstance>` alone infers `Model<any, any>` and every prototype assignment fails. In the installed Sequelize 6.37 typings the signature is `define<M extends Model, TAttributes = Attributes<M>>`, so the second generic is the attribute map, not the creation attributes; creation attributes come from `UserInstance`'s `Model<UserAttributes, UserCreationAttributes>`. `User.create({ username, userType })` compiles with the pattern above, so `id`, `credits` and `isActive` stay optional.
 
 - `Transaction.ts`, `Passkey.ts`, `ApiKey.ts` are data-only: keep `define()` with no generics and export an attribute interface for call sites.
 - `models/index.ts` holds the associations. Keep every association, alias and `onDelete` identical. This file has 21 importers, so update them all in the same commit. Re-export the instance types (`export type { UserInstance } from "./User.ts"` and the equivalent for Drink) because segment 4 imports the request user type from this module.
-- Typed creation attributes surface two existing test helpers that pass `userType: string`: `test/drinks-restock.test.ts:31` and `test/scanCodes.test.ts:33`. Change the helper parameter to `UserType` from `@beerswipe/types`.
+- Typed creation attributes surface two existing test helpers that pass `userType: string`: `test/drinks-restock.test.ts:31` and `test/scanCodes.test.ts:33`. Change the helper parameter to `UserType` from `@beerswipe/types`. Most test files are still `.js` and unchecked, but these two are already `.ts` and are part of the typecheck.
 
 Gate: typecheck and the suite, especially credits, sales and scan-code tests. Do not change hooks or method semantics to satisfy the compiler.
 
