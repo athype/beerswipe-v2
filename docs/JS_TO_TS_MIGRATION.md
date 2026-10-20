@@ -83,7 +83,7 @@ One segment per branch, per PR, per Claude Code session. Branches target `master
 | 8 | `refactor/backend-ts-routes-passkeys` | `api/passkeys` | 620 | passkey tests, manual register/login |
 | 9 | `refactor/backend-ts-routes-sales` | `api/sales` | 971 | sales tests, manual sell/undo |
 | 10 | `refactor/backend-ts-wiring` | `api/index`, `api-docs` | 494 | suite, docs test |
-| 11 | `refactor/backend-ts-entrypoints` | `app`, `index`, seeds, `scripts/seed`, `migrate`, package scripts | 398 | suite, boot, migrate, Docker build |
+| 11 | `refactor/backend-ts-entrypoints` | `app`, `index`, seeds, `scripts/seed`, `migrate`, `config/database` specifiers, package scripts | 398 | suite, boot, migrate, Docker build |
 | 12 | `chore/backend-ts-cleanup` | `tsconfig`, `AGENTS.md`, `backend/README.md` | 0 runtime | full verification |
 
 Ordering is dependency-driven: foundations, models, auth middleware, routes, wiring, entry points. Routes go risk-ascending; sales is last because it moves credits and stock.
@@ -119,7 +119,7 @@ pnpm --filter @beerswipe/backend test
 Scope: `src/env.js`, `src/config/database.js`, `src/middlewares.js`.
 
 - `env.ts`: keep the Zod schema identical. Export `type Env = z.infer<typeof envSchema>`, annotate `env: Env`, and give `apiDocsEnabled()` a `boolean` return type. Keep reading live `process.env` inside `apiDocsEnabled()`, because tests toggle it at request time.
-- `config/database.ts`: `initializeDatabase(): Promise<void>`. The dynamic imports of `../migrate.js` and `../seeds/index.js` stay `.js` until segment 11.
+- `config/database.ts`: `initializeDatabase(): Promise<void>`. The dynamic imports of `../migrate.js` and `../seeds/index.js` stay `.js` in this segment because those targets are still JavaScript. Segment 11 renames them and must also change these two specifiers in this file to `../migrate.ts` and `../seeds/index.ts`.
 - `middlewares.ts`: `notFound` returns `void`; `errorHandler` keeps its four arguments and is typed as Express's error handler. The emoji strings and status logic do not change.
 
 Update every importer specifier in the same commit. `env.js` has 10 importers, `database.js` has 13, `middlewares.js` has 1:
@@ -168,7 +168,7 @@ userPrototype.validatePassword = async function (password: string): Promise<bool
 The second generic is required. `sequelize.define<UserInstance>` alone infers `Model<any, any>` and every prototype assignment fails. Verify this against the installed typings before changing the pattern.
 
 - `Transaction.ts`, `Passkey.ts`, `ApiKey.ts` are data-only: keep `define()` with no generics and export an attribute interface for call sites.
-- `models/index.ts` holds the associations. Keep every association, alias and `onDelete` identical. This file has 21 importers, so update them all in the same commit.
+- `models/index.ts` holds the associations. Keep every association, alias and `onDelete` identical. This file has 21 importers, so update them all in the same commit. Re-export the instance types (`export type { UserInstance } from "./User.ts"` and the equivalent for Drink) because segment 4 imports the request user type from this module.
 - Typed creation attributes surface two existing test helpers that pass `userType: string`: `test/drinks-restock.test.ts:31` and `test/scanCodes.test.ts:33`. Change the helper parameter to `UserType` from `@beerswipe/types`.
 
 Gate: typecheck and the suite, especially credits, sales and scan-code tests. Do not change hooks or method semantics to satisfy the compiler.
@@ -180,6 +180,8 @@ Scope: `src/middleware/auth.js` plus a new `src/types/express.d.ts`.
 - Declare the request augmentation in one place:
 
 ```ts
+import type { UserInstance } from "../models/index.ts";
+
 declare global {
   namespace Express {
     interface Request {
@@ -195,6 +197,8 @@ declare global {
   }
 }
 ```
+
+The import is required: it resolves `UserInstance` and makes the file a module, which is what allows `declare global` to work.
 
 - `jwt.verify` returns `string | JwtPayload`. Narrow to an object with `id`, `username` and `userType` before use.
 - Preserve the existing precedence exactly: cookie or `Authorization` header goes through JWT auth, otherwise `X-API-Key`, otherwise 401. A presented but invalid JWT still returns 403.
@@ -235,7 +239,7 @@ Scope: `src/api/users.js`.
 - CSV import: `req.file.buffer`, csv-parser row shapes, and coercion of `userType` through the existing enum. A bad row must still fail the same way.
 - Credits: `add-credits` and `PUT /:id` stay admin-only and in blocks of 10; the signed adjustment row logic does not change.
 - Scan-code routes (`/users/:id/scan-code`) stay as they are.
-- `Transaction.finished` is missing from Sequelize's typings and is checked in this file. Use a narrow cast such as `tx as Transaction & { finished?: string }` or a local boolean; do not change when rollback runs.
+- `Transaction.finished` is missing from Sequelize's typings and is checked in this file. `Transaction` is already the Sequelize model in this module, so import the transaction type under an alias (`import type { Transaction as SequelizeTransaction } from "sequelize"`) and cast `tx as SequelizeTransaction & { finished?: string }`, or track a local boolean. Do not change when rollback runs.
 
 Gate: typecheck, users tests, CSV import and export smoke.
 
@@ -254,7 +258,7 @@ Gate: typecheck, passkey tests, and a manual register and login from the web UI.
 Scope: `src/api/sales.js`.
 
 - This is the money path. Preserve `sequelize.transaction` usage, every early-return rollback, ascending row locking by id, `saleGroupId` grouping, whole-group undo, and `Transaction.adminId = req.user.id`.
-- `Transaction.finished` needs the same narrow treatment as segment 7.
+- `Transaction.finished` needs the same `SequelizeTransaction` alias cast as segment 7; do not reuse the model name.
 - Keep the seller undo window logic and the API-key `userType` overlay behavior identical.
 - Keep basket quantity merges and stock deductions identical.
 
@@ -272,12 +276,13 @@ Gate: typecheck, suite, docs test.
 
 ## Segment 11: entry points and scripts
 
-Scope: `src/app.js`, `src/index.js`, `src/seeds/index.js`, `src/seeds/adminSeed.js`, `scripts/seed.js`, `src/migrate.js`, `backend/package.json`.
+Scope: `src/app.js`, `src/index.js`, `src/seeds/index.js`, `src/seeds/adminSeed.js`, `scripts/seed.js`, `src/migrate.js`, `src/config/database.ts`, `backend/package.json`.
 
 - `app.ts`: keep top-level `await initializeDatabase()` and the CORS callback logic. Narrow the CORS origin type, do not change allowed origins.
 - `index.ts`: `err.code` needs a `NodeJS.ErrnoException` narrowing before the `EADDRINUSE` check.
 - Seeds and `scripts/seed.ts`: annotate return types and reuse model creation attributes.
 - `migrate.ts`: the manual-run guard uses `process.argv[1]?.endsWith("migrate.js")`. Rename it and update the guard to `.endsWith("migrate.ts")`, otherwise `node src/migrate.ts` silently does nothing. Update every command reference in `AGENTS.md` and `backend/README.md` in the same PR.
+- `config/database.ts` is edited here, not converted: change its two dynamic imports to `../migrate.ts` and `../seeds/index.ts`. Without this, boot fails after the renames because the loader still looks for the old `.js` files. Also update `scripts/seed.ts`'s import of `../src/seeds/index.js` to `.ts`; its `config/database` import was already updated in segment 1.
 - `package.json`: `main`, `start`, `start:local`, `dev` and `seed` must point at the `.ts` files.
 - Verify the Docker image still builds and boots; the Dockerfile runs `pnpm start` and does not need a build stage.
 
