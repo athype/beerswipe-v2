@@ -4,7 +4,7 @@ import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
-import { authenticateRequest, requireAdmin } from "../middleware/auth.js";
+import { authenticateRequest, requireAdmin } from "../middleware/auth.ts";
 import { Drink, Transaction } from "../models/index.ts";
 
 const router = express.Router();

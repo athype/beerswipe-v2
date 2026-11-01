@@ -1,6 +1,6 @@
 import express from "express";
 import { env } from "../env.ts";
-import { authenticateRequest, generateToken } from "../middleware/auth.js";
+import { authenticateRequest, generateToken } from "../middleware/auth.ts";
 import { User } from "../models/index.ts";
 import { loginRequestSchema } from "../validation/contracts.ts";
 

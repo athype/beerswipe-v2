@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.js";
+import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.ts";
 import { ScanCode, User } from "../models/index.ts";
 import { scanCodeParamSchema } from "../validation/contracts.ts";
 

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
-import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.js";
+import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.ts";
 import { Drink, Transaction, User } from "../models/index.ts";
 import { sellRequestSchema } from "../validation/contracts.ts";
 

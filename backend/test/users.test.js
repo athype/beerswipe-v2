@@ -2,7 +2,7 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
-import { generateToken } from "../src/middleware/auth.js";
+import { generateToken } from "../src/middleware/auth.ts";
 import { Transaction, User } from "../src/models/index.ts";
 
 let suffix = 0;

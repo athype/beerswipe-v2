@@ -1,7 +1,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
-import { authenticateRequest } from "../middleware/auth.js";
+import { authenticateRequest } from "../middleware/auth.ts";
 import { Transaction, User } from "../models/index.ts";
 
 const router = express.Router();
