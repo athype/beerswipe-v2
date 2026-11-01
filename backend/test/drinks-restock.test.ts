@@ -5,7 +5,7 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
-import { generateToken } from "../src/middleware/auth.js";
+import { generateToken } from "../src/middleware/auth.ts";
 import { Drink, Transaction, User } from "../src/models/index.ts";
 
 // lastRestockedAt backs the "Last restocked" line on the drink cards. It is

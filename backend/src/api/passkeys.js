@@ -1,6 +1,6 @@
 import express from "express";
 import { env } from "../env.ts";
-import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.ts";
 import { Passkey, User } from "../models/index.ts";
 import {
   clearChallenge,

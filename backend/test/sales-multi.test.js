@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
-import { generateToken } from "../src/middleware/auth.js";
+import { generateToken } from "../src/middleware/auth.ts";
 import { Drink, Transaction, User } from "../src/models/index.ts";
 
 // Multi-item sales: one purchase is 1..N Transaction rows sharing a
