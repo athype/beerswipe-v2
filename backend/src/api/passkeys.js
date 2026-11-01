@@ -1,5 +1,5 @@
 import express from "express";
-import { env } from "../env.js";
+import { env } from "../env.ts";
 import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.js";
 import { Passkey, User } from "../models/index.js";
 import {

@@ -4,7 +4,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import docsRouter from "../src/api-docs.js";
-import { apiDocsEnabled } from "../src/env.js";
+import { apiDocsEnabled } from "../src/env.ts";
 
 const ORIGINAL_ENV = { ...process.env };
 

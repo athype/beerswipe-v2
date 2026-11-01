@@ -1,5 +1,5 @@
 import { Sequelize } from "sequelize";
-import { env } from "../env.js";
+import { env } from "../env.ts";
 
 // Use PostgreSQL for both development and production
 const sequelize = new Sequelize(env.DATABASE_URL || env.DB_NAME, env.DB_USER, env.DB_PASSWORD, {
@@ -17,7 +17,7 @@ const sequelize = new Sequelize(env.DATABASE_URL || env.DB_NAME, env.DB_USER, en
 
 export { sequelize };
 
-export async function initializeDatabase() {
+export async function initializeDatabase(): Promise<void> {
   try {
     await sequelize.authenticate();
     console.log("Database connection has been established successfully.");

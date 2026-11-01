@@ -3,7 +3,7 @@ import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
-import { sequelize } from "../config/database.js";
+import { sequelize } from "../config/database.ts";
 import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { ScanCode, Transaction, User } from "../models/index.js";
 import { generateScanCode } from "../utils/scanCodeCrypto.ts";

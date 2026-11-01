@@ -5,10 +5,10 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import api from "./api/index.js";
-import { initializeDatabase } from "./config/database.js";
-import { env } from "./env.js";
+import { initializeDatabase } from "./config/database.ts";
+import { env } from "./env.ts";
 
-import * as middlewares from "./middlewares.js";
+import * as middlewares from "./middlewares.ts";
 
 const app = express();
 
