@@ -1,3 +1,5 @@
+import type { Transaction as SequelizeTransaction, WhereOptions } from "sequelize";
+import type { DrinkAttributes } from "../models/Drink.ts";
 import { Readable } from "node:stream";
 import csv from "csv-parser";
 import express from "express";
@@ -6,6 +8,23 @@ import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
 import { authenticateRequest, requireAdmin } from "../middleware/auth.ts";
 import { Drink, Transaction } from "../models/index.ts";
+
+type DrinksQuery = {
+  search?: string;
+  category?: string;
+  inStock?: string;
+  page?: string;
+  limit?: string;
+};
+
+// csv-parser with headers: false emits one object per row keyed by column index.
+type CsvDrinkRow = Record<string, string | undefined>;
+
+type CsvImportResult = {
+  name: string;
+  action: "created" | "updated";
+  stock: number;
+};
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -57,9 +76,9 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const { category, inStock } = req.query;
+    const { category, inStock } = req.query as DrinksQuery;
 
-    const whereClause = {};
+    const whereClause: WhereOptions<DrinkAttributes> = {};
     if (category) {
       whereClause.category = category;
     }
@@ -131,10 +150,14 @@ router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) =>
  */
 router.get("/", async (req, res) => {
   try {
-    const { search, category, inStock, page = 1, limit = 50 } = req.query;
-    const offset = (page - 1) * limit;
+    const { search, category, inStock, page = "1", limit = "50" } = req.query as DrinksQuery;
+    // The original arithmetic coerced query strings with Number(); keep that
+    // behavior while making the types explicit.
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const offset = (pageNumber - 1) * limitNumber;
 
-    const whereClause = {};
+    const whereClause: WhereOptions<DrinkAttributes> = {};
     if (search) {
       whereClause.name = { [Op.iLike]: `%${search}%` };
     }
@@ -149,7 +172,7 @@ router.get("/", async (req, res) => {
     const { count, rows } = await Drink.findAndCountAll({
       where: whereClause,
       limit: Number.parseInt(limit),
-      offset: Number.parseInt(offset),
+      offset: Number.parseInt(String(offset)),
       order: [["name", "ASC"]],
     });
 
@@ -158,7 +181,7 @@ router.get("/", async (req, res) => {
       pagination: {
         total: count,
         page: Number.parseInt(page),
-        pages: Math.ceil(count / limit),
+        pages: Math.ceil(count / limitNumber),
         limit: Number.parseInt(limit),
       },
     });
@@ -198,7 +221,7 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
-    const drink = await Drink.findByPk(req.params.id);
+    const drink = await Drink.findByPk(req.params.id as string);
 
     if (!drink) {
       return res.status(404).json({ error: "Drink not found" });
@@ -355,7 +378,7 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { name, description, price, stock, category, isActive, isAlcohol } = req.body;
 
-    const drink = await Drink.findByPk(req.params.id);
+    const drink = await Drink.findByPk(req.params.id as string);
     if (!drink) {
       return res.status(404).json({ error: "Drink not found" });
     }
@@ -454,7 +477,7 @@ router.post("/:id/add-stock", authenticateRequest, requireAdmin, async (req, res
       return res.status(400).json({ error: "Quantity must be a positive number" });
     }
 
-    const drink = await Drink.findByPk(req.params.id);
+    const drink = await Drink.findByPk(req.params.id as string);
     if (!drink) {
       return res.status(404).json({ error: "Drink not found" });
     }
@@ -476,7 +499,8 @@ router.post("/:id/add-stock", authenticateRequest, requireAdmin, async (req, res
   }
   catch (error) {
     console.error("Add stock error:", error);
-    res.status(500).json({ error: error.message || "Internal server error" });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    res.status(500).json({ error: message || "Internal server error" });
   }
 });
 
@@ -551,15 +575,15 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
     return res.status(400).json({ error: "CSV file is required" });
   }
 
-  const results = [];
-  const errors = [];
+  const results: CsvImportResult[] = [];
+  const errors: string[] = [];
   let lineNumber = 0;
 
   try {
     // Lines are awaited as they are parsed, so the response reports the writes
     // that actually landed. It also keeps file order, which lets a name
     // repeated in one file update the row its earlier line created.
-    for await (const data of Readable.from(req.file.buffer).pipe(csv({ headers: false }))) {
+    for await (const data of Readable.from(req.file.buffer).pipe(csv({ headers: false })) as AsyncIterable<CsvDrinkRow>) {
       lineNumber++;
       try {
         const [name, description, price, stock, category, isActive, isAlcohol] = Object.values(data);
@@ -575,8 +599,8 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
         if (drink) {
           // Update existing drink's stock
           const previousStock = drink.stock;
-          const parsedStock = Number.parseInt(stock) || 0;
-          const parsedPrice = Number.parseInt(price) || drink.price;
+          const parsedStock = Number.parseInt(stock ?? "") || 0;
+          const parsedPrice = Number.parseInt(price ?? "") || drink.price;
           const parsedIsActive = isActive === "true";
           const hasIsAlcohol = isAlcohol !== undefined && isAlcohol !== "";
 
@@ -604,7 +628,7 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
             continue;
           }
 
-          const createdStock = Number.parseInt(stock) || 0;
+          const createdStock = Number.parseInt(stock ?? "") || 0;
 
           drink = await Drink.create({
             name: name.trim(),
@@ -626,7 +650,7 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
         }
       }
       catch (error) {
-        errors.push(`Line ${lineNumber}: ${error.message}`);
+        errors.push(`Line ${lineNumber}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }
@@ -687,7 +711,7 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
  */
 router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const drink = await Drink.findByPk(req.params.id);
+    const drink = await Drink.findByPk(req.params.id as string);
     if (!drink) {
       return res.status(404).json({ error: "Drink not found" });
     }
@@ -751,14 +775,14 @@ router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
  *         $ref: "#/components/responses/InternalError"
  */
 router.delete("/:id/permanent", authenticateRequest, requireAdmin, async (req, res) => {
-  let transaction;
+  let transaction: SequelizeTransaction | undefined;
   try {
     transaction = await sequelize.transaction();
 
     // Locking the drink serializes against the sale path, which locks the same
     // rows before it writes transactions — so no sale can slip in between the
     // history count and the destroy.
-    const drink = await Drink.findByPk(req.params.id, {
+    const drink = await Drink.findByPk(req.params.id as string, {
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
