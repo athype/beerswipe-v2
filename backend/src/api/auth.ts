@@ -121,12 +121,13 @@ router.post("/login", async (req, res) => {
  */
 router.get("/me", authenticateRequest, async (req, res) => {
   try {
+    const user = req.user!;
     res.json({
       user: {
-        id: req.user.id,
-        username: req.user.username,
-        userType: req.user.userType,
-        credits: req.user.credits,
+        id: user.id,
+        username: user.username,
+        userType: user.userType,
+        credits: user.credits,
       },
     });
   }
