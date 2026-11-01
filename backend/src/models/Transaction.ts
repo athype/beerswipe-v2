@@ -1,5 +1,19 @@
+import type { TransactionType } from "@beerswipe/types";
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/database.ts";
+
+export interface TransactionAttributes {
+  id: number;
+  userId: number;
+  drinkId: number | null;
+  adminId: number;
+  type: TransactionType;
+  amount: number;
+  quantity: number | null;
+  saleGroupId: string | null;
+  description: string | null;
+  transactionDate: Date;
+}
 
 const Transaction = sequelize.define("Transaction", {
   id: {

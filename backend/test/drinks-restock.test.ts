@@ -1,3 +1,4 @@
+import type { UserType } from "@beerswipe/types";
 import type { Model } from "sequelize";
 import { Op } from "sequelize";
 import request from "supertest";
@@ -5,7 +6,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
 import { generateToken } from "../src/middleware/auth.js";
-import { Drink, Transaction, User } from "../src/models/index.js";
+import { Drink, Transaction, User } from "../src/models/index.ts";
 
 // lastRestockedAt backs the "Last restocked" line on the drink cards. It is
 // stamped by every write path that raises stock — add-stock, edit, create and
@@ -23,9 +24,9 @@ function uniqueSuffix() {
   return `${Date.now()}-${suffix}`;
 }
 
-type TestUser = { id: number; username: string; userType: string };
+type TestUser = { id: number; username: string; userType: UserType };
 
-async function makeUser(userType: string, credits = 0): Promise<TestUser> {
+async function makeUser(userType: UserType, credits = 0): Promise<TestUser> {
   const user = await User.create({
     username: `restock-${userType}-${uniqueSuffix()}`,
     userType,
@@ -37,7 +38,7 @@ async function makeUser(userType: string, credits = 0): Promise<TestUser> {
   return { id, username: user.get("username") as string, userType };
 }
 
-async function authHeaders(userType = "admin", credits = 0) {
+async function authHeaders(userType: UserType = "admin", credits = 0) {
   const user = await makeUser(userType, credits);
   return { Authorization: `Bearer ${generateToken(user)}` };
 }

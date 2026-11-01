@@ -1,6 +1,17 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/database.ts";
 
+export interface PasskeyAttributes {
+  id: number;
+  userId: number;
+  credentialId: string;
+  publicKey: string;
+  counter: number | string;
+  transports: string[];
+  deviceName: string | null;
+  lastUsedAt: Date | null;
+}
+
 const Passkey = sequelize.define("Passkey", {
   id: {
     type: DataTypes.INTEGER,

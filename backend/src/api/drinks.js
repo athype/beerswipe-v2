@@ -5,7 +5,7 @@ import multer from "multer";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
 import { authenticateRequest, requireAdmin } from "../middleware/auth.js";
-import { Drink, Transaction } from "../models/index.js";
+import { Drink, Transaction } from "../models/index.ts";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });

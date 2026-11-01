@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
 import { generateToken } from "../src/middleware/auth.js";
-import { ApiKey, Drink, Transaction, User } from "../src/models/index.js";
+import { ApiKey, Drink, Transaction, User } from "../src/models/index.ts";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.ts";
 
 let suffix = 0;

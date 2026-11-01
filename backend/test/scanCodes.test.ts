@@ -1,9 +1,10 @@
+import type { UserType } from "@beerswipe/types";
 import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
 import { generateToken } from "../src/middleware/auth.js";
-import { ApiKey, ScanCode, User } from "../src/models/index.js";
+import { ApiKey, ScanCode, User } from "../src/models/index.ts";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.ts";
 import { generateScanCode } from "../src/utils/scanCodeCrypto.ts";
 import { scanCodeParamSchema } from "../src/validation/contracts.ts";
@@ -19,12 +20,12 @@ const created: { users: number[]; keys: number[] } = { users: [], keys: [] };
 type TestUser = {
   id: number;
   username: string;
-  userType: string;
+  userType: UserType;
   credits: number;
 };
 
 async function createUser(
-  userType: string,
+  userType: UserType,
   extra: { credits?: number; isActive?: boolean } = {},
 ): Promise<TestUser> {
   const username = `scan-${userType}-${uniqueSuffix()}`;

@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
 import { generateToken } from "../src/middleware/auth.js";
-import { Drink, Transaction, User } from "../src/models/index.js";
+import { Drink, Transaction, User } from "../src/models/index.ts";
 
 // Regression test for a lost-update race in POST /api/v1/sales/sell.
 //

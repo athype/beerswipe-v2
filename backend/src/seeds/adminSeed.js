@@ -1,4 +1,4 @@
-import { User } from "../models/index.js";
+import { User } from "../models/index.ts";
 
 export async function seedAdminUser() {
   try {

@@ -1,7 +1,38 @@
+import type { Model, SaveOptions } from "sequelize";
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/database.ts";
 
-const Drink = sequelize.define("Drink", {
+export interface DrinkAttributes {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  stock: number;
+  isActive: boolean;
+  isAlcohol: boolean;
+  category: string | null;
+  lastRestockedAt: Date | null;
+}
+
+export interface DrinkCreationAttributes
+  extends Omit<DrinkAttributes, "id" | "description" | "stock" | "isActive" | "isAlcohol" | "category" | "lastRestockedAt"> {
+  id?: number;
+  description?: string | null;
+  stock?: number;
+  isActive?: boolean;
+  isAlcohol?: boolean;
+  category?: string | null;
+  lastRestockedAt?: Date | null;
+}
+
+export interface DrinkInstance
+  extends Model<DrinkAttributes, DrinkCreationAttributes>, DrinkAttributes {
+  addStock: (quantity: number, options?: SaveOptions) => Promise<DrinkInstance>;
+  deductStock: (quantity?: number, options?: SaveOptions) => Promise<DrinkInstance>;
+  isInStock: () => boolean;
+}
+
+const Drink = sequelize.define<DrinkInstance, DrinkAttributes>("Drink", {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -59,8 +90,10 @@ const Drink = sequelize.define("Drink", {
   },
 });
 
-// Instance methods
-Drink.prototype.addStock = function (quantity, options) {
+// Sequelize types the prototype as Model<any, any>; cast once for the assignments.
+const drinkPrototype = Drink.prototype as DrinkInstance;
+
+drinkPrototype.addStock = function (this: DrinkInstance, quantity: number, options?: SaveOptions): Promise<DrinkInstance> {
   if (quantity <= 0) {
     throw new Error("Stock quantity must be positive");
   }
@@ -68,7 +101,7 @@ Drink.prototype.addStock = function (quantity, options) {
   return this.save(options);
 };
 
-Drink.prototype.deductStock = function (quantity = 1, options) {
+drinkPrototype.deductStock = function (this: DrinkInstance, quantity = 1, options?: SaveOptions): Promise<DrinkInstance> {
   if (this.stock < quantity) {
     throw new Error("Insufficient stock");
   }
@@ -76,7 +109,7 @@ Drink.prototype.deductStock = function (quantity = 1, options) {
   return this.save(options);
 };
 
-Drink.prototype.isInStock = function () {
+drinkPrototype.isInStock = function (this: DrinkInstance): boolean {
   return this.stock > 0 && this.isActive;
 };
 

@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
 import { env } from "../env.ts";
-import { ApiKey, User } from "../models/index.js";
+import { ApiKey, User } from "../models/index.ts";
 import { apiKeyPrefix, hashApiKey } from "../utils/apiKeyCrypto.ts";
 
 export async function authenticateToken(req, res, next) {
