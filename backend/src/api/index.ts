@@ -1,6 +1,6 @@
 import express from "express";
 
-import docs from "../api-docs.js";
+import docs from "../api-docs.ts";
 import admin from "./admin.ts";
 import apiKeys from "./apiKeys.ts";
 import auth from "./auth.ts";

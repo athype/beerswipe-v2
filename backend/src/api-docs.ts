@@ -354,7 +354,7 @@ const schemas = {
   ScanLookupResponse: scanLookupResponseSchema,
 };
 
-const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string };
 
 const apiDir = new URL("./api", import.meta.url).pathname.replaceAll("\\", "/");
 
