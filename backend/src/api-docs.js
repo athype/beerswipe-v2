@@ -3,7 +3,7 @@ import express from "express";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 
-import { apiDocsEnabled } from "./env.js";
+import { apiDocsEnabled } from "./env.ts";
 
 // --- Component schemas (shared by the @openapi annotations in src/api/*.js) ---
 

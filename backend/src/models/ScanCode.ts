@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { sequelize } from "../config/database.js";
+import { sequelize } from "../config/database.ts";
 
 // Per-user opaque scan code (QR/barcode) resolved by the kiosk. Unlike an API
 // key the code is stored in plaintext by design: it must stay re-displayable

@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
-import { env } from "../env.js";
+import { env } from "../env.ts";
 import { ApiKey, User } from "../models/index.js";
 import { apiKeyPrefix, hashApiKey } from "../utils/apiKeyCrypto.js";
 

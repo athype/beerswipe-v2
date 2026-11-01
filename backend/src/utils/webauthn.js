@@ -4,7 +4,7 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
-import { env } from "../env.js";
+import { env } from "../env.ts";
 
 export const rpName = env.RP_NAME || "Beer Machine";
 export const rpID = env.RP_ID || (env.NODE_ENV === "production" ? env.DOMAIN : "localhost");

@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { sequelize } from "../config/database.js";
+import { sequelize } from "../config/database.ts";
 
 // Long-lived programmatic credential. Only the SHA-256 digest (keyHash) and a
 // 12-char display prefix are stored — the plaintext key is shown once at

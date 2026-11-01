@@ -26,6 +26,8 @@ const envSchema = z.object({
   DOMAIN: z.string().optional(),
 });
 
+export type Env = z.infer<typeof envSchema>;
+
 try {
   // eslint-disable-next-line node/no-process-env
   envSchema.parse(process.env);
@@ -41,7 +43,7 @@ catch (error) {
 }
 
 // eslint-disable-next-line node/no-process-env
-export const env = envSchema.parse(process.env);
+export const env: Env = envSchema.parse(process.env);
 
 /**
  * Whether the Swagger docs route should be served.
@@ -49,7 +51,7 @@ export const env = envSchema.parse(process.env);
  * request time — e.g. by tests — without re-parsing the whole schema.
  * Default: enabled everywhere except production; ENABLE_API_DOCS overrides.
  */
-export function apiDocsEnabled() {
+export function apiDocsEnabled(): boolean {
   const raw = process.env.ENABLE_API_DOCS; // eslint-disable-line node/no-process-env
   if (raw !== undefined)
     return raw === "true";
