@@ -1,8 +1,8 @@
 import express from "express";
 import { authenticateRequest, requireAdmin } from "../middleware/auth.js";
 import { ApiKey, User } from "../models/index.js";
-import { apiKeyPrefix, generateApiKey, hashApiKey } from "../utils/apiKeyCrypto.js";
-import { apiKeyIdParamSchema, createApiKeySchema } from "../validation/contracts.js";
+import { apiKeyPrefix, generateApiKey, hashApiKey } from "../utils/apiKeyCrypto.ts";
+import { apiKeyIdParamSchema, createApiKeySchema } from "../validation/contracts.ts";
 
 const router = express.Router();
 

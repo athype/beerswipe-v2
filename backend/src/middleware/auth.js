@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
 import { env } from "../env.ts";
 import { ApiKey, User } from "../models/index.js";
-import { apiKeyPrefix, hashApiKey } from "../utils/apiKeyCrypto.js";
+import { apiKeyPrefix, hashApiKey } from "../utils/apiKeyCrypto.ts";
 
 export async function authenticateToken(req, res, next) {
   // Try to get token from cookie first (most secure)

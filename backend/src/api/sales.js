@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
 import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.js";
 import { Drink, Transaction, User } from "../models/index.js";
-import { sellRequestSchema } from "../validation/contracts.js";
+import { sellRequestSchema } from "../validation/contracts.ts";
 
 const router = express.Router();
 
