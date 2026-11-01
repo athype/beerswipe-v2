@@ -6,7 +6,7 @@ import apiKeys from "./apiKeys.ts";
 import auth from "./auth.ts";
 import drinks from "./drinks.ts";
 import leaderboard from "./leaderboard.ts";
-import passkeys from "./passkeys.js";
+import passkeys from "./passkeys.ts";
 import sales from "./sales.js";
 import scan from "./scan.ts";
 import users from "./users.ts";
