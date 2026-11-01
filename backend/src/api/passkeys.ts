@@ -1,3 +1,9 @@
+import type {
+  AuthenticationResponseJSON,
+  AuthenticatorTransportFuture,
+  RegistrationResponseJSON,
+} from "@simplewebauthn/server";
+import type { UserInstance } from "../models/index.ts";
 import express from "express";
 import { env } from "../env.ts";
 import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.ts";
@@ -19,6 +25,12 @@ import {
   passkeyLoginVerifySchema,
   passkeyRegisterVerifySchema,
 } from "../validation/contracts.ts";
+
+// Shape generateAuthenticationOptions accepts for allowCredentials.
+type AllowedCredential = {
+  id: string;
+  transports?: AuthenticatorTransportFuture[];
+};
 
 const router = express.Router();
 
@@ -57,7 +69,7 @@ const router = express.Router();
  */
 router.post("/register-options", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const user = req.user;
+    const user = req.user!;
 
     const existingPasskeys = await Passkey.findAll({
       where: { userId: user.id },
@@ -65,13 +77,13 @@ router.post("/register-options", authenticateRequest, requireAdmin, async (req, 
 
     const options = await generateRegistrationOptions({
       rpName,
-      rpID,
+      rpID: rpID!,
       userName: user.username,
       userDisplayName: user.username,
       attestationType: "none",
       excludeCredentials: existingPasskeys.map(passkey => ({
-        id: passkey.credentialId,
-        transports: passkey.transports,
+        id: passkey.get("credentialId") as string,
+        transports: passkey.get("transports") as AuthenticatorTransportFuture[],
       })),
       authenticatorSelection: {
         residentKey: "preferred",
@@ -144,7 +156,7 @@ router.post("/register-options", authenticateRequest, requireAdmin, async (req, 
  */
 router.post("/register-verify", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const user = req.user;
+    const user = req.user!;
     const parsedBody = passkeyRegisterVerifySchema.safeParse(req.body);
     if (!parsedBody.success) {
       return res.status(400).json({ error: "Invalid passkey registration payload" });
@@ -158,10 +170,12 @@ router.post("/register-verify", authenticateRequest, requireAdmin, async (req, r
     }
 
     const verification = await verifyRegistrationResponse({
-      response: credential,
+      // The schema validates the browser payload but does not require every
+      // field of the library's JSON type; the runtime payload is unchanged.
+      response: credential as unknown as RegistrationResponseJSON,
       expectedChallenge,
       expectedOrigin: origin,
-      expectedRPID: rpID,
+      expectedRPID: rpID!,
     });
 
     if (!verification.verified || !verification.registrationInfo) {
@@ -243,21 +257,21 @@ router.post("/login-options", async (req, res) => {
 
     // To prevent user enumeration, we always return a challenge with empty allowCredentials
     // The authenticator will present all available credentials for this RP
-    let allowCredentials = [];
+    let allowCredentials: AllowedCredential[] = [];
 
     if (username) {
       const user = await User.findOne({ where: { username } });
       if (user) {
         const passkeys = await Passkey.findAll({ where: { userId: user.id } });
         allowCredentials = passkeys.map(passkey => ({
-          id: passkey.credentialId, // Already base64url string
-          transports: passkey.transports,
+          id: passkey.get("credentialId") as string, // Already base64url string
+          transports: passkey.get("transports") as AuthenticatorTransportFuture[],
         }));
       }
     }
 
     const options = await generateAuthenticationOptions({
-      rpID,
+      rpID: rpID!,
       allowCredentials,
       userVerification: "preferred",
     });
@@ -335,13 +349,13 @@ router.post("/login-verify", async (req, res) => {
       return res.status(401).json({ error: "Passkey not found" });
     }
 
-    const user = passkey.user;
+    const user = passkey.get("user") as UserInstance;
 
     if (!user.isActive || !user.canLogin()) {
       return res.status(401).json({ error: "User cannot login" });
     }
 
-    let actualChallenge;
+    let actualChallenge: string;
     try {
       const clientDataJSON = Buffer.from(
         credential.response.clientDataJSON,
@@ -366,15 +380,17 @@ router.post("/login-verify", async (req, res) => {
     }
 
     const verification = await verifyAuthenticationResponse({
-      response: credential,
+      // The schema validates the browser payload but does not require every
+      // field of the library's JSON type; the runtime payload is unchanged.
+      response: credential as unknown as AuthenticationResponseJSON,
       expectedChallenge: storedChallenge,
       expectedOrigin: origin,
-      expectedRPID: rpID,
+      expectedRPID: rpID!,
       requireUserVerification: false,
       credential: {
-        id: passkey.credentialId, // Already base64url string
-        publicKey: Buffer.from(passkey.publicKey, "base64url"),
-        counter: Number(passkey.counter),
+        id: passkey.get("credentialId") as string, // Already base64url string
+        publicKey: Buffer.from(passkey.get("publicKey") as string, "base64url"),
+        counter: Number(passkey.get("counter")),
       },
     });
 
@@ -459,7 +475,7 @@ router.post("/login-verify", async (req, res) => {
 router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const passkeys = await Passkey.findAll({
-      where: { userId: req.user.id },
+      where: { userId: req.user!.id },
       attributes: ["id", "deviceName", "createdAt", "lastUsedAt", "transports"],
       order: [["createdAt", "DESC"]],
     });
@@ -515,7 +531,7 @@ router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
     const passkey = await Passkey.findOne({
       where: {
         id: req.params.id,
-        userId: req.user.id,
+        userId: req.user!.id,
       },
     });
 
@@ -599,7 +615,7 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
     const passkey = await Passkey.findOne({
       where: {
         id: req.params.id,
-        userId: req.user.id,
+        userId: req.user!.id,
       },
     });
 
@@ -609,7 +625,17 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
 
     await passkey.update({ deviceName });
 
-    res.json({ message: "Passkey updated successfully", passkey });
+    // Credential material never leaves the backend; only device metadata does.
+    res.json({
+      message: "Passkey updated successfully",
+      passkey: {
+        id: passkey.get("id"),
+        deviceName: passkey.get("deviceName"),
+        createdAt: passkey.get("createdAt"),
+        lastUsedAt: passkey.get("lastUsedAt"),
+        transports: passkey.get("transports"),
+      },
+    });
   }
   catch (error) {
     console.error("Update passkey error:", error);

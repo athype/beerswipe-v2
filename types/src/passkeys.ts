@@ -136,5 +136,5 @@ export interface UpdatePasskeyRequest {
 
 export interface UpdatePasskeyResponse {
   message: string;
-  passkey: PasskeyRecord;
+  passkey: PasskeyDevice;
 }
