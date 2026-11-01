@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { initializeDatabase } from '../src/config/database.ts';
-import { runSeeds } from '../src/seeds/index.js';
+import { runSeeds } from '../src/seeds/index.ts';
 
 console.log('Starting manual database seeding...');
 

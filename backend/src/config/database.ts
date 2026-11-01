@@ -27,13 +27,13 @@ export async function initializeDatabase(): Promise<void> {
     // declared indexes on every boot. An index whose column only the migrator
     // adds (Transactions.saleGroupId) must therefore land first, or sync fails
     // with `column ... does not exist` and the container never starts.
-    const { runMigrations } = await import("../migrate.js");
+    const { runMigrations } = await import("../migrate.ts");
     await runMigrations();
 
     await sequelize.sync({ alter: env.NODE_ENV === "development" });
     console.log("All models were synchronized successfully.");
 
-    const { runSeeds } = await import("../seeds/index.js");
+    const { runSeeds } = await import("../seeds/index.ts");
     await runSeeds();
   }
   catch (error) {

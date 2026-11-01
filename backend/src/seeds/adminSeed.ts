@@ -1,6 +1,6 @@
 import { User } from "../models/index.ts";
 
-export async function seedAdminUser() {
+export async function seedAdminUser(): Promise<void> {
   try {
     const existingAdmin = await User.findOne({
       where: { userType: "admin" },

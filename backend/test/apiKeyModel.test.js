@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 
-import app from "../src/app.js"; // boots Postgres sync + migrations + seeds
+import app from "../src/app.ts"; // boots Postgres sync + migrations + seeds
 import { ApiKey, User } from "../src/models/index.ts";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.ts";
 
