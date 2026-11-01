@@ -12,9 +12,11 @@ export const origin = env.NODE_ENV === "production"
   ? `https://${env.DOMAIN}`
   : `https://localhost`;
 
-const challengeStore = new Map();
+type ChallengeRecord = { challenge: string; timestamp: number };
 
-export function storeChallenge(identifier, challenge) {
+const challengeStore = new Map<string, ChallengeRecord>();
+
+export function storeChallenge(identifier: string, challenge: string): void {
   challengeStore.set(identifier, {
     challenge,
     timestamp: Date.now(),
@@ -23,7 +25,7 @@ export function storeChallenge(identifier, challenge) {
   setTimeout(() => challengeStore.delete(identifier), 5 * 60 * 1000);
 }
 
-export function getChallenge(identifier) {
+export function getChallenge(identifier: string): string | null {
   const data = challengeStore.get(identifier);
   if (!data)
     return null;
@@ -36,7 +38,7 @@ export function getChallenge(identifier) {
   return data.challenge;
 }
 
-export function clearChallenge(identifier) {
+export function clearChallenge(identifier: string): void {
   challengeStore.delete(identifier);
 }
 

@@ -13,12 +13,12 @@ import {
   storeChallenge,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
-} from "../utils/webauthn.js";
+} from "../utils/webauthn.ts";
 import {
   passkeyLoginOptionsSchema,
   passkeyLoginVerifySchema,
   passkeyRegisterVerifySchema,
-} from "../validation/contracts.js";
+} from "../validation/contracts.ts";
 
 const router = express.Router();
 

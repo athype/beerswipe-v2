@@ -7,7 +7,7 @@ import { sequelize } from "../config/database.ts";
 import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
 import { ScanCode, Transaction, User } from "../models/index.js";
 import { generateScanCode } from "../utils/scanCodeCrypto.ts";
-import { userIdParamSchema } from "../validation/contracts.js";
+import { userIdParamSchema } from "../validation/contracts.ts";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });

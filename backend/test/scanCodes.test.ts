@@ -4,9 +4,9 @@ import { afterAll, describe, expect, it } from "vitest";
 import app from "../src/app.js";
 import { generateToken } from "../src/middleware/auth.js";
 import { ApiKey, ScanCode, User } from "../src/models/index.js";
-import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.js";
+import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.ts";
 import { generateScanCode } from "../src/utils/scanCodeCrypto.ts";
-import { scanCodeParamSchema } from "../src/validation/contracts.js";
+import { scanCodeParamSchema } from "../src/validation/contracts.ts";
 
 let suffix = 0;
 function uniqueSuffix() {

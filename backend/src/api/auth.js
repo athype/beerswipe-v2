@@ -2,7 +2,7 @@ import express from "express";
 import { env } from "../env.ts";
 import { authenticateRequest, generateToken } from "../middleware/auth.js";
 import { User } from "../models/index.js";
-import { loginRequestSchema } from "../validation/contracts.js";
+import { loginRequestSchema } from "../validation/contracts.ts";
 
 const router = express.Router();
 
