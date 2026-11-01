@@ -10,11 +10,11 @@ The shared `types/` package is already TypeScript and is the source of truth for
 |---------|-------|-----------|
 | `types/` | TypeScript | none |
 | `frontend/` | 20 `.ts`, 0 `.js`; 5 of 49 `.vue` files use `lang="ts"` | 44 SFCs, tracked in #36 |
-| `backend/` | toolchain live (#142), 3 modules converted | 28 `.js` files, 6,479 lines in `src/`, tracked in #35 |
+| `backend/` | toolchain live (#142), 6 modules converted | 25 `.js` files, 6,362 lines in `src/`, tracked in #35 |
 
-Backend modules already converted: `src/api/scan.ts`, `src/models/ScanCode.ts`, `src/utils/scanCodeCrypto.ts`.
+Backend modules already converted: `src/api/scan.ts`, `src/models/ScanCode.ts`, `src/utils/scanCodeCrypto.ts`, `src/env.ts`, `src/config/database.ts`, `src/middlewares.ts`.
 
-Baseline verified on 2026-10-20: clean `master`, frozen install, `pnpm --filter @beerswipe/backend run typecheck` reports zero errors.
+Baseline: `master` typechecks with zero errors. Segment 1 (env, database, middlewares) is merged in #163; segment 0 (dependencies) is still open.
 
 ## Why the previous revision was replaced
 
@@ -73,7 +73,7 @@ One segment per branch, per PR, per Claude Code session. Segment branches target
 | # | Branch | Files | Lines | Gate |
 |---|--------|-------|-------|------|
 | 0 | `chore/backend-ts-types` | `backend/package.json`, `pnpm-lock.yaml` | 0 code | typecheck + suite unchanged |
-| 1 | `refactor/backend-ts-foundations` | `env`, `config/database`, `middlewares` | 117 | app boots |
+| 1 | `refactor/backend-ts-foundations` | `env`, `config/database`, `middlewares` | 117 | done in #163 |
 | 2 | `refactor/backend-ts-validation-utils` | `validation/contracts`, `utils/apiKeyCrypto`, `utils/webauthn` | 162 | suite |
 | 3 | `refactor/backend-ts-models` | `models/*` (6 files) | 435 | suite, credits and sales tests |
 | 4 | `refactor/backend-ts-auth-middleware` | `middleware/auth` + `src/types/express.d.ts` | 145 | auth and API-key tests, manual login |
@@ -115,6 +115,8 @@ pnpm --filter @beerswipe/backend test
 ```
 
 ## Segment 1: config foundations
+
+Status: merged in #163. The notes below are kept for reference.
 
 Scope: `src/env.js`, `src/config/database.js`, `src/middlewares.js`.
 
