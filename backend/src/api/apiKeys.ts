@@ -1,14 +1,26 @@
+import type { Request, Response } from "express";
+import type { ApiKeyAttributes } from "../models/ApiKey.ts";
 import express from "express";
 import { authenticateRequest, requireAdmin } from "../middleware/auth.ts";
 import { ApiKey, User } from "../models/index.ts";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "../utils/apiKeyCrypto.ts";
 import { apiKeyIdParamSchema, createApiKeySchema } from "../validation/contracts.ts";
 
+// ApiKey is a data-only define(), so rows are read back through the exported
+// attribute interface plus the timestamps Sequelize adds.
+type ApiKeyRow = ApiKeyAttributes & {
+  createdAt: Date;
+};
+
+type ApiKeyRowWithCreator = ApiKeyRow & {
+  creator: { id: number; username: string };
+};
+
 const router = express.Router();
 
 // Public shape helpers — the plaintext key and its hash never leave the
 // server through these (POST / includes the key once, on creation only).
-function serializeApiKey(row) {
+function serializeApiKey(row: ApiKeyRow) {
   return {
     id: row.id,
     name: row.name,
@@ -22,14 +34,14 @@ function serializeApiKey(row) {
   };
 }
 
-function serializeApiKeyListItem(row) {
+function serializeApiKeyListItem(row: ApiKeyRowWithCreator) {
   return {
     ...serializeApiKey(row),
     creator: { id: row.creator.id, username: row.creator.username },
   };
 }
 
-function parseKeyId(req, res) {
+function parseKeyId(req: Request, res: Response): number | null {
   const parsed = apiKeyIdParamSchema.safeParse(req.params.id);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid key id" });
@@ -81,7 +93,7 @@ router.get("/", authenticateRequest, requireAdmin, async (req, res) => { // code
         { model: User, as: "creator", attributes: ["id", "username"], required: true },
       ],
       order: [["createdAt", "DESC"]],
-    });
+    }) as unknown as ApiKeyRowWithCreator[];
     res.json({ apiKeys: rows.map(serializeApiKeyListItem) });
   }
   catch (error) {
@@ -155,9 +167,9 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
       scope,
       keyHash: hashApiKey(key),
       prefix: apiKeyPrefix(key),
-      createdBy: req.user.id,
+      createdBy: req.user!.id,
       expiresAt: expiresAt || null,
-    });
+    }) as unknown as ApiKeyRow;
 
     res.status(201).json({ apiKey: serializeApiKey(row), key });
   }

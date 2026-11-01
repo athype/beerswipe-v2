@@ -1,11 +1,11 @@
 import express from "express";
 
 import docs from "../api-docs.js";
-import admin from "./admin.js";
-import apiKeys from "./apiKeys.js";
-import auth from "./auth.js";
+import admin from "./admin.ts";
+import apiKeys from "./apiKeys.ts";
+import auth from "./auth.ts";
 import drinks from "./drinks.js";
-import leaderboard from "./leaderboard.js";
+import leaderboard from "./leaderboard.ts";
 import passkeys from "./passkeys.js";
 import sales from "./sales.js";
 import scan from "./scan.ts";
