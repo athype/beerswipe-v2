@@ -4,7 +4,7 @@ import docs from "../api-docs.js";
 import admin from "./admin.ts";
 import apiKeys from "./apiKeys.ts";
 import auth from "./auth.ts";
-import drinks from "./drinks.js";
+import drinks from "./drinks.ts";
 import leaderboard from "./leaderboard.ts";
 import passkeys from "./passkeys.js";
 import sales from "./sales.js";
