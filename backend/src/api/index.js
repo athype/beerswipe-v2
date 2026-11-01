@@ -9,7 +9,7 @@ import leaderboard from "./leaderboard.ts";
 import passkeys from "./passkeys.js";
 import sales from "./sales.js";
 import scan from "./scan.ts";
-import users from "./users.js";
+import users from "./users.ts";
 
 const router = express.Router();
 
