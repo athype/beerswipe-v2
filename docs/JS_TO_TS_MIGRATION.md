@@ -1,6 +1,6 @@
 # JavaScript to TypeScript Migration
 
-**Status: 2026-10-20.** This is the execution playbook for issue #35 (backend). The toolchain is live; what remains is converting files, wiring the entry points, and cleanup. Read the conventions before touching a file.
+**Status: 2026-10-20.** This is the execution playbook for issue #35 (backend). The toolchain is live; what remains is converting files, wiring the entry points, and cleanup. Work happens on the long-lived `refactor/backend-ts` integration branch. `master` changes once, when the migration is complete. Read the conventions before touching a file.
 
 The shared `types/` package is already TypeScript and is the source of truth for API contracts.
 
@@ -64,11 +64,11 @@ The suite boots the real app, so it needs Postgres. Use the dev database (`docke
 
 Lint is not a gate: the backend baseline is red (`unicorn/filename-case` fires on model and util files, plus `isNaN`, `no-dupe-keys`, `process.env`). Report the delta against the base branch only.
 
-CI (`.github/workflows/ci.yml`) runs typecheck and tests on every PR to `master`, with a Postgres 15 service. A merge to `master` builds and deploys to production, so a segment that cannot be verified end to end does not ship.
+CI (`.github/workflows/ci.yml`) runs typecheck and tests on every PR to `refactor/backend-ts`, with a Postgres 15 service. The branch is in the trigger list on the integration branch itself. The final integration PR to `master` is the only production deploy, so the whole branch must pass the full verification before it merges.
 
 ## Segment plan
 
-One segment per branch, per PR, per Claude Code session. Branches target `master`. Squash merge.
+One segment per branch, per PR, per Claude Code session. Segment branches target the long-lived `refactor/backend-ts` integration branch, and each segment is squash merged into it. The integration branch merges to `master` once at the end, so the migration produces one production deploy instead of one per segment.
 
 | # | Branch | Files | Lines | Gate |
 |---|--------|-------|-------|------|
@@ -293,6 +293,8 @@ Gate: typecheck, suite, `node src/migrate.ts`, `pnpm start` boot, Docker image b
 - Decide `allowJs`. Tests stay `.js` (decision recorded here), so keep `"allowJs": true` and `"checkJs": false` and add a comment in `tsconfig.json` saying they exist for legacy tests. Do not remove `test` from `include`.
 - Update `AGENTS.md` and `backend/README.md` where they still describe `.js` entry points or the old migration flow.
 - Close #35 with the PR list.
+- Open the integration PR `refactor/backend-ts` -> `master`, run the full verification, and merge with a merge commit so the segment history lands on `master`.
+- Remove the temporary `refactor/backend-ts` entry from `.github/workflows/ci.yml` before that PR, since the branch is deleted after the merge.
 - Optional follow-up: convert the remaining test files (about 2,700 lines) and then delete `allowJs`. That is a separate issue, not a blocker.
 
 ## Definition of done

@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - feature/BS-111-kiosk
+      - refactor/backend-ts
   workflow_dispatch:
 
 permissions:
