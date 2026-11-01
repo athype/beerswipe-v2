@@ -3,7 +3,7 @@ import helmet from "helmet";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import docsRouter from "../src/api-docs.js";
+import docsRouter from "../src/api-docs.ts";
 import { apiDocsEnabled } from "../src/env.ts";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -21,7 +21,7 @@ afterEach(() => {
 // A route added without OpenAPI docs fails the "documents every endpoint"
 // test below.
 const EXPECTED_OPERATIONS = [
-  // api/index.js
+  // api/index.ts
   ["/", "get"],
   // auth
   ["/auth/login", "post"],
@@ -80,7 +80,7 @@ const EXPECTED_OPERATIONS = [
   ["/users/{id}/scan-code/regenerate", "post"],
 ];
 
-// Mounts the docs router exactly like production does (api/index.js mounts
+// Mounts the docs router exactly like production does (api/index.ts mounts
 // it at /docs under the /api/v1 prefix), minus the database.
 function createDocsApp(router) {
   const app = express();
@@ -179,7 +179,7 @@ describe("API docs (disabled)", () => {
 
     // Fresh module registry so the gating decision sees the new env var.
     vi.resetModules();
-    const freshDocsRouter = (await import("../src/api-docs.js")).default;
+    const freshDocsRouter = (await import("../src/api-docs.ts")).default;
     const app = createDocsApp(freshDocsRouter);
 
     await request(app).get("/api/v1/docs/").expect(404);

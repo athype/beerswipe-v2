@@ -4,7 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 
-import api from "./api/index.js";
+import api from "./api/index.ts";
 import { initializeDatabase } from "./config/database.ts";
 import { env } from "./env.ts";
 
