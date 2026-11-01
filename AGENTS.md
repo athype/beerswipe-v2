@@ -38,18 +38,18 @@ Out of scope:
 Read these before major changes:
 - `README.md`
 - `backend/README.md`
-- `backend/src/app.js`
-- `backend/src/api/index.js`
-- `backend/src/middleware/auth.js`
-- `backend/src/middlewares.js`
-- `backend/src/api/auth.js`
-- `backend/src/api/sales.js`
-- `backend/src/api/users.js`
-- `backend/src/api/passkeys.js`
-- `backend/src/api/admin.js`
-- `backend/src/api/leaderboard.js`
-- `backend/src/utils/webauthn.js`
-- `backend/src/validation/contracts.js`
+- `backend/src/app.ts`
+- `backend/src/api/index.ts`
+- `backend/src/middleware/auth.ts`
+- `backend/src/middlewares.ts`
+- `backend/src/api/auth.ts`
+- `backend/src/api/sales.ts`
+- `backend/src/api/users.ts`
+- `backend/src/api/passkeys.ts`
+- `backend/src/api/admin.ts`
+- `backend/src/api/leaderboard.ts`
+- `backend/src/utils/webauthn.ts`
+- `backend/src/validation/contracts.ts`
 - `frontend/src/main.ts`
 - `frontend/src/router/index.ts`
 - `frontend/src/services/api.ts`
@@ -94,7 +94,7 @@ Read these before major changes:
 ## Backend Rules
 
 ### Request flow
-`src/app.js` -> `src/api/index.js` -> route module -> model operations.
+`src/app.ts` -> `src/api/index.ts` -> route module -> model operations.
 
 Keep route responsibilities narrow:
 - validate request input early
@@ -126,7 +126,7 @@ Rollback on every early return after transaction start.
 - One sale is 1..N `Transaction` rows sharing a `saleGroupId` (one row per drink in the basket, charged atomically). `DELETE /sales/undo/:id` reverses the whole group from any of its rows; rows with a null group (credit rows, pre-grouping sales) undo singly. Lock rows ascending by id — multi-row locking on this path must stay ordered to avoid deadlocks.
 
 ### Route ordering caveat
-In `backend/src/api/users.js`, static routes like `/export-csv` must remain above parameterized routes like `/:id`.
+In `backend/src/api/users.ts`, static routes like `/export-csv` must remain above parameterized routes like `/:id`.
 
 ### Migrations and schema
 - Schema changes go through the auto migrator: ordered, idempotent `{ name, up }` steps in `backend/src/migrate.ts`, named `YYYY-MM-DD/feature`. It runs at every boot (`initializeDatabase`, before `sync()`), and manually via `node src/migrate.ts`.
@@ -168,11 +168,11 @@ Do not bypass stores with ad hoc axios calls in components.
 New code should be TypeScript wherever the toolchain supports it.
 - `types/` is TypeScript already; keep it that way.
 - `frontend/` has the toolchain in place (`tsconfig.json`, `vue-tsc`; api/router/stores converted in #107). New modules, stores, composables and components use TypeScript (`<script setup lang="ts">` for components); avoid adding new `.js` files. Remaining conversions are tracked in #36.
-- `backend/` has the toolchain in place: `backend/tsconfig.json`, a `typecheck` script (`tsc --noEmit`), and native Node type stripping, so `.ts` files run directly (no build step, no bundler). Write new modules in TypeScript; existing `.js` files convert opportunistically (remaining conversions tracked in #35; they are included by `allowJs` but not type-checked until converted). Stripping rules: relative imports use the real file extension (`./foo.ts` after converting `foo.js`), only erasable syntax (`erasableSyntaxOnly` enforces this), and type-only imports from `@beerswipe/types` use `import type`.
+- `backend/` has the toolchain in place: `backend/tsconfig.json`, a `typecheck` script (`tsc --noEmit`), and native Node type stripping, so `.ts` files run directly (no build step, no bundler). Runtime code under `src/` and `scripts/` is TypeScript. The remaining `.js` files are legacy tests (kept in the typecheck program via `allowJs`, not type-checked while `checkJs` is off) and the legacy `backend/migrations/002-add-passkey-support.js`; convert tests opportunistically. Stripping rules: relative imports use the real file extension (`./foo.ts` after converting `foo.js`), only erasable syntax (`erasableSyntaxOnly` enforces this), and type-only imports from `@beerswipe/types` use `import type`.
 
 ### Passkeys (WebAuthn)
 - Backend challenge storage is in-memory with TTL (not persisted across restarts).
-- Registration and login depend on challenge lifecycle in `backend/src/utils/webauthn.js`.
+- Registration and login depend on challenge lifecycle in `backend/src/utils/webauthn.ts`.
 - Frontend passkey flow must go through store and API modules, not direct browser-only shortcuts.
 
 ### Deployment and proxy behavior
@@ -231,7 +231,7 @@ Treat backend route responses as the runtime source of truth and keep `types/` a
 
 ## Known Gaps And Cautions
 - If you update API response shapes, align frontend store expectations immediately.
-- `backend/README.md` is stale: its endpoint list references old routes (e.g. `/sales/purchase` instead of `/sales/sell`) and is incomplete. Always consult `backend/src/api/index.js` and the route modules for the current API surface.
+- `backend/README.md` is stale: its endpoint list references old routes (e.g. `/sales/purchase` instead of `/sales/sell`) and is incomplete. Always consult `backend/src/api/index.ts` and the route modules for the current API surface.
 
 ## Pull Request Expectations
 - Keep changes focused and minimal.
