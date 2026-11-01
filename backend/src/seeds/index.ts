@@ -1,6 +1,6 @@
-import { seedAdminUser } from "./adminSeed.js";
+import { seedAdminUser } from "./adminSeed.ts";
 
-export async function runSeeds() {
+export async function runSeeds(): Promise<void> {
   console.log("Running database seeds...");
 
   try {

@@ -1,3 +1,4 @@
+import type { CorsOptions } from "cors";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
@@ -14,7 +15,7 @@ const app = express();
 
 try {
   // Migrations run inside initializeDatabase(), before sequelize.sync() — see
-  // config/database.js for why the order matters.
+  // config/database.ts for why the order matters.
   await initializeDatabase();
 }
 catch (error) {
@@ -26,7 +27,7 @@ app.use(morgan("dev"));
 app.use(helmet());
 
 // CORS configuration
-const corsOptions = {
+const corsOptions: CorsOptions = {
   origin(origin, callback) {
     if (!origin)
       return callback(null, true);

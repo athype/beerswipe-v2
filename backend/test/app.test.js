@@ -1,7 +1,7 @@
 import request from "supertest";
 import { describe, it } from "vitest";
 
-import app from "../src/app.js";
+import app from "../src/app.ts";
 
 describe("app", () => {
   it("responds with a not found message", () =>
