@@ -1,9 +1,9 @@
-import ApiKey from "./ApiKey.js";
-import Drink from "./Drink.js";
-import Passkey from "./Passkey.js";
+import ApiKey from "./ApiKey.ts";
+import Drink from "./Drink.ts";
+import Passkey from "./Passkey.ts";
 import ScanCode from "./ScanCode.ts";
-import Transaction from "./Transaction.js";
-import User from "./User.js";
+import Transaction from "./Transaction.ts";
+import User from "./User.ts";
 
 // Define associations
 User.hasMany(Transaction, {
@@ -76,3 +76,6 @@ export {
   Transaction,
   User,
 };
+
+export type { DrinkInstance } from "./Drink.ts";
+export type { UserInstance } from "./User.ts";

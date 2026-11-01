@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.js";
 import { generateToken } from "../src/middleware/auth.js";
-import { Transaction, User } from "../src/models/index.js";
+import { Transaction, User } from "../src/models/index.ts";
 
 let suffix = 0;
 function uniqueSuffix() {

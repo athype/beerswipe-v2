@@ -5,7 +5,7 @@ import multer from "multer";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
 import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
-import { ScanCode, Transaction, User } from "../models/index.js";
+import { ScanCode, Transaction, User } from "../models/index.ts";
 import { generateScanCode } from "../utils/scanCodeCrypto.ts";
 import { userIdParamSchema } from "../validation/contracts.ts";
 

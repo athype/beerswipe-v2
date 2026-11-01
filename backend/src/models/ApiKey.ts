@@ -1,5 +1,18 @@
+import type { ApiKeyScope } from "@beerswipe/types";
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/database.ts";
+
+export interface ApiKeyAttributes {
+  id: number;
+  name: string;
+  keyHash: string;
+  prefix: string;
+  scope: ApiKeyScope;
+  createdBy: number;
+  isRevoked: boolean;
+  expiresAt: Date | null;
+  lastUsedAt: Date | null;
+}
 
 // Long-lived programmatic credential. Only the SHA-256 digest (keyHash) and a
 // 12-char display prefix are stored — the plaintext key is shown once at
