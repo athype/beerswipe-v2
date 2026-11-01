@@ -22,6 +22,8 @@ pnpm install
 pnpm --filter @beerswipe/backend run dev
 ```
 
+Backend runtime code is TypeScript. Node runs it directly through type stripping, so there is no build step; the entry point is `src/index.ts`.
+
 This repository is a pnpm workspace monorepo.
 - Use the root `pnpm-lock.yaml` as the single lockfile.
 - Do not create or maintain `backend/pnpm-lock.yaml`.
@@ -48,6 +50,8 @@ The application uses PostgreSQL. Start the database with Docker:
 ```
 docker-compose -f docker-compose.dev.yml up postgres -d
 ```
+
+Schema migrations live in `src/migrate.ts` and run automatically before `sequelize.sync()` on every boot. Run them manually from `backend/` with `node src/migrate.ts`.
 
 ## Database Seeding
 

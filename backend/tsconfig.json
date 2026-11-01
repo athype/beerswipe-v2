@@ -7,6 +7,9 @@
     "types": ["node"],
     "strict": true,
     "noEmit": true,
+    // The remaining .js files are legacy tests. allowJs keeps them in the
+    // typecheck program; checkJs stays off so they are not type-checked until
+    // they are converted. Keep "test" in include.
     "allowJs": true,
     "checkJs": false,
     "allowImportingTsExtensions": true,
