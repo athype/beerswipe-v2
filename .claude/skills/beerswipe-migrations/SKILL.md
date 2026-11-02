@@ -1,13 +1,13 @@
 ---
 name: beerswipe-migrations
-description: Use when adding, changing, or debugging a database column, table, enum value, or index in beerswipe-v2. Covers the backend/src/migrate.js auto-migrator contract, the migrate-before-sync boot order, and the production failure modes that follow from getting either wrong.
+description: Use when adding, changing, or debugging a database column, table, enum value, or index in beerswipe-v2. Covers the backend/src/migrate.ts auto-migrator contract, the migrate-before-sync boot order, and the production failure modes that follow from getting either wrong.
 ---
 
 # Beerswipe schema migrations
 
 ## Where schema changes go
 
-Every schema change is an ordered, idempotent step in the `MIGRATIONS` array in `backend/src/migrate.js`. Do not add files to `backend/migrations/`; that directory is legacy (`002-add-passkey-support.js` predates the migrator).
+Every schema change is an ordered, idempotent step in the `MIGRATIONS` array in `backend/src/migrate.ts`. Do not add files to `backend/migrations/`; that directory is legacy (`002-add-passkey-support.js` predates the migrator).
 
 A step has this shape:
 
@@ -27,13 +27,13 @@ Add the step at the end of `MIGRATIONS`. `runMigrations()` executes the array in
 Manual runs:
 
 ```bash
-node src/migrate.js
-docker exec beermachine_backend node src/migrate.js
+node src/migrate.ts
+docker exec beermachine_backend node src/migrate.ts
 ```
 
 ## Boot order is load-bearing
 
-`initializeDatabase()` in `backend/src/config/database.js` does, in this order:
+`initializeDatabase()` in `backend/src/config/database.ts` does, in this order:
 
 1. `sequelize.authenticate()`
 2. `runMigrations()`
@@ -42,7 +42,7 @@ docker exec beermachine_backend node src/migrate.js
 
 Migrations run **before** `sync()`. Production syncs with `alter: false`, so it never adds a column to an existing table, but it does reconcile the model-declared indexes on every boot. If a model declares an index on a column that only the migrator adds, the column must exist before sync runs or boot fails with `column ... does not exist` and the container never starts. That is the 2026-10-09 `Transactions.saleGroupId` incident.
 
-The comment in `docker-compose.deploy.yml` that says migrations run "after sync, before listening" is stale. The code, `AGENTS.md` and `backend/src/config/database.js` are the source of truth.
+The code, `AGENTS.md` and `backend/src/config/database.ts` are the source of truth for the boot order.
 
 ## Rules for every step
 
@@ -53,7 +53,7 @@ The comment in `docker-compose.deploy.yml` that says migrations run "after sync,
 - Check the column and the index separately. Dev's `sync({ alter: true })` can add a column without creating the model's index.
 - Enum values: if `pg_type` has no row for the type, return `false` (fresh database). Otherwise check `pg_enum` and run `ALTER TYPE ... ADD VALUE IF NOT EXISTS`.
 - Backfilling a non-null column: add it nullable or with a default, update existing NULLs, then `changeColumn` to `allowNull: false`. See `2026-08-10/drinks-isAlcohol`.
-- Never call `sequelize.sync()` inside a step. Do not import models into `migrate.js`; use `queryInterface` and raw SQL.
+- Never call `sequelize.sync()` inside a step. Do not import models into `migrate.ts`; use `queryInterface` and raw SQL.
 - Use the exact table and column names from the Sequelize models. Postgres identifiers are case-sensitive when quoted; the existing steps quote camelCase identifiers.
 
 ## Template: add a column
@@ -131,10 +131,10 @@ The comment in `docker-compose.deploy.yml` that says migrations run "after sync,
 
 1. Update the Sequelize model first, including any index declaration.
 2. Add the migration step at the end of `MIGRATIONS` with a `YYYY-MM-DD/feature` name.
-3. Run `node src/migrate.js` and confirm the expected `[migrate]` lines.
+3. Run `node src/migrate.ts` and confirm the expected `[migrate]` lines.
 4. Test both paths: an existing database (step applies once) and a fresh database (step no-ops and sync creates everything).
 5. Run `pnpm --filter @beerswipe/backend run typecheck` and `pnpm --filter @beerswipe/backend test`.
-6. In the PR, reference the `migrate.js` step, never a legacy migration file.
+6. In the PR, reference the `migrate.ts` step, never a legacy migration file.
 
 ## Failure modes to check first
 

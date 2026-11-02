@@ -81,7 +81,7 @@ Set these in Coolify, not in the compose file and not in git:
 
 ## Schema changes during a deploy
 
-The backend applies `backend/src/migrate.js` at boot before `sequelize.sync()` and before it listens. A throwing migration blocks startup, so Coolify's health check fails and the new container does not serve traffic.
+The backend applies `backend/src/migrate.ts` at boot before `sequelize.sync()` and before it listens. A throwing migration blocks startup, so Coolify's health check fails and the new container does not serve traffic.
 
 - Prefer backward-compatible, idempotent steps; see the `beerswipe-migrations` skill.
 - Check the backend deployment log for `[migrate] applied` or `[migrate] up to date` lines.
@@ -102,7 +102,7 @@ The backend applies `backend/src/migrate.js` at boot before `sequelize.sync()` a
 1. Applications, select the backend or frontend application.
 2. Environment Variables: change `IMAGE_TAG` or any runtime value.
 3. Deploy (or Redeploy) and watch the Deployments tab.
-4. Open the Terminal tab only for a read-only check such as `node src/migrate.js --help` or inspecting env; prefer redeploying over editing files inside the container.
+4. Open the Terminal tab only for a read-only check such as `node src/migrate.ts --help` or inspecting env; prefer redeploying over editing files inside the container.
 5. If the Compose file is sourced from git, change it in the repository and redeploy. Edits made only in the UI drift from the repo.
 
 ## Pitfalls
