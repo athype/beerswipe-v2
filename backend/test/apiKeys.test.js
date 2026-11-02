@@ -1,10 +1,10 @@
 import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 
-import app from "../src/app.js";
-import { generateToken } from "../src/middleware/auth.js";
-import { ApiKey, Drink, Transaction, User } from "../src/models/index.js";
-import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.js";
+import app from "../src/app.ts";
+import { generateToken } from "../src/middleware/auth.ts";
+import { ApiKey, Drink, Transaction, User } from "../src/models/index.ts";
+import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.ts";
 
 let suffix = 0;
 function uniqueSuffix() {

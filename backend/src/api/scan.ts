@@ -1,7 +1,7 @@
 import express from "express";
-import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.js";
-import { ScanCode, User } from "../models/index.js";
-import { scanCodeParamSchema } from "../validation/contracts.js";
+import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.ts";
+import { ScanCode, User } from "../models/index.ts";
+import { scanCodeParamSchema } from "../validation/contracts.ts";
 
 // Sequelize's define() typings do not surface model attributes, so the
 // eager-loaded association is read back through this narrow shape.

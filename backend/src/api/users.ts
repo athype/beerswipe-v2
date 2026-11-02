@@ -1,13 +1,34 @@
+import type { UserType } from "@beerswipe/types";
+import type { Transaction as SequelizeTransaction, WhereOptions } from "sequelize";
+import type { UserAttributes } from "../models/User.ts";
 import { Readable } from "node:stream";
 import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
-import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.js";
-import { ScanCode, Transaction, User } from "../models/index.js";
+import { authenticateRequest, requireAdmin, requireAdminOrSeller } from "../middleware/auth.ts";
+import { ScanCode, Transaction, User } from "../models/index.ts";
 import { generateScanCode } from "../utils/scanCodeCrypto.ts";
-import { userIdParamSchema } from "../validation/contracts.js";
+import { userIdParamSchema } from "../validation/contracts.ts";
+
+type UsersQuery = {
+  type?: string;
+  search?: string;
+  isActive?: string;
+  page?: string;
+  limit?: string;
+};
+
+// csv-parser with headers: false emits one object per row keyed by column index.
+type CsvUserRow = Record<string, string | undefined>;
+
+type CsvImportResult = {
+  username: string;
+  credits: number;
+  userType: UserType;
+  dateOfBirth: string | null;
+};
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -68,12 +89,16 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
-    const { type, search, isActive, page = 1, limit = 50 } = req.query;
-    const offset = (page - 1) * limit;
+    const { type, search, isActive, page = "1", limit = "50" } = req.query as UsersQuery;
+    // The original arithmetic coerced query strings with Number(); keep that
+    // behavior while making the types explicit.
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const offset = (pageNumber - 1) * limitNumber;
 
-    const whereClause = {};
+    const whereClause: WhereOptions<UserAttributes> = {};
     if (type && ["admin", "member", "non-member"].includes(type)) {
-      whereClause.userType = type;
+      whereClause.userType = type as UserType;
     }
     if (search) {
       whereClause.username = { [Op.iLike]: `%${search}%` };
@@ -90,7 +115,7 @@ router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
     const { count, rows } = await User.findAndCountAll({
       where: whereClause,
       limit: Number.parseInt(limit),
-      offset: Number.parseInt(offset),
+      offset: Number.parseInt(String(offset)),
       order: [["username", "ASC"]],
       attributes: { exclude: ["password"] },
     });
@@ -100,7 +125,7 @@ router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
       pagination: {
         total: count,
         page: Number.parseInt(page),
-        pages: Math.ceil(count / limit),
+        pages: Math.ceil(count / limitNumber),
         limit: Number.parseInt(limit),
       },
     });
@@ -155,12 +180,12 @@ router.get("/", authenticateRequest, requireAdminOrSeller, async (req, res) => {
  */
 router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const { type } = req.query;
+    const { type } = req.query as UsersQuery;
 
-    const whereClause = {};
+    const whereClause: WhereOptions<UserAttributes> = {};
     // Only export non-admin users (members and non-members)
     if (type && ["member", "non-member"].includes(type)) {
-      whereClause.userType = type;
+      whereClause.userType = type as UserType;
     }
     else {
       whereClause.userType = { [Op.in]: ["member", "non-member"] };
@@ -242,7 +267,7 @@ router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) =>
  */
 router.get("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const user = await User.findByPk(req.params.id, {
+    const user = await User.findByPk(req.params.id as string, {
       attributes: { exclude: ["password"] },
     });
 
@@ -433,7 +458,7 @@ router.post("/:id/add-credits", authenticateRequest, requireAdmin, async (req, r
       return res.status(400).json({ error: "Credits must be added in blocks of 10" });
     }
 
-    const user = await User.findByPk(req.params.id);
+    const user = await User.findByPk(req.params.id as string);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -443,7 +468,7 @@ router.post("/:id/add-credits", authenticateRequest, requireAdmin, async (req, r
     // Create transaction record
     await Transaction.create({
       userId: user.id,
-      adminId: req.user.id,
+      adminId: req.user!.id,
       type: "credit_addition",
       amount,
       description: `Credits added: ${amount}`,
@@ -460,13 +485,14 @@ router.post("/:id/add-credits", authenticateRequest, requireAdmin, async (req, r
   }
   catch (error) {
     console.error("Add credits error:", error);
-    res.status(500).json({ error: error.message || "Internal server error" });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    res.status(500).json({ error: message || "Internal server error" });
   }
 });
 
 // Strict YYYY-MM-DD check: correct shape, a real calendar date, and not in the
 // future (a future date of birth would also break the alcohol age gate).
-function isValidISODate(value) {
+function isValidISODate(value: unknown): boolean {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
@@ -483,7 +509,7 @@ function isValidISODate(value) {
   return isRealDate && date.getTime() <= Date.now();
 }
 
-function parseFlexibleDate(dateStr) {
+function parseFlexibleDate(dateStr: string | null | undefined): Date | null {
   if (!dateStr || dateStr.trim() === "")
     return null;
 
@@ -499,7 +525,7 @@ function parseFlexibleDate(dateStr) {
 
   // Check for DD-MM-YYYY format
   if (/^\d{2}-\d{2}-\d{4}$/.test(cleanDate)) {
-    const [day, month, year] = cleanDate.split("-");
+    const [day, month, year] = cleanDate.split("-").map(Number);
     const date = new Date(year, month - 1, day); // month is 0-indexed in JS
     if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2020) {
       return date;
@@ -512,14 +538,14 @@ function parseFlexibleDate(dateStr) {
 
     // If first part is 4 digits, assume YYYY-MM-DD
     if (parts[0].length === 4) {
-      const date = new Date(parts[0], parts[1] - 1, parts[2]);
+      const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
       if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2020) {
         return date;
       }
     }
     else {
       // Assume DD-MM-YYYY
-      const date = new Date(parts[2], parts[1] - 1, parts[0]);
+      const date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
       if (!isNaN(date.getTime()) && date.getFullYear() >= 1900 && date.getFullYear() <= 2020) {
         return date;
       }
@@ -608,16 +634,16 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
       return res.status(400).json({ error: "CSV file is required" });
     }
 
-    const results = [];
-    const errors = [];
-    const dateWarnings = [];
+    const results: CsvImportResult[] = [];
+    const errors: string[] = [];
+    const dateWarnings: string[] = [];
     let lineNumber = 0;
 
     const stream = Readable.from(req.file.buffer);
 
     stream
       .pipe(csv({ headers: false }))
-      .on("data", async (data) => {
+      .on("data", async (data: CsvUserRow) => {
         lineNumber++;
         try {
           const [username, credits, dateOfBirth, isMember] = Object.values(data);
@@ -635,10 +661,10 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
           }
 
           const userType = isMember === "true" ? "member" : "non-member";
-          const parsedCredits = Number.parseInt(credits) || 0;
+          const parsedCredits = Number.parseInt(credits ?? "") || 0;
 
           // Parse date with flexible format handling
-          let parsedDate = null;
+          let parsedDate: Date | null = null;
           if (dateOfBirth) {
             parsedDate = parseFlexibleDate(dateOfBirth);
             if (!parsedDate && dateOfBirth.trim() !== "") {
@@ -649,7 +675,8 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
           const user = await User.create({
             username,
             credits: parsedCredits,
-            dateOfBirth: parsedDate,
+            // DATEONLY accepts Date at runtime even though the model types it as string.
+            dateOfBirth: parsedDate as unknown as string | null,
             userType,
             password: null,
           });
@@ -662,17 +689,16 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
           });
         }
         catch (error) {
-          errors.push(`Line ${lineNumber}: ${error.message}`);
+          errors.push(`Line ${lineNumber}: ${error instanceof Error ? error.message : String(error)}`);
         }
       })
       .on("end", () => {
         res.json({
           message: "CSV import completed",
           imported: results.length,
-          errors: errors.length,
+          errors: [...errors, ...dateWarnings],
           warnings: dateWarnings.length,
           results,
-          errors: [...errors, ...dateWarnings],
         });
       })
       .on("error", (error) => {
@@ -778,7 +804,7 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Invalid dateOfBirth" });
     }
 
-    const user = await User.findByPk(req.params.id, {
+    const user = await User.findByPk(req.params.id as string, {
       transaction: dbTransaction,
       lock: dbTransaction.LOCK.UPDATE,
     });
@@ -810,7 +836,7 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
     if (creditsChanged) {
       await Transaction.create({
         userId: updatedUser.id,
-        adminId: req.user.id,
+        adminId: req.user!.id,
         type: "credit_adjustment",
         amount: userCredits - previousCredits,
         description: `Credits edited: ${previousCredits} → ${userCredits}`,
@@ -832,7 +858,8 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
     });
   }
   catch (error) {
-    if (dbTransaction && !dbTransaction.finished) {
+    const tx = dbTransaction as SequelizeTransaction & { finished?: string };
+    if (dbTransaction && !tx.finished) {
       await dbTransaction.rollback();
     }
     console.error("Update user error:", error);
@@ -908,7 +935,7 @@ router.get("/:id/scan-code", authenticateRequest, requireAdminOrSeller, async (r
       defaults: { code: generateScanCode() },
     });
 
-    res.json({ code: scanCode.code });
+    res.json({ code: scanCode.get("code") });
   }
   catch (error) {
     console.error("Get scan code error:", error);
@@ -983,11 +1010,11 @@ router.post("/:id/scan-code/regenerate", authenticateRequest, requireAdminOrSell
     });
 
     if (!created) {
-      scanCode.code = code;
+      scanCode.set("code", code);
       await scanCode.save();
     }
 
-    res.json({ code: scanCode.code });
+    res.json({ code: scanCode.get("code") });
   }
   catch (error) {
     console.error("Regenerate scan code error:", error);

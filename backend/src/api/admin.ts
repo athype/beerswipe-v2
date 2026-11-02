@@ -1,7 +1,8 @@
+import type { UserAttributes } from "../models/User.ts";
 import express from "express";
 import { Op } from "sequelize";
-import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.js";
-import { User } from "../models/index.js";
+import { authenticateRequest, generateToken, requireAdmin } from "../middleware/auth.ts";
+import { User } from "../models/index.ts";
 
 const router = express.Router();
 
@@ -104,7 +105,7 @@ router.get("/", authenticateRequest, requireAdmin, async (req, res) => {
  */
 router.get("/profile", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const admin = await User.findByPk(req.user.id, {
+    const admin = await User.findByPk(req.user!.id, {
       attributes: ["id", "username", "userType", "createdAt", "updatedAt"],
     });
 
@@ -187,7 +188,7 @@ router.put("/profile", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, currentPassword } = req.body;
 
-    const admin = await User.findByPk(req.user.id);
+    const admin = await User.findByPk(req.user!.id);
     if (!admin) {
       return res.status(404).json({ error: "Admin not found" });
     }
@@ -220,7 +221,7 @@ router.put("/profile", authenticateRequest, requireAdmin, async (req, res) => {
       }
     }
 
-    const updates = {};
+    const updates: Partial<UserAttributes> = {};
     if (username)
       updates.username = username;
     if (password)
@@ -407,9 +408,9 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
 router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
     const { username, password, userType } = req.body;
-    const adminId = req.params.id;
+    const adminId = req.params.id as string;
 
-    if (Number.parseInt(adminId, 10) === req.user.id) {
+    if (Number.parseInt(adminId, 10) === req.user!.id) {
       return res.status(400).json({ error: "Use /profile endpoint to update your own account" });
     }
 
@@ -445,7 +446,7 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Invalid user type. Must be 'admin' or 'seller'" });
     }
 
-    const updates = {};
+    const updates: Partial<UserAttributes> = {};
     if (username)
       updates.username = username;
     if (password)
@@ -516,9 +517,9 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
  */
 router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const adminId = req.params.id;
+    const adminId = req.params.id as string;
 
-    if (Number.parseInt(adminId, 10) === req.user.id) {
+    if (Number.parseInt(adminId, 10) === req.user!.id) {
       return res.status(400).json({ error: "Cannot delete your own account" });
     }
 

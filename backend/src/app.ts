@@ -1,10 +1,11 @@
+import type { CorsOptions } from "cors";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 
-import api from "./api/index.js";
+import api from "./api/index.ts";
 import { initializeDatabase } from "./config/database.ts";
 import { env } from "./env.ts";
 
@@ -14,7 +15,7 @@ const app = express();
 
 try {
   // Migrations run inside initializeDatabase(), before sequelize.sync() — see
-  // config/database.js for why the order matters.
+  // config/database.ts for why the order matters.
   await initializeDatabase();
 }
 catch (error) {
@@ -26,7 +27,7 @@ app.use(morgan("dev"));
 app.use(helmet());
 
 // CORS configuration
-const corsOptions = {
+const corsOptions: CorsOptions = {
   origin(origin, callback) {
     if (!origin)
       return callback(null, true);

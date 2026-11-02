@@ -2,9 +2,9 @@ import { Op } from "sequelize";
 import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 
-import app from "../src/app.js";
-import { generateToken } from "../src/middleware/auth.js";
-import { Drink, Transaction, User } from "../src/models/index.js";
+import app from "../src/app.ts";
+import { generateToken } from "../src/middleware/auth.ts";
+import { Drink, Transaction, User } from "../src/models/index.ts";
 
 // Permanent deletion of a drink: the row goes for good, but only when it has
 // no sale history — transactions.drinkId references it, so the audit trail

@@ -1,8 +1,8 @@
 # JavaScript to TypeScript Migration
 
-**Status: 2026-10-20.** This is the execution playbook for issue #35 (backend). The toolchain is live; what remains is converting files, wiring the entry points, and cleanup. Read the conventions before touching a file.
+**Status: 2026-11-02 — complete.** This is the execution record for issue #35 (backend). The backend runtime is TypeScript and lands on `master` through the final integration PR (#176). The conventions below still apply to backend changes; the per-segment scopes are kept as the history of how the migration was carried out.
 
-The shared `types/` package is already TypeScript and is the source of truth for API contracts.
+The shared `types/` package is TypeScript and is the source of truth for API contracts.
 
 ## Current state
 
@@ -10,11 +10,11 @@ The shared `types/` package is already TypeScript and is the source of truth for
 |---------|-------|-----------|
 | `types/` | TypeScript | none |
 | `frontend/` | 20 `.ts`, 0 `.js`; 5 of 49 `.vue` files use `lang="ts"` | 44 SFCs, tracked in #36 |
-| `backend/` | toolchain live (#142), 3 modules converted | 28 `.js` files, 6,479 lines in `src/`, tracked in #35 |
+| `backend/` | TypeScript; runtime code under `src/` and `scripts/` converted (#163–#175) | no runtime `.js`; legacy `.js` tests (kept via `allowJs`, not type-checked) and `backend/migrations/002-add-passkey-support.js` |
 
-Backend modules already converted: `src/api/scan.ts`, `src/models/ScanCode.ts`, `src/utils/scanCodeCrypto.ts`.
+All backend runtime modules are converted. The remaining `.js` files under `backend/` are the legacy test files and `backend/migrations/002-add-passkey-support.js`, which predates the auto migrator and is not executed.
 
-Baseline verified on 2026-10-20: clean `master`, frozen install, `pnpm --filter @beerswipe/backend run typecheck` reports zero errors.
+Baseline: `master` typechecks with zero errors. Segments 0–12 are merged: #163 (foundations) landed directly on `master`; #164–#175 were squash-merged into `refactor/backend-ts`, and #176 integrates the branch into `master`.
 
 ## Why the previous revision was replaced
 
@@ -39,18 +39,18 @@ The old playbook was written before the toolchain landed in #142. It said to sta
 }
 ```
 
-There is no build step. Node strips types at runtime (`engines: >=22.18.0`; Docker runs `node:24-alpine`), and `pnpm start` runs `node src/index.ts` once the entry point is converted. `allowImportingTsExtensions` exists because the stripped runtime needs the real file extension.
+There is no build step. Node strips types at runtime (`engines: >=22.18.0`; Docker runs `node:24-alpine`), and `pnpm start` runs `node src/index.ts`. `allowImportingTsExtensions` exists because the stripped runtime needs the real file extension.
 
 ## Conventions
 
-1. **Real extensions.** A converted file is imported as `./env.ts`, including from files that are still `.js`. `src/models/index.js` already imports `./ScanCode.ts`; that is the pattern.
+1. **Real extensions.** Imports use the real target extension (`./env.ts`) because the stripped runtime needs it. The remaining `.js` tests import `../src/app.ts` the same way.
 2. **Type-only imports use `import type`.** `verbatimModuleSyntax` is on, so a value import used only as a type fails.
 3. **Erasable syntax only.** No runtime `enum`, `namespace`, parameter properties, or decorators in backend code. `erasableSyntaxOnly` enforces this. Ambient declarations in `.d.ts` files, including the Express request augmentation in segment 4, are type-only and allowed. Reuse unions from `@beerswipe/types` (for example `UserType`) instead of inventing enums.
 4. **Strict is already on.** Every converted file must be strict-clean immediately. Do not add `// @ts-nocheck`, and do not relax `tsconfig.json`.
-5. **Keep every `@openapi` block byte-identical.** `test/docs.test.js` asserts that every route is documented, and `api-docs.js` scans `src/api/*.{js,ts}`.
+5. **Keep every `@openapi` block byte-identical.** `test/docs.test.js` asserts that every route is documented, and `api-docs.ts` scans `src/api/*.{js,ts}`.
 6. **No behavior changes.** This migration renames files and adds types. Route order, guards, transaction handling, response shapes, and credit rules must not move.
-7. **Schema changes stay in `src/migrate.js`.** Never add files to `backend/migrations/`; `002-add-passkey-support.js` is legacy and stays as-is.
-8. **`tsc` does not check `.js` importers.** A missed `.js` specifier pointing at a converted file is invisible to typecheck and only fails when the app boots. The suite is the gate for import paths, so always run both.
+7. **Schema changes stay in `src/migrate.ts`.** Never add files to `backend/migrations/`; `002-add-passkey-support.js` is legacy and stays as-is.
+8. **`tsc` does not check the remaining `.js` tests.** A stale `.js` specifier in a legacy test is invisible to typecheck and only fails when the suite loads it. The suite is the gate for import paths, so always run both.
 9. **Do not reformat or rename unrelated code.** Keep diffs reviewable.
 
 ## Verification for every segment
@@ -64,16 +64,18 @@ The suite boots the real app, so it needs Postgres. Use the dev database (`docke
 
 Lint is not a gate: the backend baseline is red (`unicorn/filename-case` fires on model and util files, plus `isNaN`, `no-dupe-keys`, `process.env`). Report the delta against the base branch only.
 
-CI (`.github/workflows/ci.yml`) runs typecheck and tests on every PR to `master`, with a Postgres 15 service. A merge to `master` builds and deploys to production, so a segment that cannot be verified end to end does not ship.
+CI (`.github/workflows/ci.yml`) runs backend typecheck/tests, frontend tests/build/typecheck and kiosk checks on every PR to `master`, with a Postgres 15 service. The temporary `refactor/backend-ts` trigger was removed in segment 12, when the integration branch was retired. The final integration PR to `master` was the only production deploy of the migration, so the whole branch had to pass the full verification before it merged.
 
 ## Segment plan
 
-One segment per branch, per PR, per Claude Code session. Branches target `master`. Squash merge.
+One segment per branch, per PR, per Claude Code session. Segment branches target the long-lived `refactor/backend-ts` integration branch, and each segment is squash merged into it. The integration branch merges to `master` once at the end, so the migration produces one production deploy instead of one per segment.
+
+All segments below are complete. Their scopes are kept as the execution record; some refer to the pre-conversion `.js` filenames that the segment renamed.
 
 | # | Branch | Files | Lines | Gate |
 |---|--------|-------|-------|------|
 | 0 | `chore/backend-ts-types` | `backend/package.json`, `pnpm-lock.yaml` | 0 code | typecheck + suite unchanged |
-| 1 | `refactor/backend-ts-foundations` | `env`, `config/database`, `middlewares` | 117 | app boots |
+| 1 | `refactor/backend-ts-foundations` | `env`, `config/database`, `middlewares` | 117 | done in #163 |
 | 2 | `refactor/backend-ts-validation-utils` | `validation/contracts`, `utils/apiKeyCrypto`, `utils/webauthn` | 162 | suite |
 | 3 | `refactor/backend-ts-models` | `models/*` (6 files) | 435 | suite, credits and sales tests |
 | 4 | `refactor/backend-ts-auth-middleware` | `middleware/auth` + `src/types/express.d.ts` | 145 | auth and API-key tests, manual login |
@@ -115,6 +117,8 @@ pnpm --filter @beerswipe/backend test
 ```
 
 ## Segment 1: config foundations
+
+Status: merged in #163. The notes below are kept for reference.
 
 Scope: `src/env.js`, `src/config/database.js`, `src/middlewares.js`.
 
@@ -293,6 +297,8 @@ Gate: typecheck, suite, `node src/migrate.ts`, `pnpm start` boot, Docker image b
 - Decide `allowJs`. Tests stay `.js` (decision recorded here), so keep `"allowJs": true` and `"checkJs": false` and add a comment in `tsconfig.json` saying they exist for legacy tests. Do not remove `test` from `include`.
 - Update `AGENTS.md` and `backend/README.md` where they still describe `.js` entry points or the old migration flow.
 - Close #35 with the PR list.
+- Open the integration PR `refactor/backend-ts` -> `master`, run the full verification, and merge with a merge commit so the segment history lands on `master`.
+- Remove the temporary `refactor/backend-ts` entry from `.github/workflows/ci.yml` before that PR, since the branch is deleted after the merge.
 - Optional follow-up: convert the remaining test files (about 2,700 lines) and then delete `allowJs`. That is a separate issue, not a blocker.
 
 ## Definition of done

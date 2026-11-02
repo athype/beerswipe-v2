@@ -1,15 +1,15 @@
 import express from "express";
 
-import docs from "../api-docs.js";
-import admin from "./admin.js";
-import apiKeys from "./apiKeys.js";
-import auth from "./auth.js";
-import drinks from "./drinks.js";
-import leaderboard from "./leaderboard.js";
-import passkeys from "./passkeys.js";
-import sales from "./sales.js";
+import docs from "../api-docs.ts";
+import admin from "./admin.ts";
+import apiKeys from "./apiKeys.ts";
+import auth from "./auth.ts";
+import drinks from "./drinks.ts";
+import leaderboard from "./leaderboard.ts";
+import passkeys from "./passkeys.ts";
+import sales from "./sales.ts";
 import scan from "./scan.ts";
-import users from "./users.js";
+import users from "./users.ts";
 
 const router = express.Router();
 

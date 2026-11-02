@@ -1,17 +1,45 @@
+import type { TransactionType } from "@beerswipe/types";
+import type { Model, Transaction as SequelizeTransaction } from "sequelize";
+import type { DrinkInstance } from "../models/index.ts";
+import type { TransactionAttributes } from "../models/Transaction.ts";
 import { randomUUID } from "node:crypto";
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
-import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.js";
-import { Drink, Transaction, User } from "../models/index.js";
-import { sellRequestSchema } from "../validation/contracts.js";
+import { authenticateRequest, requireAdminOrSeller } from "../middleware/auth.ts";
+import { Drink, Transaction, User } from "../models/index.ts";
+import { sellRequestSchema } from "../validation/contracts.ts";
 
 const router = express.Router();
 
 // Sellers may only undo their own recent sales; admins keep full undo rights.
 const SELLER_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
-function calculateAge(dateOfBirth) {
+// Transaction is a data-only define(), so its instance type is Model<any, any>;
+// read the row through the attribute interface the model exports.
+type TransactionRow = Model<TransactionAttributes, TransactionAttributes> & TransactionAttributes;
+
+type SalesHistoryQuery = {
+  userId?: string;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: string;
+  limit?: string;
+};
+
+type SalesWhere = {
+  userId?: string;
+  type?: TransactionType;
+  transactionDate?: {
+    [Op.gte]?: Date;
+    [Op.lte]?: Date;
+  };
+};
+
+type SaleItem = { drinkId: number; quantity: number };
+
+function calculateAge(dateOfBirth: string | null): number | null {
   if (!dateOfBirth)
     return null;
 
@@ -52,9 +80,10 @@ function calculateAge(dateOfBirth) {
  * Accepts the legacy single-drink shape and the multi-item `items` shape;
  * duplicate drinkIds are merged (summed, first-seen order kept).
  */
-function normalizeSaleItems(body) {
-  const rawItems = body.items ?? [{ drinkId: body.drinkId, quantity: body.quantity }];
-  const merged = new Map();
+function normalizeSaleItems(body: { items?: SaleItem[]; drinkId?: number; quantity: number }): Map<number, number> {
+  // The schema's superRefine guarantees drinkId when `items` is omitted.
+  const rawItems = body.items ?? [{ drinkId: body.drinkId!, quantity: body.quantity }];
+  const merged = new Map<number, number>();
   for (const { drinkId, quantity } of rawItems) {
     merged.set(drinkId, (merged.get(drinkId) ?? 0) + quantity);
   }
@@ -166,7 +195,7 @@ function normalizeSaleItems(body) {
  *         $ref: "#/components/responses/InternalError"
  */
 router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res) => {
-  let transaction;
+  let transaction: SequelizeTransaction | undefined;
 
   try {
     const parsedBody = sellRequestSchema.safeParse(req.body);
@@ -177,7 +206,7 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
       const hasQuantityError = issues.some(issue => issue.path[0] === "quantity");
       const hasItemsError = issues.some(issue => issue.path[0] === "items");
 
-      const isMissingField = field => req.body?.[field] === undefined || req.body?.[field] === null || req.body?.[field] === "";
+      const isMissingField = (field: string) => req.body?.[field] === undefined || req.body?.[field] === null || req.body?.[field] === "";
       const mappedErrors = [];
 
       if (hasUserIdError) {
@@ -222,7 +251,7 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
     // Lock every drink one at a time, ascending by id: a single findAll with
     // `lock` does not guarantee the order rows are locked in, and two baskets
     // sharing drinks could deadlock on the money path.
-    const drinks = new Map();
+    const drinks = new Map<number, DrinkInstance>();
     for (const drinkId of [...items.keys()].sort((a, b) => a - b)) {
       const drink = await Drink.findByPk(drinkId, { transaction, lock: transaction.LOCK.UPDATE });
       if (!drink) {
@@ -246,9 +275,9 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
       }
     }
 
-    const unavailable = [];
+    const unavailable: Array<{ drinkId: number; name: string; requested: number; available: number }> = [];
     for (const [drinkId, quantity] of items) {
-      const drink = drinks.get(drinkId);
+      const drink = drinks.get(drinkId)!;
       if (!drink.isInStock() || drink.stock < quantity) {
         unavailable.push({ drinkId, name: drink.name, requested: quantity, available: drink.stock });
       }
@@ -266,7 +295,7 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
     }
 
     const totalCost = [...items].reduce(
-      (sum, [drinkId, quantity]) => sum + drinks.get(drinkId).price * quantity,
+      (sum, [drinkId, quantity]) => sum + drinks.get(drinkId)!.price * quantity,
       0,
     );
     const totalQuantity = [...items.values()].reduce((sum, quantity) => sum + quantity, 0);
@@ -284,18 +313,18 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
 
     const saleGroupId = randomUUID();
     for (const [drinkId, quantity] of items) {
-      await drinks.get(drinkId).deductStock(quantity, { transaction });
+      await drinks.get(drinkId)!.deductStock(quantity, { transaction });
     }
 
     // One row per drink, sharing saleGroupId, so the audit trail stays
     // per-drink while undo can still reverse the whole order.
     const saleTransactions = await Transaction.bulkCreate(
       [...items].map(([drinkId, quantity]) => {
-        const drink = drinks.get(drinkId);
+        const drink = drinks.get(drinkId)!;
         return {
           userId: user.id,
           drinkId,
-          adminId: req.user.id,
+          adminId: req.user!.id,
           type: "sale",
           amount: drink.price * quantity,
           quantity,
@@ -304,12 +333,12 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
         };
       }),
       { transaction },
-    );
+    ) as TransactionRow[];
 
     await transaction.commit();
 
     const responseItems = [...items].map(([drinkId, quantity], index) => {
-      const drink = drinks.get(drinkId);
+      const drink = drinks.get(drinkId)!;
       return {
         transactionId: saleTransactions[index].id,
         drinkId,
@@ -341,18 +370,19 @@ router.post("/sell", authenticateRequest, requireAdminOrSeller, async (req, res)
         totalCost,
         items: responseItems,
         admin: {
-          id: req.user.id,
-          username: req.user.username,
+          id: req.user!.id,
+          username: req.user!.username,
         },
       },
     });
   }
   catch (error) {
-    if (transaction && !transaction.finished) {
+    if (transaction && !(transaction as SequelizeTransaction & { finished?: string }).finished) {
       await transaction.rollback();
     }
     console.error("Sale error:", error);
-    res.status(500).json({ error: error.message || "Internal server error" });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    res.status(500).json({ error: message || "Internal server error" });
   }
 });
 
@@ -447,18 +477,22 @@ router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, re
       type,
       startDate,
       endDate,
-      page = 1,
-      limit = 50,
-    } = req.query;
+      page = "1",
+      limit = "50",
+    } = req.query as SalesHistoryQuery;
 
-    const offset = (page - 1) * limit;
-    const whereClause = {};
+    // The original arithmetic coerced query strings with Number(); keep that
+    // behavior while making the types explicit.
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const offset = (pageNumber - 1) * limitNumber;
+    const whereClause: SalesWhere = {};
 
     if (userId) {
       whereClause.userId = userId;
     }
     if (type && ["sale", "credit_addition", "credit_adjustment"].includes(type)) {
-      whereClause.type = type;
+      whereClause.type = type as TransactionType;
     }
     if (startDate) {
       whereClause.transactionDate = {
@@ -494,7 +528,7 @@ router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, re
         },
       ],
       limit: Number.parseInt(limit),
-      offset: Number.parseInt(offset),
+      offset: Number.parseInt(String(offset)),
       // id breaks the tie between rows of one sale group, which share a
       // transactionDate, so a multi-drink order never interleaves.
       order: [["transactionDate", "DESC"], ["id", "DESC"]],
@@ -505,7 +539,7 @@ router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, re
       pagination: {
         total: count,
         page: Number.parseInt(page),
-        pages: Math.ceil(count / limit),
+        pages: Math.ceil(count / limitNumber),
         limit: Number.parseInt(limit),
       },
     });
@@ -583,8 +617,8 @@ router.get("/history", authenticateRequest, requireAdminOrSeller, async (req, re
  */
 router.get("/stats", authenticateRequest, requireAdminOrSeller, async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-    const whereClause = {};
+    const { startDate, endDate } = req.query as SalesHistoryQuery;
+    const whereClause: SalesWhere = {};
 
     if (startDate) {
       whereClause.transactionDate = {
@@ -754,7 +788,7 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
   const dbTransaction = await sequelize.transaction();
 
   try {
-    const { transactionId } = req.params;
+    const transactionId = req.params.transactionId as string;
 
     if (!transactionId) {
       await dbTransaction.rollback();
@@ -766,7 +800,7 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
     // undos entering on different rows of the same sale deadlock.
     const requestedTransaction = await Transaction.findByPk(transactionId, {
       transaction: dbTransaction,
-    });
+    }) as TransactionRow | null;
 
     if (!requestedTransaction) {
       await dbTransaction.rollback();
@@ -781,7 +815,7 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
           attributes: ["id"],
           order: [["id", "ASC"]],
           transaction: dbTransaction,
-        })).map(row => row.id)
+        }) as TransactionRow[]).map(row => row.id)
       : [requestedTransaction.id];
 
     // The unlocked read can observe a row that a concurrent undo deletes
@@ -791,12 +825,12 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    const transactionsToUndo = [];
+    const transactionsToUndo: TransactionRow[] = [];
     for (const id of groupIds) {
       const row = await Transaction.findByPk(id, {
         transaction: dbTransaction,
         lock: dbTransaction.LOCK.UPDATE,
-      });
+      }) as TransactionRow | null;
       if (!row) {
         await dbTransaction.rollback();
         return res.status(404).json({ error: "Transaction not found" });
@@ -809,12 +843,12 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
     const isSale = primaryTransaction.type === "sale";
 
     // Sellers: only their own sales, only within the correction window.
-    if (req.user.userType !== "admin") {
+    if (req.user!.userType !== "admin") {
       if (transactionsToUndo.some(row => row.type !== "sale")) {
         await dbTransaction.rollback();
         return res.status(403).json({ error: "Sellers can only undo sales" });
       }
-      if (transactionsToUndo.some(row => row.adminId !== req.user.id)) {
+      if (transactionsToUndo.some(row => row.adminId !== req.user!.id)) {
         await dbTransaction.rollback();
         return res.status(403).json({ error: "You can only undo your own sales" });
       }
@@ -841,8 +875,8 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
 
     // Per-drink stock to restore, plus the drink rows to report back. Locked
     // ascending by id, one at a time — the same order the sell route uses.
-    const stockByDrinkId = new Map();
-    const drinks = new Map();
+    const stockByDrinkId = new Map<number, number>();
+    const drinks = new Map<number, DrinkInstance | null>();
     if (isSale) {
       for (const row of transactionsToUndo) {
         if (row.drinkId === null)
@@ -955,8 +989,8 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
         drink: undoItems.length > 0 ? undoItems[0].drink : null,
         items: undoItems,
         undoneBy: {
-          id: req.user.id,
-          username: req.user.username,
+          id: req.user!.id,
+          username: req.user!.username,
         },
       },
     });
@@ -964,7 +998,8 @@ router.delete("/undo/:transactionId", authenticateRequest, requireAdminOrSeller,
   catch (error) {
     await dbTransaction.rollback();
     console.error("Undo transaction error:", error);
-    res.status(500).json({ error: error.message || "Internal server error" });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    res.status(500).json({ error: message || "Internal server error" });
   }
 });
 

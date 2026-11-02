@@ -2,9 +2,9 @@ import { Op } from "sequelize";
 import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 
-import app from "../src/app.js";
-import { generateToken } from "../src/middleware/auth.js";
-import { Drink, Transaction, User } from "../src/models/index.js";
+import app from "../src/app.ts";
+import { generateToken } from "../src/middleware/auth.ts";
+import { Drink, Transaction, User } from "../src/models/index.ts";
 
 // Multi-item sales: one purchase is 1..N Transaction rows sharing a
 // saleGroupId. Credits and stock are charged atomically, and undo reverses

@@ -1,18 +1,40 @@
+import type { UserType } from "@beerswipe/types";
 import express from "express";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.ts";
-import { authenticateRequest } from "../middleware/auth.js";
-import { Transaction, User } from "../models/index.js";
+import { authenticateRequest } from "../middleware/auth.ts";
+import { Transaction, User } from "../models/index.ts";
+
+type LeaderboardQuery = {
+  year?: string;
+  month?: string;
+};
+
+// Aggregate columns come back from Postgres as strings; the joined user and
+// the per-instance dataValues are not surfaced by the data-only define().
+type LeaderboardRow = {
+  userId: number;
+  user: {
+    id: number;
+    username: string;
+    userType: UserType;
+  };
+  dataValues: {
+    transactionCount: string;
+    totalDrinks: string;
+    totalSpent: string;
+  };
+};
+
+type RankRow = {
+  userId: number;
+  totalDrinks: string;
+};
 
 const router = express.Router();
 
-/**
- * Helper function to get the date range for a specific month
- * @param {number} year - The year
- * @param {number} month - The month (1-12)
- * @returns {{ startDate: Date, endDate: Date }} Object containing start and end dates
- */
-function getMonthDateRange(year, month) {
+// Helper function to get the date range for a specific month
+function getMonthDateRange(year: number, month: number): { startDate: Date; endDate: Date } {
   const startDate = new Date(year, month - 1, 1); // First day of month at 00:00:00
   const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of month at 23:59:59.999
   return { startDate, endDate };
@@ -80,13 +102,13 @@ function getMonthDateRange(year, month) {
  */
 router.get("/monthly", authenticateRequest, async (req, res) => {
   try {
-    const { year, month } = req.query;
+    const { year, month } = req.query as LeaderboardQuery;
 
     if (!year || !month) {
       return res.status(400).json({ error: "Year and month are required" });
     }
 
-    const { startDate, endDate } = getMonthDateRange(year, month);
+    const { startDate, endDate } = getMonthDateRange(Number(year), Number(month));
 
     const leaderboard = await Transaction.findAll({
       where: {
@@ -114,7 +136,7 @@ router.get("/monthly", authenticateRequest, async (req, res) => {
       group: ["userId", "user.id", "user.username", "user.userType"],
       order: [[sequelize.fn("SUM", sequelize.col("quantity")), "DESC"]],
       raw: false,
-    });
+    }) as unknown as LeaderboardRow[];
 
     const formattedLeaderboard = leaderboard.map((entry, index) => ({
       rank: index + 1,
@@ -131,7 +153,7 @@ router.get("/monthly", authenticateRequest, async (req, res) => {
       period: {
         year: Number.parseInt(year),
         month: Number.parseInt(month),
-        monthName: new Date(year, month - 1).toLocaleString("en-US", { month: "long" }),
+        monthName: new Date(Number(year), Number(month) - 1).toLocaleString("en-US", { month: "long" }),
         startDate,
         endDate,
       },
@@ -192,14 +214,14 @@ router.get("/monthly", authenticateRequest, async (req, res) => {
  */
 router.get("/rank/:userId", authenticateRequest, async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { year, month } = req.query;
+    const { userId } = req.params as { userId: string };
+    const { year, month } = req.query as LeaderboardQuery;
 
     if (!year || !month) {
       return res.status(400).json({ error: "Year and month are required" });
     }
 
-    const { startDate, endDate } = getMonthDateRange(year, month);
+    const { startDate, endDate } = getMonthDateRange(Number(year), Number(month));
 
     // Get all users' totals
     const leaderboard = await Transaction.findAll({
@@ -224,7 +246,7 @@ router.get("/rank/:userId", authenticateRequest, async (req, res) => {
       group: ["userId", "user.id"],
       order: [[sequelize.fn("SUM", sequelize.col("quantity")), "DESC"]],
       raw: true,
-    });
+    }) as unknown as RankRow[];
 
     const userRank = leaderboard.findIndex(entry => entry.userId === Number.parseInt(userId)) + 1;
     const userEntry = leaderboard.find(entry => entry.userId === Number.parseInt(userId));

@@ -3,7 +3,7 @@ import {
   apiKeyPrefix,
   generateApiKey,
   hashApiKey,
-} from "../src/utils/apiKeyCrypto.js";
+} from "../src/utils/apiKeyCrypto.ts";
 
 describe("api key crypto utils", () => {
   it("generates bsk_ keys with 32 hex chars of entropy", () => {

@@ -1,6 +1,13 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "./config/database.ts";
 
+type QueryInterface = ReturnType<typeof sequelize.getQueryInterface>;
+
+type Migration = {
+  name: string;
+  up: (queryInterface: QueryInterface) => Promise<boolean>;
+};
+
 // Ordered schema migrations.
 //
 // Production boots with `sequelize.sync({ alter: false })`, so the database
@@ -11,14 +18,14 @@ import { sequelize } from "./config/database.ts";
 // after the migrator has run).
 //
 // Steps run at every backend boot, *before* `sequelize.sync()` (see
-// config/database.js). The order matters: sync never adds a column to an
+// config/database.ts). The order matters: sync never adds a column to an
 // existing table, but it does create the model's declared indexes on every
 // boot, so an index whose column the migrator adds must already exist when
 // sync runs — that is the 2026-10-09 `Transactions.saleGroupId` boot failure.
 // They can also be triggered manually:
-//   node src/migrate.js
-//   docker exec beermachine_backend node src/migrate.js
-const MIGRATIONS = [
+//   node src/migrate.ts
+//   docker exec beermachine_backend node src/migrate.ts
+const MIGRATIONS: Migration[] = [
   {
     name: "2026-08-10/drinks-isAlcohol",
     up: async (queryInterface) => {
@@ -196,7 +203,7 @@ const MIGRATIONS = [
 
       // Checked separately: dev's sync({ alter: true }) can add the column
       // without creating the model's index.
-      const indexes = await queryInterface.showIndex("Transactions");
+      const indexes = await queryInterface.showIndex("Transactions") as Array<{ name: string }>;
       if (!indexes.some(index => index.name === "transactions_sale_group_id")) {
         await queryInterface.addIndex("Transactions", ["saleGroupId"], {
           name: "transactions_sale_group_id",
@@ -232,7 +239,7 @@ const MIGRATIONS = [
   },
 ];
 
-export async function runMigrations() {
+export async function runMigrations(): Promise<void> {
   const queryInterface = sequelize.getQueryInterface();
 
   for (const migration of MIGRATIONS) {
@@ -243,8 +250,8 @@ export async function runMigrations() {
   }
 }
 
-// Allow manual runs: `node src/migrate.js` (or via docker exec).
-if (process.argv[1]?.endsWith("migrate.js")) {
+// Allow manual runs: `node src/migrate.ts` (or via docker exec).
+if (process.argv[1]?.endsWith("migrate.ts")) {
   try {
     await sequelize.authenticate();
     await runMigrations();

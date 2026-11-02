@@ -1,4 +1,4 @@
-import app from "./app.js";
+import app from "./app.ts";
 import { env } from "./env.ts";
 
 const server = app.listen(env.PORT, () => {
@@ -8,11 +8,12 @@ const server = app.listen(env.PORT, () => {
 });
 
 server.on("error", (err) => {
-  if (err.code === "EADDRINUSE") {
+  const error = err as NodeJS.ErrnoException;
+  if (error.code === "EADDRINUSE") {
     console.error(`Port ${env.PORT} is already in use. Please choose another port or stop the process using it.`);
   }
   else {
-    console.error("Failed to start server:", err);
+    console.error("Failed to start server:", error);
   }
   process.exit(1);
 });
