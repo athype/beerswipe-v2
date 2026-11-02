@@ -30,8 +30,8 @@ Move it, do not copy it. Two copies will drift.
 
 The skills describe the code, so the code wins when they disagree. Update the relevant skill when any of these change:
 
-- the order of `runMigrations()` and `sequelize.sync()` in `backend/src/config/database.js`
-- the `MIGRATIONS` step contract or naming in `backend/src/migrate.js`
+- the order of `runMigrations()` and `sequelize.sync()` in `backend/src/config/database.ts`
+- the `MIGRATIONS` step contract or naming in `backend/src/migrate.ts`
 - the kiosk commands in `.github/workflows/ci.yml` or `kiosk/pyproject.toml`
 - the image tags, webhooks or compose files used by `.github/workflows/docker-build-push.yml` and `deploy-new-images.yml`
 

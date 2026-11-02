@@ -574,22 +574,14 @@ router.delete("/:id", authenticateRequest, requireAdmin, async (req, res) => {
  *             required: [deviceName]
  *     responses:
  *       200:
- *         description: Passkey updated (full stored record returned)
+ *         description: Passkey updated (device metadata only; credential material is never returned)
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 message: { type: string }
- *                 passkey:
- *                   type: object
- *                   allOf:
- *                     - $ref: "#/components/schemas/Passkey"
- *                     - type: object
- *                       properties:
- *                         publicKey:
- *                           type: string
- *                           description: Stored credential public key (base64url)
+ *                 passkey: { $ref: "#/components/schemas/Passkey" }
  *       401:
  *         description: Missing or invalid authToken cookie
  *         content:
