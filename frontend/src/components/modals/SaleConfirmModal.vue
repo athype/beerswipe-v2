@@ -8,16 +8,16 @@
   >
     <div class="confirm-customer">
       <div class="customer-line">
-        <strong>{{ user.username }}</strong>
-        <span class="user-type">{{ user.userType }}</span>
+        <strong>{{ user?.username }}</strong>
+        <span class="user-type">{{ user?.userType }}</span>
       </div>
       <div v-if="userAge !== null" class="age-line">
         Age: {{ userAge }} · Credits:
-        <span class="credits">{{ user.credits }}</span>
+        <span class="credits">{{ user?.credits }}</span>
       </div>
       <div v-else class="age-line">
         No date of birth on file · Credits:
-        <span class="credits">{{ user.credits }}</span>
+        <span class="credits">{{ user?.credits }}</span>
       </div>
       <div
         class="serve-status"
@@ -70,36 +70,33 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { Drink, User } from '@beerswipe/types'
 import Modal from '../Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  user: {
-    type: Object,
-    default: null
-  },
-  items: {
-    type: Array,
-    default: () => []
-  },
-  total: {
-    type: Number,
-    default: 0
-  },
-  processing: {
-    type: Boolean,
-    default: false
-  }
+interface CartItem {
+  drink: Drink
+  quantity: number
+}
+
+const props = withDefaults(defineProps<{
+  show?: boolean
+  user?: User | null
+  items?: CartItem[]
+  total?: number
+  processing?: boolean
+}>(), {
+  show: false,
+  user: null,
+  items: () => [],
+  total: 0,
+  processing: false
 })
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits<{ close: []; confirm: [] }>()
 
-const calculateAge = (dateOfBirth) => {
+const calculateAge = (dateOfBirth: string | null): number | null => {
   if (!dateOfBirth) return null
 
   const birthDate = new Date(dateOfBirth)
@@ -114,19 +111,19 @@ const calculateAge = (dateOfBirth) => {
   return age
 }
 
-const userAge = computed(() => calculateAge(props.user?.dateOfBirth))
-const canServe = computed(() => {
+const userAge = computed<number | null>(() => calculateAge(props.user?.dateOfBirth ?? null))
+const canServe = computed<boolean>(() => {
   const age = userAge.value
   return age !== null && age >= 18
 })
 
-const close = () => {
+const close = (): void => {
   if (!props.processing) {
     emit('close')
   }
 }
 
-const confirm = () => {
+const confirm = (): void => {
   if (!props.processing) {
     emit('confirm')
   }

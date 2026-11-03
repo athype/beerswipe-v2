@@ -90,31 +90,35 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import Modal from '../Modal.vue'
 
-defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  isEdit: {
-    type: Boolean,
-    default: false
-  },
-  form: {
-    type: Object,
-    required: true
-  }
+interface DrinkForm {
+  name: string
+  description: string
+  price: number
+  stock: number
+  category: string
+  isActive: boolean
+  isAlcohol: boolean
+}
+
+withDefaults(defineProps<{
+  show?: boolean
+  isEdit?: boolean
+  form: DrinkForm
+}>(), {
+  show: false,
+  isEdit: false
 })
 
-const emit = defineEmits(['close', 'submit'])
+const emit = defineEmits<{ close: []; submit: [] }>()
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const submit = () => {
+const submit = (): void => {
   emit('submit')
 }
 </script>

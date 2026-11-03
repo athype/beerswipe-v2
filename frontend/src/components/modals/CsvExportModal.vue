@@ -35,34 +35,32 @@
     </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { MemberUserType, UserCsvExportParams } from '@beerswipe/types'
 import Modal from '../Modal.vue'
 
-defineProps({
-    show: {
-        type: Boolean,
-        default: false
-    },
-    totalUsers: {
-        type: Number,
-        default: 0
-    }
+withDefaults(defineProps<{
+    show?: boolean
+    totalUsers?: number
+}>(), {
+    show: false,
+    totalUsers: 0
 })
 
-const emit = defineEmits(['close', 'export'])
+const emit = defineEmits<{ close: []; export: [params: UserCsvExportParams] }>()
 
-const exportType = ref('')
+const exportType = ref<MemberUserType | ''>('')
 
-const exportDate = computed(() => new Date().toISOString().split('T')[0])
+const exportDate = computed<string>(() => new Date().toISOString().split('T')[0])
 
-const close = () => {
+const close = (): void => {
     exportType.value = ''
     emit('close')
 }
 
-const handleExport = () => {
-    const params = {}
+const handleExport = (): void => {
+    const params: UserCsvExportParams = {}
     if (exportType.value) {
         params.type = exportType.value
     }
