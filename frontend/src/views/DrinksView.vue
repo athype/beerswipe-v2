@@ -167,8 +167,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import type { Drink, ListDrinksQuery } from '@beerswipe/types'
 import { useNotifications } from '@/composables/useNotifications'
 import { LOW_STOCK_THRESHOLD, stockLevel } from '@/utils/stock'
 import { useDrinksStore } from '../stores/drinks'
@@ -178,23 +179,38 @@ import AddStockModal from '../components/modals/AddStockModal.vue'
 import CreateEditDrinkModal from '../components/modals/CreateEditDrinkModal.vue'
 import DeleteDrinkConfirmModal from '../components/modals/DeleteDrinkConfirmModal.vue'
 
+interface DrinkForm {
+  name: string
+  description: string
+  price: number
+  stock: number
+  category: string
+  isActive: boolean
+  isAlcohol: boolean
+}
+
+interface StockCsvExportParams {
+  category?: string
+  inStock?: 'true'
+}
+
 const drinksStore = useDrinksStore()
 const { showSuccess, showError } = useNotifications()
 
-const searchQuery = ref('')
-const filterStatus = ref('')
-const filterStock = ref('')
-const showCreateModal = ref(false)
-const showEditModal = ref(false)
-const showStockModal = ref(false)
-const showImportModal = ref(false)
-const showExportModal = ref(false)
-const showDeleteModal = ref(false)
-const deleteLoading = ref(false)
-const selectedDrink = ref(null)
-const stockQuantity = ref(1)
+const searchQuery = ref<string>('')
+const filterStatus = ref<'' | 'active' | 'inactive'>('')
+const filterStock = ref<'' | 'in-stock' | 'low-stock' | 'out-of-stock'>('')
+const showCreateModal = ref<boolean>(false)
+const showEditModal = ref<boolean>(false)
+const showStockModal = ref<boolean>(false)
+const showImportModal = ref<boolean>(false)
+const showExportModal = ref<boolean>(false)
+const showDeleteModal = ref<boolean>(false)
+const deleteLoading = ref<boolean>(false)
+const selectedDrink = ref<Drink | null>(null)
+const stockQuantity = ref<number>(1)
 
-const drinkForm = reactive({
+const drinkForm = reactive<DrinkForm>({
   name: '',
   description: '',
   price: 1,
@@ -204,7 +220,7 @@ const drinkForm = reactive({
   isAlcohol: false
 })
 
-const formatRestocked = (date) => {
+const formatRestocked = (date: string | null | undefined): string => {
   if (!date) return 'Never restocked'
   return `Last restocked: ${new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -213,8 +229,8 @@ const formatRestocked = (date) => {
   })}`
 }
 
-const searchDrinks = async () => {
-  const params = {}
+const searchDrinks = async (): Promise<void> => {
+  const params: ListDrinksQuery = {}
   if (searchQuery.value) params.search = searchQuery.value
 
   if (filterStock.value === 'in-stock') {
@@ -226,15 +242,15 @@ const searchDrinks = async () => {
   await drinksStore.fetchDrinks(params)
 }
 
-const changePage = async (page) => {
-  const params = { page }
+const changePage = async (page: number): Promise<void> => {
+  const params: ListDrinksQuery = { page }
   if (searchQuery.value) params.search = searchQuery.value
   if (filterStock.value === 'in-stock') params.inStock = true
 
   await drinksStore.fetchDrinks(params)
 }
 
-const createDrink = async () => {
+const createDrink = async (): Promise<void> => {
   const result = await drinksStore.createDrink(drinkForm)
   if (result.success) {
     closeModals()
@@ -244,7 +260,7 @@ const createDrink = async () => {
   }
 }
 
-const openEditModal = (drink) => {
+const openEditModal = (drink: Drink): void => {
   selectedDrink.value = drink
   Object.assign(drinkForm, {
     name: drink.name,
@@ -258,7 +274,9 @@ const openEditModal = (drink) => {
   showEditModal.value = true
 }
 
-const updateDrink = async () => {
+const updateDrink = async (): Promise<void> => {
+  if (!selectedDrink.value) return
+
   const result = await drinksStore.updateDrink(selectedDrink.value.id, drinkForm)
   if (result.success) {
     closeModals()
@@ -268,13 +286,15 @@ const updateDrink = async () => {
   }
 }
 
-const openAddStockModal = (drink) => {
+const openAddStockModal = (drink: Drink): void => {
   selectedDrink.value = drink
   stockQuantity.value = 1
   showStockModal.value = true
 }
 
-const addStock = async () => {
+const addStock = async (): Promise<void> => {
+  if (!selectedDrink.value) return
+
   const result = await drinksStore.addStock(selectedDrink.value.id, stockQuantity.value)
   if (result.success) {
     closeStockModal()
@@ -284,7 +304,7 @@ const addStock = async () => {
   }
 }
 
-const toggleDrinkStatus = async (drink) => {
+const toggleDrinkStatus = async (drink: Drink): Promise<void> => {
   const result = await drinksStore.updateDrink(drink.id, { isActive: !drink.isActive })
   if (result.success) {
     showSuccess(`Drink ${drink.isActive ? 'deactivated' : 'activated'} successfully!`)
@@ -293,7 +313,7 @@ const toggleDrinkStatus = async (drink) => {
   }
 }
 
-const closeModals = () => {
+const closeModals = (): void => {
   showCreateModal.value = false
   showEditModal.value = false
   selectedDrink.value = null
@@ -308,29 +328,32 @@ const closeModals = () => {
   })
 }
 
-const closeStockModal = () => {
+const closeStockModal = (): void => {
   showStockModal.value = false
   selectedDrink.value = null
   stockQuantity.value = 1
 }
 
-const openDeleteModal = (drink) => {
+const openDeleteModal = (drink: Drink): void => {
   if (deleteLoading.value) return
   selectedDrink.value = drink
   showDeleteModal.value = true
 }
 
-const closeDeleteModal = () => {
+const closeDeleteModal = (): void => {
   if (!deleteLoading.value) {
     showDeleteModal.value = false
     selectedDrink.value = null
   }
 }
 
-const deleteDrinkPermanently = async () => {
+const deleteDrinkPermanently = async (): Promise<void> => {
   if (deleteLoading.value) return
-  deleteLoading.value = true
+
   const drink = selectedDrink.value
+  if (!drink) return
+
+  deleteLoading.value = true
 
   try {
     const result = await drinksStore.deleteDrinkPermanently(drink.id)
@@ -348,21 +371,21 @@ const deleteDrinkPermanently = async () => {
   }
 }
 
-const handleImportCSV = async (file) => {
+const handleImportCSV = async (file: File): Promise<void> => {
   const formData = new FormData()
   formData.append('csvFile', file)
 
   const result = await drinksStore.importCSV(formData)
   if (result.success) {
     showImportModal.value = false
-    showSuccess(`Import completed. ${result.data.imported} items imported, ${result.data.errors} errors.`)
+    showSuccess(`Import completed. ${result.data?.imported ?? 0} items imported, ${result.data?.errors ?? 0} errors.`)
   } else {
     showError(result.error)
   }
 }
 
-const handleExportCSV = async (params) => {
-  const result = await drinksStore.exportCSV(params)
+const handleExportCSV = async (params: StockCsvExportParams): Promise<void> => {
+  const result = await drinksStore.exportCSV({ ...params })
   if (result.success) {
     showExportModal.value = false
     showSuccess('Stock exported successfully!')
@@ -371,7 +394,7 @@ const handleExportCSV = async (params) => {
   }
 }
 
-onMounted(() => {
+onMounted((): void => {
   drinksStore.fetchDrinks()
 })
 </script>
