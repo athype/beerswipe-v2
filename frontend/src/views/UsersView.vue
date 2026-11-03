@@ -240,6 +240,11 @@ const openEditModal = (user: User): void => {
     return
   }
 
+  if (user.userType === 'seller') {
+    showError('Seller users cannot be edited')
+    return
+  }
+
   selectedUser.value = user
   showEditModal.value = true
 }
@@ -247,6 +252,11 @@ const openEditModal = (user: User): void => {
 const handleUpdateUser = async (userData: EditUserPayload): Promise<void> => {
   const user = selectedUser.value
   if (!user) return
+
+  if (user.userType !== 'member' && user.userType !== 'non-member') {
+    showError('Only members and non-members can be edited')
+    return
+  }
 
   if (userData.userType !== 'member' && userData.userType !== 'non-member') {
     showError('Only members and non-members can be edited')
