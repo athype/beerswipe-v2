@@ -49,7 +49,7 @@
         ⚠️ Copy this key now — it will not be shown again.
       </p>
       <div class="key-box">
-        <code class="key-text">{{ created.key }}</code>
+        <code class="key-text">{{ created?.key }}</code>
         <button type="button" class="btn" @click="copyKey">
           {{ copied ? '✓ Copied' : 'Copy' }}
         </button>
@@ -72,41 +72,45 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import type { ApiKeyScope, CreateApiKeyRequest, CreateApiKeyResponse } from '@beerswipe/types'
 import Modal from './Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  created: {
-    type: Object,
-    default: null
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  created?: CreateApiKeyResponse | null
+}>(), {
+  show: false,
+  created: null,
 })
 
-const emit = defineEmits(['close', 'submit'])
+const emit = defineEmits<{ close: []; submit: [payload: CreateApiKeyRequest] }>()
 
-const submitting = ref(false)
-const copied = ref(false)
+interface ApiKeyForm {
+  name: string
+  scope: ApiKeyScope
+  expiryDate: string
+}
 
-const form = reactive({
+const submitting = ref<boolean>(false)
+const copied = ref<boolean>(false)
+
+const form = reactive<ApiKeyForm>({
   name: '',
   scope: 'admin',
   expiryDate: ''
 })
 
-const isReveal = computed(() => props.created !== null)
+const isReveal = computed<boolean>(() => props.created !== null)
 
 const todayString = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
   .toISOString()
   .slice(0, 10)
-const handleSubmit = () => {
+const handleSubmit = (): void => {
   if (submitting.value) return
   submitting.value = true
-  const payload = {
+  const payload: CreateApiKeyRequest = {
     name: form.name.trim(),
     scope: form.scope
   }
@@ -117,7 +121,7 @@ const handleSubmit = () => {
   emit('submit', payload)
 }
 
-const copyKey = async () => {
+const copyKey = async (): Promise<void> => {
   if (!props.created) return
   const key = props.created.key
   try {
@@ -136,7 +140,7 @@ const copyKey = async () => {
 }
 
 // Reset the form when the modal opens; the parent re-enables submitting.
-watch(() => props.show, (open) => {
+watch(() => props.show, (open: boolean) => {
   if (open) {
     submitting.value = false
     copied.value = false
