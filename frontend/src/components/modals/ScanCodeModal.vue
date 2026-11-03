@@ -121,8 +121,7 @@ async function loadCode() {
   try {
     const result = await usersStore.fetchScanCode(userId)
     if (seq !== requestSeq) return
-    // Explicit comparison: `strict: false` disables truthiness narrowing of
-    // boolean discriminants in this project's tsconfig.
+    // Explicit comparison keeps the error branch easy to scan.
     if (result.success === false) {
       loadError.value = result.error
       showError(result.error)
