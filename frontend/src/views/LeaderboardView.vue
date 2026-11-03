@@ -106,20 +106,27 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useLeaderboardStore } from '../stores/leaderboard.js'
 import MonthSelector from '../components/MonthSelector.vue'
 import LeaderboardPodium from '../components/LeaderboardPodium.vue'
 import LeaderboardTable from '../components/LeaderboardTable.vue'
 
+interface LeaderboardStats {
+  totalDrinks: number
+  totalSpent: number
+  totalTransactions: number
+  avgPerUser: number
+}
+
 const leaderboardStore = useLeaderboardStore()
 
 const now = new Date()
-const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(now.getMonth() + 1)
+const selectedYear = ref<number>(now.getFullYear())
+const selectedMonth = ref<number>(now.getMonth() + 1)
 
-const stats = computed(() => {
+const stats = computed<LeaderboardStats | null>(() => {
   if (!leaderboardStore.hasData) return null
 
   const totalDrinks = leaderboardStore.leaderboard.reduce((sum, entry) => sum + entry.totalDrinks, 0)
@@ -135,15 +142,15 @@ const stats = computed(() => {
   }
 })
 
-const handleMonthChange = ({ year, month }) => {
+const handleMonthChange = (_payload: { year: number; month: number }): void => {
   fetchData()
 }
 
-const fetchData = async () => {
+const fetchData = async (): Promise<void> => {
   await leaderboardStore.fetchLeaderboard(selectedYear.value, selectedMonth.value)
 }
 
-onMounted(() => {
+onMounted((): void => {
   fetchData()
 })
 </script>
