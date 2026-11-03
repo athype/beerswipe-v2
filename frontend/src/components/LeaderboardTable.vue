@@ -1,15 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { LeaderboardEntry } from '@beerswipe/types'
 
-const props = defineProps({
-  entries: {
-    type: Array,
-    required: true,
-    default: () => []
-  }
+withDefaults(defineProps<{ entries: LeaderboardEntry[] }>(), {
+  entries: () => []
 })
 
-const getMedalEmoji = (rank) => {
+const getMedalEmoji = (rank: number): string => {
   switch (rank) {
     case 1: return '🥇'
     case 2: return '🥈'
@@ -18,7 +15,7 @@ const getMedalEmoji = (rank) => {
   }
 }
 
-const getRankClass = (rank) => {
+const getRankClass = (rank: number): string => {
   switch (rank) {
     case 1: return 'rank-gold'
     case 2: return 'rank-silver'
