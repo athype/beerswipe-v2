@@ -157,8 +157,17 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import type {
+  CreateUserRequest,
+  ListUsersQuery,
+  UpdateUserRequest,
+  User,
+  UserCsvExportParams,
+  UsersListTypeFilter,
+  UserType,
+} from '@beerswipe/types'
 import { useUsersStore } from '../stores/users'
 import { useNotifications } from '@/composables/useNotifications'
 import CreateUserModal from '../components/CreateUserModal.vue'
@@ -168,36 +177,44 @@ import CsvImportModal from '../components/CsvImportModal.vue'
 import CsvExportModal from '../components/modals/CsvExportModal.vue'
 import ScanCodeModal from '../components/modals/ScanCodeModal.vue'
 
+interface EditUserPayload {
+  username: string
+  userType: UserType
+  credits: number
+  dateOfBirth: string
+  isActive: boolean
+}
+
 const usersStore = useUsersStore()
 const { showSuccess, showError } = useNotifications()
 
-const searchQuery = ref('')
-const filterType = ref('')
-const showCreateModal = ref(false)
-const showEditModal = ref(false)
-const showCreditsModal = ref(false)
-const showScanCodeModal = ref(false)
-const showCSVModal = ref(false)
-const showExportModal = ref(false)
-const selectedUser = ref(null)
+const searchQuery = ref<string>('')
+const filterType = ref<UsersListTypeFilter | ''>('')
+const showCreateModal = ref<boolean>(false)
+const showEditModal = ref<boolean>(false)
+const showCreditsModal = ref<boolean>(false)
+const showScanCodeModal = ref<boolean>(false)
+const showCSVModal = ref<boolean>(false)
+const showExportModal = ref<boolean>(false)
+const selectedUser = ref<User | null>(null)
 
-const searchUsers = async () => {
-  const params = {}
+const searchUsers = async (): Promise<void> => {
+  const params: ListUsersQuery = {}
   if (searchQuery.value) params.search = searchQuery.value
   if (filterType.value) params.type = filterType.value
 
   await usersStore.fetchUsers(params)
 }
 
-const changePage = async (page) => {
-  const params = { page }
+const changePage = async (page: number): Promise<void> => {
+  const params: ListUsersQuery = { page }
   if (searchQuery.value) params.search = searchQuery.value
   if (filterType.value) params.type = filterType.value
 
   await usersStore.fetchUsers(params)
 }
 
-const handleCreateUser = async (userData) => {
+const handleCreateUser = async (userData: CreateUserRequest): Promise<void> => {
   const result = await usersStore.createUser(userData)
   if (result.success) {
     showCreateModal.value = false
@@ -207,17 +224,17 @@ const handleCreateUser = async (userData) => {
   }
 }
 
-const openAddCreditsModal = (user) => {
+const openAddCreditsModal = (user: User): void => {
   selectedUser.value = user
   showCreditsModal.value = true
 }
 
-const openScanCodeModal = (user) => {
+const openScanCodeModal = (user: User): void => {
   selectedUser.value = user
   showScanCodeModal.value = true
 }
 
-const openEditModal = (user) => {
+const openEditModal = (user: User): void => {
   if (user.userType === 'admin') {
     showError('Admin users cannot be edited')
     return
@@ -227,14 +244,24 @@ const openEditModal = (user) => {
   showEditModal.value = true
 }
 
-const handleUpdateUser = async (userData) => {
-  const result = await usersStore.updateUser(selectedUser.value.id, {
+const handleUpdateUser = async (userData: EditUserPayload): Promise<void> => {
+  const user = selectedUser.value
+  if (!user) return
+
+  if (userData.userType !== 'member' && userData.userType !== 'non-member') {
+    showError('Only members and non-members can be edited')
+    return
+  }
+
+  const updates: UpdateUserRequest = {
     username: userData.username,
     userType: userData.userType,
-    ...(userData.credits !== selectedUser.value.credits ? { userCredits: userData.credits } : {}),
+    ...(userData.credits !== user.credits ? { userCredits: userData.credits } : {}),
     ...(userData.dateOfBirth !== undefined ? { dateOfBirth: userData.dateOfBirth || null } : {}),
     isActive: userData.isActive
-  })
+  }
+
+  const result = await usersStore.updateUser(user.id, updates)
 
   if (result.success) {
     closeEditModal()
@@ -244,21 +271,21 @@ const handleUpdateUser = async (userData) => {
   }
 }
 
-const handleImportCSV = async (file) => {
+const handleImportCSV = async (file: File): Promise<void> => {
   const formData = new FormData()
   formData.append('csvFile', file)
 
   const result = await usersStore.importCSV(formData)
   if (result.success) {
     showCSVModal.value = false
-    showSuccess(`Import completed. ${result.data.imported} users imported, ${result.data.errors} errors.`)
+    showSuccess(`Import completed. ${result.data?.imported ?? 0} users imported, ${result.data?.errors ?? 0} errors.`)
   } else {
     showError(result.error)
   }
 }
 
-const exportCSV = async (params = {}) => {
-  const result = await usersStore.exportCSV(params)
+const exportCSV = async (params: UserCsvExportParams = {}): Promise<void> => {
+  const result = await usersStore.exportCSV({ ...params })
   if (result.success) {
     showExportModal.value = false
     showSuccess('Users exported successfully!')
@@ -267,31 +294,31 @@ const exportCSV = async (params = {}) => {
   }
 }
 
-const closeCreditsModal = () => {
+const closeCreditsModal = (): void => {
   showCreditsModal.value = false
   selectedUser.value = null
 }
 
-const closeScanCodeModal = () => {
+const closeScanCodeModal = (): void => {
   showScanCodeModal.value = false
   selectedUser.value = null
 }
 
-const closeEditModal = () => {
+const closeEditModal = (): void => {
   showEditModal.value = false
   selectedUser.value = null
 }
 
-const closeExportModal = () => {
+const closeExportModal = (): void => {
   showExportModal.value = false
 }
 
-const formatDate = (date) => {
+const formatDate = (date: string | null): string => {
   if (!date) return 'N/A'
   return new Date(date).toLocaleDateString()
 }
 
-onMounted(() => {
+onMounted((): void => {
   usersStore.fetchUsers()
 })
 </script>

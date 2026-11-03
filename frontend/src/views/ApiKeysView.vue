@@ -86,8 +86,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import type { ApiKeyListItem, CreateApiKeyRequest, CreateApiKeyResponse } from '@beerswipe/types'
 import { useApiKeysStore } from '../stores/apiKeys'
 import { useNotifications } from '@/composables/useNotifications'
 import CreateApiKeyModal from '../components/CreateApiKeyModal.vue'
@@ -95,43 +96,44 @@ import CreateApiKeyModal from '../components/CreateApiKeyModal.vue'
 const apiKeysStore = useApiKeysStore()
 const { showSuccess, showError } = useNotifications()
 
-const showCreateModal = ref(false)
-const createdKey = ref(null)
+const showCreateModal = ref<boolean>(false)
+const createdKey = ref<CreateApiKeyResponse | null>(null)
 
-const isExpired = (key) => key.expiresAt && new Date(key.expiresAt).getTime() < Date.now()
-const isInactive = (key) => key.isRevoked || isExpired(key)
+const isExpired = (key: ApiKeyListItem): boolean =>
+  Boolean(key.expiresAt && new Date(key.expiresAt).getTime() < Date.now())
+const isInactive = (key: ApiKeyListItem): boolean => key.isRevoked || isExpired(key)
 
-const statusText = (key) => {
+const statusText = (key: ApiKeyListItem): string => {
   if (key.isRevoked) return 'Revoked'
   if (isExpired(key)) return 'Expired'
   return 'Active'
 }
 
-const statusClass = (key) => {
+const statusClass = (key: ApiKeyListItem): 'revoked' | 'expired' | 'active' => {
   if (key.isRevoked) return 'revoked'
   if (isExpired(key)) return 'expired'
   return 'active'
 }
 
-const formatDate = (value) => {
+const formatDate = (value: string | null): string => {
   if (!value) return 'Never'
   return new Date(value).toLocaleString()
 }
 
-const openCreateModal = () => {
+const openCreateModal = (): void => {
   createdKey.value = null
   showCreateModal.value = true
 }
 
-const closeCreateModal = () => {
+const closeCreateModal = (): void => {
   showCreateModal.value = false
   createdKey.value = null
 }
 
-const handleCreateApiKey = async (payload) => {
+const handleCreateApiKey = async (payload: CreateApiKeyRequest): Promise<void> => {
   const result = await apiKeysStore.createApiKey(payload)
   if (result.success) {
-    createdKey.value = result.data
+    createdKey.value = result.data ?? null
     // Modal stays open on the one-time reveal phase; the store already refreshed the list.
   } else {
     showError(result.error)
@@ -139,7 +141,7 @@ const handleCreateApiKey = async (payload) => {
   }
 }
 
-const confirmRevoke = async (key) => {
+const confirmRevoke = async (key: ApiKeyListItem): Promise<void> => {
   if (!window.confirm(`Revoke API key "${key.name}"? Clients using it will immediately lose access.`)) return
   const result = await apiKeysStore.revokeApiKey(key.id)
   if (result.success) {
@@ -149,7 +151,7 @@ const confirmRevoke = async (key) => {
   }
 }
 
-const confirmDelete = async (key) => {
+const confirmDelete = async (key: ApiKeyListItem): Promise<void> => {
   if (!window.confirm(`Permanently delete API key "${key.name}"? This cannot be undone.`)) return
   const result = await apiKeysStore.removeApiKey(key.id)
   if (result.success) {
@@ -159,7 +161,7 @@ const confirmDelete = async (key) => {
   }
 }
 
-onMounted(() => {
+onMounted((): void => {
   apiKeysStore.listApiKeys()
 })
 </script>
