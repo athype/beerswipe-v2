@@ -1,20 +1,28 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps({
-  year: {
-    type: Number,
-    required: true
-  },
-  month: {
-    type: Number,
-    required: true
-  }
-})
+interface MonthOption {
+  value: number
+  label: string
+}
 
-const emit = defineEmits(['update:year', 'update:month', 'change'])
+interface MonthChangePayload {
+  year: number
+  month: number
+}
 
-const months = [
+const props = defineProps<{
+  year: number
+  month: number
+}>()
+
+const emit = defineEmits<{
+  'update:year': [value: number]
+  'update:month': [value: number]
+  change: [payload: MonthChangePayload]
+}>()
+
+const months: MonthOption[] = [
   { value: 1, label: 'January' },
   { value: 2, label: 'February' },
   { value: 3, label: 'March' },
@@ -30,27 +38,33 @@ const months = [
 ]
 
 const currentYear = new Date().getFullYear()
-const years = computed(() => {
-  const yearList = []
+const years = computed<number[]>(() => {
+  const yearList: number[] = []
   for (let y = currentYear; y >= currentYear - 5; y--) {
     yearList.push(y)
   }
   return yearList
 })
 
-const handleMonthChange = (event) => {
-  const newMonth = parseInt(event.target.value)
+const handleMonthChange = (event: Event): void => {
+  const target = event.target
+  if (!(target instanceof HTMLSelectElement)) return
+
+  const newMonth = parseInt(target.value)
   emit('update:month', newMonth)
   emit('change', { year: props.year, month: newMonth })
 }
 
-const handleYearChange = (event) => {
-  const newYear = parseInt(event.target.value)
+const handleYearChange = (event: Event): void => {
+  const target = event.target
+  if (!(target instanceof HTMLSelectElement)) return
+
+  const newYear = parseInt(target.value)
   emit('update:year', newYear)
   emit('change', { year: newYear, month: props.month })
 }
 
-const goToPreviousMonth = () => {
+const goToPreviousMonth = (): void => {
   let newMonth = props.month - 1
   let newYear = props.year
   
@@ -64,7 +78,7 @@ const goToPreviousMonth = () => {
   emit('change', { year: newYear, month: newMonth })
 }
 
-const goToNextMonth = () => {
+const goToNextMonth = (): void => {
   let newMonth = props.month + 1
   let newYear = props.year
   
@@ -87,7 +101,7 @@ const goToNextMonth = () => {
   emit('change', { year: newYear, month: newMonth })
 }
 
-const isNextDisabled = computed(() => {
+const isNextDisabled = computed<boolean>(() => {
   const now = new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
