@@ -29,41 +29,38 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import Modal from '../Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  drinkName: {
-    type: String,
-    default: ''
-  },
-  currentStock: {
-    type: Number,
-    default: 0
-  },
-  quantity: {
-    type: Number,
-    default: 1
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  drinkName?: string
+  currentStock?: number
+  quantity?: number
+}>(), {
+  show: false,
+  drinkName: '',
+  currentStock: 0,
+  quantity: 1
 })
 
-const emit = defineEmits(['close', 'submit', 'update:quantity'])
+const emit = defineEmits<{
+  close: []
+  submit: []
+  'update:quantity': [value: number]
+}>()
 
-const quantityModel = computed({
+const quantityModel = computed<number>({
   get: () => props.quantity,
-  set: (value) => emit('update:quantity', value)
+  set: (value: number) => emit('update:quantity', value)
 })
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const submit = () => {
+const submit = (): void => {
   emit('submit')
 }
 </script>
