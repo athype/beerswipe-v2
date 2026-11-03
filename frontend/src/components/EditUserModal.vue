@@ -67,24 +67,30 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, watch } from 'vue'
+import type { User, UserType } from '@beerswipe/types'
 import Modal from './Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  user: {
-    type: Object,
-    default: null
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  user?: User | null
+}>(), {
+  show: false,
+  user: null,
 })
 
-const emit = defineEmits(['close', 'submit'])
+interface UserFormData {
+  username: string
+  userType: UserType
+  credits: number
+  dateOfBirth: string
+  isActive: boolean
+}
 
-const userData = reactive({
+const emit = defineEmits<{ close: []; submit: [userData: UserFormData] }>()
+
+const userData = reactive<UserFormData>({
   username: '',
   userType: 'member',
   credits: 0,
@@ -92,15 +98,15 @@ const userData = reactive({
   isActive: true
 })
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const handleSubmit = () => {
+const handleSubmit = (): void => {
   emit('submit', { ...userData })
 }
 
-watch(() => props.user, (newUser) => {
+watch(() => props.user, (newUser: User | null) => {
   if (newUser) {
     Object.assign(userData, {
       username: newUser.username || '',
@@ -112,7 +118,7 @@ watch(() => props.user, (newUser) => {
   }
 }, { immediate: true })
 
-watch(() => props.show, (newVal) => {
+watch(() => props.show, (newVal: boolean) => {
   if (!newVal) {
     Object.assign(userData, {
       username: '',
