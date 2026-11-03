@@ -1,28 +1,37 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import type { AdminAccount, AdminUserType } from '@beerswipe/types'
 import { useAdminStore } from '../stores/admin'
 import { useAuthStore } from '../stores/auth'
 import { usePasskeyStore } from '../stores/passkey'
 import { useNotifications } from '../composables/useNotifications'
+import { getErrorMessage } from '@/utils/errors'
 import AdminForm from '../components/AdminForm.vue'
 import AdminList from '../components/AdminList.vue'
 import PasskeyList from '../components/PasskeyList.vue'
 import PasskeyRegistration from '../components/PasskeyRegistration.vue'
 import Modal from '../components/Modal.vue'
 
+interface AdminFormPayload {
+  username: string
+  userType: AdminUserType
+  password?: string
+  currentPassword?: string
+}
+
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 const passkeyStore = usePasskeyStore()
 const { addNotification } = useNotifications()
 
-const activeTab = ref('profile')
-const showCreateModal = ref(false)
-const showEditModal = ref(false)
-const selectedAdmin = ref(null)
-const profileLoading = ref(false)
-const passkeySupported = ref(false)
+const activeTab = ref<'profile' | 'security' | 'admins'>('profile')
+const showCreateModal = ref<boolean>(false)
+const showEditModal = ref<boolean>(false)
+const selectedAdmin = ref<AdminAccount | null>(null)
+const profileLoading = ref<boolean>(false)
+const passkeySupported = ref<boolean>(false)
 
-onMounted(async () => {
+onMounted(async (): Promise<void> => {
   await loadData()
   passkeySupported.value = await passkeyStore.checkSupport()
   if (passkeySupported.value) {
@@ -30,99 +39,101 @@ onMounted(async () => {
   }
 })
 
-const loadData = async () => {
+const loadData = async (): Promise<void> => {
   try {
     await Promise.all([
       adminStore.fetchProfile(),
       adminStore.fetchAdmins()
     ])
-  } catch (error) {
-    addNotification('error', error.message || 'Failed to load data')
+  } catch (error: unknown) {
+    addNotification(getErrorMessage(error, 'Failed to load data'), 'error')
   }
 }
 
 // Profile Management
-const handleProfileUpdate = async (data) => {
+const handleProfileUpdate = async (data: AdminFormPayload): Promise<void> => {
   profileLoading.value = true
   try {
-    const response = await adminStore.updateProfile(data)
-    
-    if (data.username && data.username !== authStore.user.username) {
+    await adminStore.updateProfile(data)
+
+    if (data.username && data.username !== authStore.user?.username) {
       authStore.updateUsername(data.username)
     }
-    
-    if (response.token) {
-      authStore.updateToken(response.token)
-    }
-    
-    addNotification('success', 'Profile updated successfully')
-  } catch (error) {
-    addNotification('error', error.message || 'Failed to update profile')
+
+    addNotification('Profile updated successfully', 'success')
+  } catch (error: unknown) {
+    addNotification(getErrorMessage(error, 'Failed to update profile'), 'error')
   } finally {
     profileLoading.value = false
   }
 }
 
 // Admin Creation
-const openCreateModal = () => {
+const openCreateModal = (): void => {
   showCreateModal.value = true
 }
 
-const handleCreateAdmin = async (data) => {
+const handleCreateAdmin = async (data: AdminFormPayload): Promise<void> => {
   try {
-    await adminStore.createAdmin(data)
+    await adminStore.createAdmin({
+      username: data.username,
+      password: data.password ?? '',
+      userType: data.userType
+    })
     showCreateModal.value = false
-    addNotification('success', 'Admin created successfully')
-  } catch (error) {
-    addNotification('error', error.message || 'Failed to create admin')
+    addNotification('Admin created successfully', 'success')
+  } catch (error: unknown) {
+    addNotification(getErrorMessage(error, 'Failed to create admin'), 'error')
   }
 }
 
 // Admin Edit
-const openEditModal = (admin) => {
+const openEditModal = (admin: AdminAccount): void => {
   selectedAdmin.value = admin
   showEditModal.value = true
 }
 
-const handleEditAdmin = async (data) => {
+const handleEditAdmin = async (data: AdminFormPayload): Promise<void> => {
+  if (!selectedAdmin.value) return
+
   try {
     await adminStore.updateAdmin(selectedAdmin.value.id, data)
     showEditModal.value = false
     selectedAdmin.value = null
-    addNotification('success', 'Admin updated successfully')
-  } catch (error) {
-    addNotification('error', error.message || 'Failed to update admin')
+    addNotification('Admin updated successfully', 'success')
+  } catch (error: unknown) {
+    addNotification(getErrorMessage(error, 'Failed to update admin'), 'error')
   }
 }
 
 // Admin Delete
-const handleDeleteAdmin = async (id) => {
+const handleDeleteAdmin = async (id: number): Promise<void> => {
   try {
     await adminStore.deleteAdmin(id)
-    addNotification('success', 'Admin deactivated successfully')
-  } catch (error) {
-    addNotification('error', error.message || 'Failed to delete admin')
+    addNotification('Admin deactivated successfully', 'success')
+  } catch (error: unknown) {
+    addNotification(getErrorMessage(error, 'Failed to delete admin'), 'error')
   }
 }
 
-const closeModals = () => {
+const closeModals = (): void => {
   showCreateModal.value = false
   showEditModal.value = false
   selectedAdmin.value = null
 }
 
 // Passkey Management
-const handlePasskeyRegistered = async () => {
+const handlePasskeyRegistered = async (): Promise<void> => {
   await passkeyStore.fetchPasskeys()
-  addNotification('success', 'Passkey registered successfully')
+  addNotification('Passkey registered successfully', 'success')
 }
 
-const handlePasskeyDelete = async (passkeyId) => {
+const handlePasskeyDelete = async (passkeyId: number): Promise<void> => {
   try {
     await passkeyStore.deletePasskey(passkeyId)
-    addNotification('success', 'Passkey removed successfully')
-  } catch (error) {
-    addNotification('error', error.message || 'Failed to remove passkey')
+    addNotification('Passkey removed successfully', 'success')
+  } catch (error: unknown) {
+    addNotification(getErrorMessage(error, 'Failed to remove passkey'), 'error')
   }
 }
 </script>
