@@ -1,20 +1,40 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import type { AdminAccount, AdminUserType } from '@beerswipe/types'
 
-const props = defineProps({
-  admin: {
-    type: Object,
-    default: null
-  },
-  isProfile: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  admin?: AdminAccount | null
+  isProfile?: boolean
+}>(), {
+  admin: null,
+  isProfile: false,
 })
 
-const emit = defineEmits(['submit', 'cancel'])
+interface AdminFormData {
+  username: string
+  password: string
+  currentPassword: string
+  confirmPassword: string
+  userType: AdminUserType
+}
 
-const formData = ref({
+interface AdminFormErrors {
+  username?: string
+  password?: string
+  currentPassword?: string
+  confirmPassword?: string
+}
+
+interface AdminFormPayload {
+  username: string
+  userType: AdminUserType
+  password?: string
+  currentPassword?: string
+}
+
+const emit = defineEmits<{ submit: [data: AdminFormPayload]; cancel: [] }>()
+
+const formData = ref<AdminFormData>({
   username: props.admin?.username || '',
   password: '',
   currentPassword: '',
@@ -22,9 +42,9 @@ const formData = ref({
   userType: props.admin?.userType || 'admin'
 })
 
-const errors = ref({})
+const errors = ref<AdminFormErrors>({})
 
-const validate = () => {
+const validate = (): boolean => {
   errors.value = {}
 
   if (!formData.value.username.trim()) {
@@ -52,10 +72,10 @@ const validate = () => {
   return Object.keys(errors.value).length === 0
 }
 
-const handleSubmit = () => {
+const handleSubmit = (): void => {
   if (!validate()) return
 
-  const data = {
+  const data: AdminFormPayload = {
     username: formData.value.username,
     userType: formData.value.userType,
   }
@@ -70,7 +90,7 @@ const handleSubmit = () => {
   emit('submit', data)
 }
 
-const handleCancel = () => {
+const handleCancel = (): void => {
   emit('cancel')
 }
 </script>

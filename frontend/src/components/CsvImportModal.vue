@@ -52,26 +52,22 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import { getErrorMessage } from '@/utils/errors'
 import Modal from './Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  }
-})
+withDefaults(defineProps<{ show?: boolean }>(), { show: false })
 
-const emit = defineEmits(['close', 'import'])
+const emit = defineEmits<{ close: []; import: [file: File] }>()
 
-const fileInput = ref(null)
-const selectedFile = ref(null)
-const fileName = ref('')
-const error = ref('')
-const isLoading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
+const fileName = ref<string>('')
+const error = ref<string>('')
+const isLoading = ref<boolean>(false)
 
-const close = () => {
+const close = (): void => {
   selectedFile.value = null
   fileName.value = ''
   error.value = ''
@@ -82,8 +78,11 @@ const close = () => {
   emit('close')
 }
 
-const handleFileChange = (event) => {
-  const file = event.target.files[0]
+const handleFileChange = (event: Event): void => {
+  const input = event.target
+  if (!(input instanceof HTMLInputElement)) return
+
+  const file = input.files?.[0]
   if (file) {
     if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
       error.value = 'Please select a valid CSV file'
@@ -91,23 +90,23 @@ const handleFileChange = (event) => {
       fileName.value = ''
       return
     }
-    
+
     selectedFile.value = file
     fileName.value = file.name
     error.value = ''
   }
 }
 
-const handleImport = async () => {
+const handleImport = async (): Promise<void> => {
   if (!selectedFile.value) return
-  
+
   isLoading.value = true
   error.value = ''
-  
+
   try {
     emit('import', selectedFile.value)
-  } catch (err) {
-    error.value = 'Failed to import CSV file'
+  } catch (err: unknown) {
+    error.value = getErrorMessage(err, 'Failed to import CSV file')
     isLoading.value = false
   }
 }

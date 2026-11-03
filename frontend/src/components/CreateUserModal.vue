@@ -56,36 +56,39 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, watch } from 'vue'
+import type { CreateUserRequest, MemberUserType } from '@beerswipe/types'
 import Modal from './Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  }
-})
+const props = withDefaults(defineProps<{ show?: boolean }>(), { show: false })
 
-const emit = defineEmits(['close', 'submit'])
+interface UserFormData {
+  username: string
+  userType: MemberUserType
+  credits: number
+  dateOfBirth: string
+}
 
-const userData = reactive({
+const emit = defineEmits<{ close: []; submit: [userData: CreateUserRequest] }>()
+
+const userData = reactive<UserFormData>({
   username: '',
   userType: 'member',
   credits: 0,
   dateOfBirth: ''
 })
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const handleSubmit = () => {
+const handleSubmit = (): void => {
   emit('submit', { ...userData })
 }
 
 // Reset form when modal opens
-watch(() => props.show, (newVal) => {
+watch(() => props.show, (newVal: boolean) => {
   if (newVal) {
     Object.assign(userData, {
       username: '',

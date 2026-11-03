@@ -36,36 +36,35 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
+import type { User } from '@beerswipe/types'
+import { getErrorMessage } from '@/utils/errors'
 import { useNotifications } from '@/composables/useNotifications'
 import { useUsersStore } from '../stores/users.js'
 import Modal from './Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  user: {
-    type: Object,
-    default: null
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  user?: User | null
+}>(), {
+  show: false,
+  user: null,
 })
 
-const emit = defineEmits(['close', 'success'])
+const emit = defineEmits<{ close: []; success: [] }>()
 
 const { showSuccess, showError } = useNotifications()
 const usersStore = useUsersStore()
 
-const creditAmount = ref(10)
-const isLoading = ref(false)
+const creditAmount = ref<number>(10)
+const isLoading = ref<boolean>(false)
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const handleSubmit = async () => {
+const handleSubmit = async (): Promise<void> => {
   if (creditAmount.value % 10 !== 0) {
     showError('Credits must be added in blocks of 10')
     return
@@ -86,14 +85,14 @@ const handleSubmit = async () => {
     } else {
       showError(result.error || 'Failed to add credits')
     }
-  } catch (error) {
-    showError('Failed to add credits')
+  } catch (err: unknown) {
+    showError(getErrorMessage(err, 'Failed to add credits'))
   } finally {
     isLoading.value = false
   }
 }
 
-watch(() => props.show, (newVal) => {
+watch(() => props.show, (newVal: boolean) => {
   if (newVal) {
     creditAmount.value = 10
   }
