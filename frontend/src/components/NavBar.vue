@@ -1,13 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { useAuthStore } from '../stores/auth.js'
 import DesktopNavbar from './Navigation/DesktopNavbar.vue'
 import MobileNavbar from './Navigation/MobileNavbar.vue'
 
 const authStore = useAuthStore()
 
-const emit = defineEmits(['logout'])
+const emit = defineEmits<{ logout: [] }>()
 
-const handleLogout = () => {
+const handleLogout = (): void => {
   emit('logout')
 }
 </script>

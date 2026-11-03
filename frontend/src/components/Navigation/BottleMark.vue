@@ -1,8 +1,6 @@
-<script setup>
-defineProps({
-  // When true, the bottle pours: liquid rises and a glow blooms behind it
-  poured: { type: Boolean, default: false },
-})
+<script setup lang="ts">
+// When true, the bottle pours: liquid rises and a glow blooms behind it
+withDefaults(defineProps<{ poured?: boolean }>(), { poured: false })
 </script>
 
 <template>

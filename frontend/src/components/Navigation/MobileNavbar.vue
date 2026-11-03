@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
@@ -6,25 +6,25 @@ import BottleMark from './BottleMark.vue'
 
 const authStore = useAuthStore()
 
-const emit = defineEmits(['logout'])
+const emit = defineEmits<{ logout: [] }>()
 
-const isMenuOpen = ref(false)
+const isMenuOpen = ref<boolean>(false)
 
-const openMenu = () => {
+const openMenu = (): void => {
   isMenuOpen.value = true
   document.body.style.overflow = 'hidden'
 }
 
-const closeMenu = () => {
+const closeMenu = (): void => {
   isMenuOpen.value = false
   document.body.style.overflow = ''
 }
 
-const handleNavClick = () => {
+const handleNavClick = (): void => {
   closeMenu()
 }
 
-const handleLogout = () => {
+const handleLogout = (): void => {
   closeMenu()
   emit('logout')
 }
