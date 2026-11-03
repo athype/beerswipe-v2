@@ -29,35 +29,28 @@
   </teleport>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { watch } from 'vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  title: {
-    type: String,
-    default: ''
-  },
-  closable: {
-    type: Boolean,
-    default: true
-  },
-  closeOnOverlay: {
-    type: Boolean,
-    default: true
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  title?: string
+  closable?: boolean
+  closeOnOverlay?: boolean
+}>(), {
+  show: false,
+  title: '',
+  closable: true,
+  closeOnOverlay: true,
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits<{ close: [] }>()
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const onOverlayClick = () => {
+const onOverlayClick = (): void => {
   if (props.closeOnOverlay) {
     close()
   }
@@ -71,7 +64,7 @@ watch(() => props.show, (newVal) => {
   }
 })
 
-const handleEscape = (e) => {
+const handleEscape = (e: KeyboardEvent): void => {
   if (e.key === 'Escape' && props.show && props.closable) {
     close()
   }

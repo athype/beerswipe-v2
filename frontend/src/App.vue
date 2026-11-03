@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
@@ -13,7 +13,7 @@ onMounted(() => {
   authStore.initializeAuth()
 })
 
-const logout = async () => {
+const logout = async (): Promise<void> => {
   await authStore.logout()
   router.push('/login')
 }
