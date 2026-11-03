@@ -29,29 +29,29 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, defineEmits } from 'vue'
 import { usePasskeyStore } from '../stores/passkey'
 import { useNotifications } from '../composables/useNotifications'
 
-const emit = defineEmits(['registered'])
+const emit = defineEmits<{ registered: [] }>()
 
 const passkeyStore = usePasskeyStore()
 const { showSuccess, showError } = useNotifications()
 
-const deviceName = ref('')
-const loading = ref(false)
-const isSupported = ref(false)
+const deviceName = ref<string>('')
+const loading = ref<boolean>(false)
+const isSupported = ref<boolean>(false)
 
-onMounted(async () => {
+onMounted(async (): Promise<void> => {
   isSupported.value = await passkeyStore.checkSupport()
 })
 
-const handleRegister = async () => {
+const handleRegister = async (): Promise<void> => {
   loading.value = true
   const result = await passkeyStore.registerPasskey(deviceName.value)
   loading.value = false
-  
+
   if (result.success) {
     showSuccess('Passkey registered successfully')
     deviceName.value = ''

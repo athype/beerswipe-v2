@@ -33,23 +33,21 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { defineEmits } from 'vue'
+import type { PasskeyDevice } from '@beerswipe/types'
 
-defineProps({
-  passkeys: {
-    type: Array,
-    default: () => []
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
+withDefaults(defineProps<{
+  passkeys?: PasskeyDevice[]
+  loading?: boolean
+}>(), {
+  passkeys: () => [],
+  loading: false
 })
 
-defineEmits(['delete'])
+defineEmits<{ delete: [id: number] }>()
 
-const formatDate = (date) => {
+const formatDate = (date: string): string => {
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
