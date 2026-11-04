@@ -1,6 +1,10 @@
 import axios from 'axios';
 
 import type * as types from '@beerswipe/types';
+import type {
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/browser';
 
 // In production, use relative URL that nginx will proxy to backend
 // In development, use full URL with port
@@ -115,11 +119,11 @@ export const salesAPI = {
 };
 
 export const passkeysAPI = {
-  getRegistrationOptions: () => api.post<types.WebAuthnRegistrationOptions>('/passkeys/register-options'),
+  getRegistrationOptions: () => api.post<PublicKeyCredentialCreationOptionsJSON>('/passkeys/register-options'),
   
   verifyRegistration: (credential: types.WebAuthnRegistrationCredentialJSON, deviceName: string) => api.post<types.RegisterPasskeyVerifyResponse>('/passkeys/register-verify', { credential, deviceName }),
   
-  getLoginOptions: (username: types.LoginPasskeyOptionsRequest['username']) => api.post<types.WebAuthnAuthenticationOptions>('/passkeys/login-options', { username }),
+  getLoginOptions: (username: types.LoginPasskeyOptionsRequest['username']) => api.post<PublicKeyCredentialRequestOptionsJSON>('/passkeys/login-options', { username }),
   
   verifyLogin: (credential: types.WebAuthnAuthenticationCredentialJSON) => api.post<types.LoginPasskeyVerifyResponse>('/passkeys/login-verify', { credential }),
 

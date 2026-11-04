@@ -167,7 +167,7 @@ Do not bypass stores with ad hoc axios calls in components.
 ### Language conventions
 New code should be TypeScript wherever the toolchain supports it.
 - `types/` is TypeScript already; keep it that way.
-- `frontend/` has the toolchain in place (`tsconfig.json`, `vue-tsc`; api/router/stores converted in #107). New modules, stores, composables and components use TypeScript (`<script setup lang="ts">` for components); avoid adding new `.js` files. Remaining conversions are tracked in #36.
+- `frontend/` is fully TypeScript: every SFC with a script uses `<script setup lang="ts">`, and `frontend/tsconfig.json` runs with `strict: true`, `allowJs`/`checkJs` removed, and `ts`/`tsx`/`vue` includes. New modules, stores, composables and components use TypeScript; avoid adding new `.js` files.
 - `backend/` has the toolchain in place: `backend/tsconfig.json`, a `typecheck` script (`tsc --noEmit`), and native Node type stripping, so `.ts` files run directly (no build step, no bundler). Runtime code under `src/` and `scripts/` is TypeScript. The remaining `.js` files are legacy tests (kept in the typecheck program via `allowJs`, not type-checked while `checkJs` is off) and the legacy `backend/migrations/002-add-passkey-support.js`; convert tests opportunistically. Stripping rules: relative imports use the real file extension (`./foo.ts` after converting `foo.js`), only erasable syntax (`erasableSyntaxOnly` enforces this), and type-only imports from `@beerswipe/types` use `import type`.
 
 ### Passkeys (WebAuthn)

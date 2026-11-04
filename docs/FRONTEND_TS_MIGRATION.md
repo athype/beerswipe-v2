@@ -1,6 +1,6 @@
 # Frontend TypeScript Migration
 
-**Status: 2026-11-02.** This is the execution playbook for issue #36. The frontend toolchain has been live since #107; what remains is converting the 37 JavaScript-script SFCs. Work happens on the long-lived `refactor/frontend-ts` integration branch. `master` changes once, when the migration is complete.
+**Status: 2026-11-04 — complete.** This was the execution playbook for issue #36. The frontend toolchain has been live since #107; all 37 JavaScript-script SFCs were converted across the ten segments into the long-lived `refactor/frontend-ts` integration branch. `master` changes once, when the integration PR merges.
 
 The shared `types/` package is TypeScript and is the source of truth for API contracts.
 
@@ -8,13 +8,13 @@ The shared `types/` package is TypeScript and is the source of truth for API con
 
 | Area | State | Remaining |
 |------|-------|-----------|
-| `.vue` files | 49 total | **37 JS setup (9,983 lines)**, 5 TS setup (1,185), 7 with no script (103) |
-| TS modules | 20 files, 1,897 lines | services, stores, router, composables, utils, tests already converted in #107 |
-| Tests | 3 TS test files, 20 tests | no JS tests to convert |
-| `vue-tsc` | passes | with `strict` on, the current typed code reports zero errors |
+| `.vue` files | 49 total | **42 TS setup**, 7 with no script |
+| TS modules | 20 files, 1,897 lines | services, stores, router, composables, utils, tests converted in #107 |
+| Tests | 4 TS test files, 24 tests | none |
+| `vue-tsc` | passes | `strict: true`, zero errors |
 | Build | passes | `vite build` |
 
-`frontend/tsconfig.json` currently has `strict: false`, `allowJs: true` and `checkJs: false`. JS SFC scripts are included in the program but are not checked.
+`frontend/tsconfig.json` has `strict: true`; `allowJs` and `checkJs` are removed, and the include is limited to `ts`, `tsx` and `vue`.
 
 ## Why strict starts on
 
