@@ -6,6 +6,19 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
 } from '@simplewebauthn/browser';
 
+// The backend returns @simplewebauthn/server's options verbatim, so the browser
+// library's JSON types are the precise wire shapes. These assertions fail the
+// typecheck if those shapes stop satisfying the shared option contracts.
+type AssertExtends<T extends U, U> = T;
+type RegistrationOptionsContract = AssertExtends<
+  PublicKeyCredentialCreationOptionsJSON,
+  types.WebAuthnRegistrationOptions
+>;
+type AuthenticationOptionsContract = AssertExtends<
+  PublicKeyCredentialRequestOptionsJSON,
+  types.WebAuthnAuthenticationOptions
+>;
+
 // In production, use relative URL that nginx will proxy to backend
 // In development, use full URL with port
 const API_URL = import.meta.env.PROD 
