@@ -93,54 +93,50 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { TransactionHistoryItem } from '@beerswipe/types'
 import Modal from './Modal.vue'
 import { transactionTypeLabel, undoCreditDelta } from '@/utils/transactionTypes'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  transaction: {
-    type: Object,
-    default: null
-  },
+const props = withDefaults(defineProps<{
+  show?: boolean
+  transaction?: TransactionHistoryItem | null
   // All rows of this transaction's sale group, when it is part of a
   // multi-drink order; the whole group is undone from any of its rows.
-  saleGroup: {
-    type: Array,
-    default: () => []
-  }
+  saleGroup?: TransactionHistoryItem[]
+}>(), {
+  show: false,
+  transaction: null,
+  saleGroup: () => []
 })
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits<{ close: []; confirm: [transaction: TransactionHistoryItem | null] }>()
 
-const isLoading = ref(false)
+const isLoading = ref<boolean>(false)
 
-const isGroupedSale = computed(() =>
+const isGroupedSale = computed<boolean>(() =>
   props.transaction?.type === 'sale' && props.saleGroup.length > 1
 )
 
 // Signed change undoing this transaction makes to the user's balance.
-const creditEffect = computed(() => {
+const creditEffect = computed<number>(() => {
   if (isGroupedSale.value) {
     return props.saleGroup.reduce((total, row) => total + row.amount, 0)
   }
   return undoCreditDelta(props.transaction)
 })
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const confirmUndo = () => {
+const confirmUndo = (): void => {
   isLoading.value = true
   emit('confirm', props.transaction)
 }
 
-const formatDateTime = (date) => {
+const formatDateTime = (date: string | null | undefined): string => {
   if (!date) return 'N/A'
   return new Date(date).toLocaleString('en-US', {
     year: 'numeric',
@@ -151,11 +147,11 @@ const formatDateTime = (date) => {
   })
 }
 
-const resetLoading = () => {
+const resetLoading = (): void => {
   isLoading.value = false
 }
 
-watch(() => props.show, (newVal) => {
+watch(() => props.show, (newVal: boolean) => {
   if (!newVal) {
     resetLoading()
   }

@@ -38,27 +38,23 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import type { TransactionHistoryItem } from '@beerswipe/types'
 import Modal from '../Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  sale: {
-    type: Object,
-    default: null
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
+const props = withDefaults(defineProps<{
+  show?: boolean
+  sale?: TransactionHistoryItem | null
+  loading?: boolean
+}>(), {
+  show: false,
+  sale: null,
+  loading: false
 })
 
-const emit = defineEmits(['close', 'confirm'])
+const emit = defineEmits<{ close: []; confirm: [] }>()
 
-const formatTime = (date) => {
+const formatTime = (date: string | null | undefined): string => {
   if (!date) return ''
   return new Date(date).toLocaleTimeString('en-US', {
     hour: '2-digit',
@@ -66,13 +62,13 @@ const formatTime = (date) => {
   })
 }
 
-const close = () => {
+const close = (): void => {
   if (!props.loading) {
     emit('close')
   }
 }
 
-const confirm = () => {
+const confirm = (): void => {
   if (!props.loading) {
     emit('confirm')
   }

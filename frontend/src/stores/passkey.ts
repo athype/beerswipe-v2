@@ -52,7 +52,7 @@ export const usePasskeyStore = defineStore("passkey", {
 
       try {
         const optionsResponse = await passkeysAPI.getRegistrationOptions();
-        const credential = await startRegistration(optionsResponse.data as any);
+        const credential = await startRegistration({ optionsJSON: optionsResponse.data });
 
         await passkeysAPI.verifyRegistration(
           credential as WebAuthnRegistrationCredentialJSON,
@@ -78,7 +78,7 @@ export const usePasskeyStore = defineStore("passkey", {
 
       try {
         const optionsResponse = await passkeysAPI.getLoginOptions(username);
-        const credential = await startAuthentication(optionsResponse.data as any);
+        const credential = await startAuthentication({ optionsJSON: optionsResponse.data });
 
         const verifyResponse = await passkeysAPI.verifyLogin(
           credential as WebAuthnAuthenticationCredentialJSON

@@ -15,7 +15,7 @@
           <h3 class="text-lg mb-sm">Total Sales</h3>
           <CountUp
           :from="0"
-          :to="salesStore.stats.sales?.totalSales || 0"
+          :to="toCount(salesStore.stats.sales?.totalSales)"
           direction="up"
           :duration="1"
           :start-when="true"
@@ -30,7 +30,7 @@
           <h3 class="text-lg mb-sm">Revenue</h3>
           <CountUp
           :from="0"
-          :to="salesStore.stats.sales?.totalRevenue || 0"
+          :to="toCount(salesStore.stats.sales?.totalRevenue)"
           direction="up"
           :duration="1"
           :start-when="true"
@@ -45,7 +45,7 @@
           <h3 class="text-lg mb-sm">Items Sold</h3>
           <CountUp
           :from="0"
-          :to="salesStore.stats.sales?.totalItemsSold || 0"
+          :to="toCount(salesStore.stats.sales?.totalItemsSold)"
           direction="up"
           :duration="1"
           :start-when="true"
@@ -60,7 +60,7 @@
           <h3 class="text-lg mb-sm">Credits Added</h3>
           <CountUp
           :from="0"
-          :to="salesStore.stats.credits?.totalCreditsAdded || 0"
+          :to="toCount(salesStore.stats.credits?.totalCreditsAdded)"
           direction="up"
           :duration="1"
           :start-when="true"
@@ -179,9 +179,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import type { Drink, SqlAggregateNumber, TransactionHistoryItem } from '@beerswipe/types'
 import { useAuthStore } from '@/stores/auth.js'
 import { useSalesStore } from '@/stores/sales.js'
 import { useDrinksStore } from '@/stores/drinks.js'
@@ -192,24 +193,33 @@ import {
   transactionTypeShortLabel,
 } from '@/utils/transactionTypes'
 import { stockLevel } from '@/utils/stock'
+import type { StockLevel } from '@/utils/stock'
 
 const authStore = useAuthStore()
 const salesStore = useSalesStore()
 const drinksStore = useDrinksStore()
 
-const showShoppingList = ref(false)
+const showShoppingList = ref<boolean>(false)
 
 // The strip and the shopping list read the whole catalogue, so ask for more
 // than the list route's default page of 50. Raise this if the catalogue ever
 // grows past it, or both views will quietly show only the first page.
 const DASHBOARD_DRINKS_LIMIT = 200
 
-const recentTransactions = computed(() =>
+interface StockGroup {
+  key: StockLevel
+  label: string
+}
+
+// SQL aggregates arrive as numbers or numeric strings; CountUp only takes numbers.
+const toCount = (value: SqlAggregateNumber | undefined): number => Number(value ?? 0)
+
+const recentTransactions = computed<TransactionHistoryItem[]>(() =>
   salesStore.transactions.slice(0, 5)
 )
 
 // keys must match the values stockLevel() returns
-const stockGroups = [
+const stockGroups: StockGroup[] = [
   { key: 'out', label: 'Out of stock' },
   { key: 'low', label: 'Low stock' },
   { key: 'ok', label: 'In stock' },
@@ -217,15 +227,15 @@ const stockGroups = [
 
 // One pass over the drinks list, so each drink's level is read once instead of
 // re-filtering the whole array for every group on every render.
-const groupedDrinks = computed(() => {
-  const groups = { out: [], low: [], ok: [] }
+const groupedDrinks = computed<Record<StockLevel, Drink[]>>(() => {
+  const groups: Record<StockLevel, Drink[]> = { out: [], low: [], ok: [] }
   for (const drink of drinksStore.drinks) {
     if (drink.isActive) groups[stockLevel(drink)].push(drink)
   }
   return groups
 })
 
-const formatDate = (date) => {
+const formatDate = (date: string): string => {
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -234,7 +244,7 @@ const formatDate = (date) => {
   })
 }
 
-onMounted(async () => {
+onMounted(async (): Promise<void> => {
   await Promise.all([
     salesStore.fetchStats(),
     salesStore.fetchTransactionHistory({ limit: 5 }),

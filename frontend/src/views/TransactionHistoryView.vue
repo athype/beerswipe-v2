@@ -175,11 +175,18 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import type {
+  TransactionHistoryItem,
+  TransactionHistoryQuery,
+  TransactionType,
+  User,
+} from '@beerswipe/types'
 import { useSalesStore } from '../stores/sales'
 import { useUsersStore } from '../stores/users'
 import { useNotifications } from '@/composables/useNotifications'
+import { getErrorMessage } from '@/utils/errors'
 import UndoTransactionModal from '../components/UndoTransactionModal.vue'
 import {
   TRANSACTION_TYPE_FILTER_OPTIONS,
@@ -187,25 +194,32 @@ import {
   undoCreditDelta,
 } from '@/utils/transactionTypes'
 
+interface TransactionFilters {
+  userSearch: string
+  type: TransactionType | ''
+  startDate: string
+  endDate: string
+}
+
 const salesStore = useSalesStore()
 const usersStore = useUsersStore()
 const { showSuccess, showError } = useNotifications()
 
-const filters = reactive({
+const filters = reactive<TransactionFilters>({
   userSearch: '',
   type: '',
   startDate: '',
   endDate: ''
 })
 
-const showUserSuggestions = ref(false)
-const userSuggestions = ref([])
-const showUndoModal = ref(false)
-const selectedTransaction = ref(null)
+const showUserSuggestions = ref<boolean>(false)
+const userSuggestions = ref<User[]>([])
+const showUndoModal = ref<boolean>(false)
+const selectedTransaction = ref<TransactionHistoryItem | null>(null)
 
-let searchTimeout = null
-const debouncedSearch = async () => {
-  clearTimeout(searchTimeout)
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+const debouncedSearch = async (): Promise<void> => {
+  if (searchTimeout !== null) clearTimeout(searchTimeout)
 
   if (filters.userSearch.length >= 2) {
     try {
@@ -216,7 +230,7 @@ const debouncedSearch = async () => {
       if (result.success) {
         userSuggestions.value = usersStore.users
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('User suggestion error:', error)
     }
   } else {
@@ -228,20 +242,20 @@ const debouncedSearch = async () => {
   }, 500)
 }
 
-const selectUser = (user) => {
+const selectUser = (user: User): void => {
   filters.userSearch = user.username
   showUserSuggestions.value = false
   userSuggestions.value = []
   applyFilters()
 }
 
-const hideUserSuggestions = () => {
+const hideUserSuggestions = (): void => {
   setTimeout(() => {
     showUserSuggestions.value = false
   }, 200)
 }
 
-const getUserIdFromSearch = async () => {
+const getUserIdFromSearch = async (): Promise<number | null> => {
   if (!filters.userSearch.trim()) {
     return null
   }
@@ -257,28 +271,28 @@ const getUserIdFromSearch = async () => {
     } else {
       return -1
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('User search error:', error)
     return null
   }
 }
 
-const salesCount = computed(() => {
+const salesCount = computed<number>(() => {
   return salesStore.transactions.filter(t => t.type === 'sale').length
 })
 
-const creditAdditionsCount = computed(() => {
+const creditAdditionsCount = computed<number>(() => {
   return salesStore.transactions.filter(t => t.type === 'credit_addition').length
 })
 
-const totalRevenue = computed(() => {
+const totalRevenue = computed<number>(() => {
   return salesStore.transactions
     .filter(t => t.type === 'sale')
     .reduce((total, t) => total + t.amount, 0)
 })
 
-const applyFilters = async () => {
-  const params = {}
+const applyFilters = async (): Promise<void> => {
+  const params: TransactionHistoryQuery = {}
 
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
@@ -300,8 +314,8 @@ const applyFilters = async () => {
   await salesStore.fetchTransactionHistory(params)
 }
 
-const changePage = async (page) => {
-  const params = { page }
+const changePage = async (page: number): Promise<void> => {
+  const params: TransactionHistoryQuery = { page }
 
   const userId = await getUserIdFromSearch()
   if (userId !== null) {
@@ -315,7 +329,7 @@ const changePage = async (page) => {
   await salesStore.fetchTransactionHistory(params)
 }
 
-const clearFilters = () => {
+const clearFilters = (): void => {
   Object.assign(filters, {
     userSearch: '',
     type: '',
@@ -327,23 +341,25 @@ const clearFilters = () => {
 
 // Rows of the same multi-drink order that are on the loaded page — the undo
 // itself reverses the whole group server-side, this only shapes the warning.
-const selectedSaleGroup = computed(() => {
+const selectedSaleGroup = computed<TransactionHistoryItem[]>(() => {
   const transaction = selectedTransaction.value
   if (!transaction?.saleGroupId) return []
   return salesStore.transactions.filter(t => t.saleGroupId === transaction.saleGroupId)
 })
 
-const openUndoModal = (transaction) => {
+const openUndoModal = (transaction: TransactionHistoryItem): void => {
   selectedTransaction.value = transaction
   showUndoModal.value = true
 }
 
-const closeUndoModal = () => {
+const closeUndoModal = (): void => {
   showUndoModal.value = false
   selectedTransaction.value = null
 }
 
-const handleUndoTransaction = async (transaction) => {
+const handleUndoTransaction = async (transaction: TransactionHistoryItem | null): Promise<void> => {
+  if (!transaction) return
+
   try {
     const result = await salesStore.undoTransaction(transaction.id)
 
@@ -351,7 +367,7 @@ const handleUndoTransaction = async (transaction) => {
       closeUndoModal()
       // A sale undo restores the whole order; the server's total is authoritative.
       const serverAmount = result.data?.undoTransaction.amount
-      const delta = transaction?.type === 'sale' && serverAmount !== undefined
+      const delta = transaction.type === 'sale' && serverAmount !== undefined
         ? serverAmount
         : undoCreditDelta(transaction)
       const amount = Math.abs(delta)
@@ -366,13 +382,13 @@ const handleUndoTransaction = async (transaction) => {
       showError(result.error || 'Failed to undo transaction')
       closeUndoModal()
     }
-  } catch (error) {
-    showError('An unexpected error occurred while undoing the transaction')
+  } catch (error: unknown) {
+    showError(getErrorMessage(error, 'An unexpected error occurred while undoing the transaction'))
     closeUndoModal()
   }
 }
 
-const formatDateTime = (date) => {
+const formatDateTime = (date: string): string => {
   return new Date(date).toLocaleString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -382,7 +398,7 @@ const formatDateTime = (date) => {
   })
 }
 
-onMounted(() => {
+onMounted((): void => {
   salesStore.fetchTransactionHistory()
 })
 </script>

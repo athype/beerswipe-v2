@@ -42,7 +42,6 @@ export interface WebAuthnRegistrationOptions {
     userVerification?: UserVerificationRequirement;
   };
   attestation?: string;
-  [key: string]: unknown;
 }
 
 export interface WebAuthnAuthenticationOptions {
@@ -51,7 +50,6 @@ export interface WebAuthnAuthenticationOptions {
   timeout?: number;
   allowCredentials?: PublicKeyCredentialDescriptorJSON[];
   userVerification?: UserVerificationRequirement;
-  [key: string]: unknown;
 }
 
 export interface WebAuthnRegistrationCredentialJSON {

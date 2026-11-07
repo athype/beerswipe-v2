@@ -53,25 +53,26 @@
   </Modal>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import { getErrorMessage } from '@/utils/errors'
 import Modal from './Modal.vue'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  }
-})
+withDefaults(defineProps<{ show?: boolean }>(), { show: false })
 
-const emit = defineEmits(['close', 'export'])
+interface StockCsvExportParams {
+  category?: string
+  inStock?: 'true'
+}
 
-const exportCategory = ref('')
-const exportInStockOnly = ref(false)
-const error = ref('')
-const isLoading = ref(false)
+const emit = defineEmits<{ close: []; export: [params: StockCsvExportParams] }>()
 
-const close = () => {
+const exportCategory = ref<string>('')
+const exportInStockOnly = ref<boolean>(false)
+const error = ref<string>('')
+const isLoading = ref<boolean>(false)
+
+const close = (): void => {
   exportCategory.value = ''
   exportInStockOnly.value = false
   error.value = ''
@@ -79,22 +80,22 @@ const close = () => {
   emit('close')
 }
 
-const handleExport = async () => {
+const handleExport = async (): Promise<void> => {
   isLoading.value = true
   error.value = ''
-  
+
   try {
-    const params = {}
+    const params: StockCsvExportParams = {}
     if (exportCategory.value) {
       params.category = exportCategory.value
     }
     if (exportInStockOnly.value) {
       params.inStock = 'true'
     }
-    
+
     emit('export', params)
-  } catch (err) {
-    error.value = 'Failed to export CSV file'
+  } catch (err: unknown) {
+    error.value = getErrorMessage(err, 'Failed to export CSV file')
     isLoading.value = false
   }
 }

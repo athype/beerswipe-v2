@@ -1,21 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { AdminAccount } from '@beerswipe/types'
 import { useAuthStore } from '../stores/auth'
 
-const props = defineProps({
-  admins: {
-    type: Array,
-    required: true
-  }
-})
+defineProps<{ admins: AdminAccount[] }>()
 
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{ edit: [admin: AdminAccount]; delete: [id: number] }>()
 
 const authStore = useAuthStore()
 
-const currentUserId = computed(() => authStore.user?.id)
+const currentUserId = computed<number | undefined>(() => authStore.user?.id)
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string): string => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
   return new Intl.DateTimeFormat('en-US', {
@@ -27,11 +23,11 @@ const formatDate = (dateString) => {
   }).format(date)
 }
 
-const handleEdit = (admin) => {
+const handleEdit = (admin: AdminAccount): void => {
   emit('edit', admin)
 }
 
-const handleDelete = (admin) => {
+const handleDelete = (admin: AdminAccount): void => {
   if (confirm(`Are you sure you want to deactivate admin "${admin.username}"?`)) {
     emit('delete', admin.id)
   }

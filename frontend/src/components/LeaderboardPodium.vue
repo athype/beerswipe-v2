@@ -1,22 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { LeaderboardEntry } from '@beerswipe/types'
 
-const props = defineProps({
-  entries: {
-    type: Array,
-    required: true,
-    default: () => []
-  }
+const props = withDefaults(defineProps<{ entries: LeaderboardEntry[] }>(), {
+  entries: () => []
 })
 
-const topThree = computed(() => props.entries.slice(0, 3))
+const topThree = computed<LeaderboardEntry[]>(() => props.entries.slice(0, 3))
 
-const getPodiumPosition = (rank) => {
+const getPodiumPosition = (rank: number): number => {
   // Order for visual podium: 2nd (left), 1st (center, tallest), 3rd (right)
   return rank
 }
 
-const getPodiumHeight = (rank) => {
+const getPodiumHeight = (rank: number): string => {
   switch (rank) {
     case 1: return '180px'
     case 2: return '140px'
@@ -25,7 +22,7 @@ const getPodiumHeight = (rank) => {
   }
 }
 
-const getMedalColor = (rank) => {
+const getMedalColor = (rank: number): string => {
   switch (rank) {
     case 1: return 'gold'
     case 2: return 'silver'

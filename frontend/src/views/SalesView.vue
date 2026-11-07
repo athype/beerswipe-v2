@@ -318,9 +318,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import type { Drink, TransactionHistoryItem, User, UserType } from '@beerswipe/types'
 import { useNotifications } from '@/composables/useNotifications'
+import { getErrorMessage } from '@/utils/errors'
 import { useAuthStore } from '../stores/auth'
 import { useUsersStore } from '../stores/users'
 import { useDrinksStore } from '../stores/drinks'
@@ -330,29 +332,55 @@ import AddCreditsModal from '../components/AddCreditsModal.vue'
 import SaleConfirmModal from '../components/modals/SaleConfirmModal.vue'
 import UndoSaleConfirmModal from '../components/modals/UndoSaleConfirmModal.vue'
 
+interface CartItem {
+  drink: Drink
+  quantity: number
+}
+
+interface RecentCustomer {
+  id: number
+  username: string
+  userType: UserType
+}
+
+interface StoredOrderLine {
+  drinkId: number
+  quantity: number
+}
+
+interface StoredTerminalState {
+  cart?: StoredOrderLine[]
+  user?: { id: number; username: string } | null
+}
+
+interface DrinkGroup {
+  category: string
+  drinks: Drink[]
+}
+
 const authStore = useAuthStore()
 const usersStore = useUsersStore()
 const drinksStore = useDrinksStore()
 const salesStore = useSalesStore()
 const { showSuccess, showError, showWarning } = useNotifications()
 
-const searchQuery = ref('')
-const drinkSearchQuery = ref('')
-const selectedUser = ref(null)
-const cart = ref([])
-const showCreditsModal = ref(false)
-const showConfirmModal = ref(false)
-const processing = ref(false)
-const recentCustomers = ref([])
-const undoTarget = ref(null)
-const showUndoModal = ref(false)
-const undoLoading = ref(false)
+const searchQuery = ref<string>('')
+const drinkSearchQuery = ref<string>('')
+const selectedUser = ref<User | null>(null)
+const cart = ref<CartItem[]>([])
+const showCreditsModal = ref<boolean>(false)
+const showConfirmModal = ref<boolean>(false)
+const processing = ref<boolean>(false)
+const recentCustomers = ref<RecentCustomer[]>([])
+const undoTarget = ref<TransactionHistoryItem | null>(null)
+const showUndoModal = ref<boolean>(false)
+const undoLoading = ref<boolean>(false)
 
 const RECENT_CUSTOMERS_KEY = 'salesTerminalRecent'
 const CART_STATE_KEY = 'salesTerminalCart'
-const lastOrderKey = (userId) => `salesTerminalLastOrder.${userId}`
+const lastOrderKey = (userId: number): string => `salesTerminalLastOrder.${userId}`
 
-const filteredUsers = computed(() => {
+const filteredUsers = computed<User[]>(() => {
   if (!searchQuery.value) return []
   return usersStore.users.filter(user =>
     user.username.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
@@ -363,17 +391,17 @@ const filteredUsers = computed(() => {
   )
 })
 
-const availableDrinks = computed(() => {
+const availableDrinks = computed<Drink[]>(() => {
   const query = drinkSearchQuery.value.toLowerCase()
   return drinksStore.availableDrinks.filter(drink =>
     drink.name.toLowerCase().includes(query)
   )
 })
 
-const drinkCategoryOf = (drink) => drink.category?.trim() || 'Other'
+const drinkCategoryOf = (drink: Drink): string => drink.category?.trim() || 'Other'
 
-const drinkCategories = computed(() => {
-  const seen = new Map()
+const drinkCategories = computed<string[]>(() => {
+  const seen = new Map<string, string>()
   for (const drink of availableDrinks.value) {
     const category = drinkCategoryOf(drink)
     const key = category.toLowerCase()
@@ -382,41 +410,45 @@ const drinkCategories = computed(() => {
   return [...seen.values()].sort((a, b) => a.localeCompare(b))
 })
 
-const activeCategory = ref('')
+const activeCategory = ref<string>('')
 
-const filteredDrinks = computed(() => {
+const filteredDrinks = computed<Drink[]>(() => {
   if (!activeCategory.value) return availableDrinks.value
   const key = activeCategory.value.toLowerCase()
   return availableDrinks.value.filter(drink => drinkCategoryOf(drink).toLowerCase() === key)
 })
 
-const groupedDrinks = computed(() => {
+const groupedDrinks = computed<DrinkGroup[]>(() => {
   if (activeCategory.value) {
     return [{ category: activeCategory.value, drinks: filteredDrinks.value }]
   }
-  const groups = new Map()
+  const groups = new Map<string, Drink[]>()
   for (const drink of filteredDrinks.value) {
     const category = drinkCategoryOf(drink)
     const key = category.toLowerCase()
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(drink)
+    const group = groups.get(key)
+    if (group) {
+      group.push(drink)
+    } else {
+      groups.set(key, [drink])
+    }
   }
   return [...groups.values()]
     .map(drinks => ({ category: drinkCategoryOf(drinks[0]), drinks }))
     .sort((a, b) => a.category.localeCompare(b.category))
 })
 
-const totalCost = computed(() => {
+const totalCost = computed<number>(() => {
   return cart.value.reduce((total, item) => total + (item.drink.price * item.quantity), 0)
 })
 
-const recentSales = computed(() => {
+const recentSales = computed<TransactionHistoryItem[]>(() => {
   // One multi-drink order is several rows sharing a saleGroupId: show it as a
   // single entry (summed credits, joined description, newest row's id).
   // The API orders by transactionDate DESC, id DESC, so group rows arrive
   // contiguously with the newest first.
-  const grouped = []
-  const byGroup = new Map()
+  const grouped: TransactionHistoryItem[] = []
+  const byGroup = new Map<string, TransactionHistoryItem>()
   for (const sale of salesStore.transactions) {
     if (sale.type !== 'sale') continue
     if (!sale.saleGroupId) {
@@ -426,10 +458,10 @@ const recentSales = computed(() => {
     const existing = byGroup.get(sale.saleGroupId)
     if (existing) {
       existing.amount += sale.amount
-      existing.quantity += sale.quantity || 0
+      existing.quantity = (existing.quantity ?? 0) + (sale.quantity ?? 0)
       existing.description = `${existing.description} + ${sale.description}`
     } else {
-      const entry = { ...sale, quantity: sale.quantity || 0 }
+      const entry: TransactionHistoryItem = { ...sale, quantity: sale.quantity || 0 }
       byGroup.set(sale.saleGroupId, entry)
       grouped.push(entry)
     }
@@ -437,9 +469,9 @@ const recentSales = computed(() => {
   return grouped.slice(0, 10)
 })
 
-const latestSale = computed(() => recentSales.value[0] || null)
+const latestSale = computed<TransactionHistoryItem | null>(() => recentSales.value[0] || null)
 
-const canUndoLatestSale = computed(() => {
+const canUndoLatestSale = computed<boolean>(() => {
   const sale = latestSale.value
   if (!sale || !authStore.user) return false
   if (sale.adminId !== authStore.user.id) return false
@@ -447,35 +479,35 @@ const canUndoLatestSale = computed(() => {
   return ageMs <= 15 * 60 * 1000
 })
 
-const calculateAge = (dateOfBirth) => {
+const calculateAge = (dateOfBirth: string | null): number | null => {
   if (!dateOfBirth) return null
-  
+
   const birthDate = new Date(dateOfBirth)
   const today = new Date()
   const age = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
     return age - 1
   }
-  
+
   return age
 }
 
-const canServeAlcohol = computed(() => {
-  const age = calculateAge(selectedUser.value?.dateOfBirth)
+const canServeAlcohol = computed<boolean>(() => {
+  const age = calculateAge(selectedUser.value?.dateOfBirth ?? null)
   return age !== null && age >= 18
 })
 
-const userAge = computed(() => {
-  return calculateAge(selectedUser.value?.dateOfBirth)
+const userAge = computed<number | null>(() => {
+  return calculateAge(selectedUser.value?.dateOfBirth ?? null)
 })
 
-const isAlcoholBlocked = (drink) => {
+const isAlcoholBlocked = (drink: Drink): boolean => {
   return drink.isAlcohol && !canServeAlcohol.value
 }
 
-const alcoholRefusalReason = (drink) => {
+const alcoholRefusalReason = (drink: Drink): string | null => {
   if (!drink.isAlcohol) return null
   if (!selectedUser.value) {
     return 'Select a customer first — alcohol (18+) requires an age check'
@@ -486,11 +518,11 @@ const alcoholRefusalReason = (drink) => {
   return `${selectedUser.value.username} is under 18 — cannot sell alcohol (18+)`
 }
 
-const cartHasBlockedAlcohol = computed(() => {
+const cartHasBlockedAlcohol = computed<boolean>(() => {
   return cart.value.some(item => isAlcoholBlocked(item.drink))
 })
 
-const checkoutHint = computed(() => {
+const checkoutHint = computed<string | null>(() => {
   if (!selectedUser.value) return 'Select a customer to start a sale'
   if (cart.value.length === 0) return 'Add drinks to the cart'
   if (selectedUser.value.credits < totalCost.value) {
@@ -500,9 +532,9 @@ const checkoutHint = computed(() => {
   return null
 })
 
-let searchUsersTimer = null
-const searchUsers = () => {
-  clearTimeout(searchUsersTimer)
+let searchUsersTimer: ReturnType<typeof setTimeout> | null = null
+const searchUsers = (): void => {
+  if (searchUsersTimer !== null) clearTimeout(searchUsersTimer)
   searchUsersTimer = setTimeout(async () => {
     if (searchQuery.value.length > 2) {
       await usersStore.fetchUsers({ search: searchQuery.value, isActive: true })
@@ -510,28 +542,28 @@ const searchUsers = () => {
   }, 300)
 }
 
-let searchDrinksTimer = null
-const searchDrinks = () => {
-  clearTimeout(searchDrinksTimer)
+let searchDrinksTimer: ReturnType<typeof setTimeout> | null = null
+const searchDrinks = (): void => {
+  if (searchDrinksTimer !== null) clearTimeout(searchDrinksTimer)
   searchDrinksTimer = setTimeout(async () => {
     await drinksStore.fetchDrinks({ search: drinkSearchQuery.value, inStock: true })
   }, 300)
 }
 
-const selectUser = (user) => {
+const selectUser = (user: User): void => {
   selectedUser.value = user
 }
 
-const loadRecentCustomers = () => {
+const loadRecentCustomers = (): void => {
   try {
     const raw = localStorage.getItem(RECENT_CUSTOMERS_KEY)
-    recentCustomers.value = raw ? JSON.parse(raw) : []
+    recentCustomers.value = raw ? (JSON.parse(raw) as RecentCustomer[]) : []
   } catch {
     recentCustomers.value = []
   }
 }
 
-const selectRecentCustomer = async (customer) => {
+const selectRecentCustomer = async (customer: RecentCustomer): Promise<void> => {
   if (processing.value) return
   const result = await usersStore.fetchUsers({ search: customer.username, isActive: true })
   if (!result.success) {
@@ -552,30 +584,30 @@ const selectRecentCustomer = async (customer) => {
   selectUser(user)
 }
 
-const lastOrderByUser = (userId) => {
+const lastOrderByUser = (userId: number): StoredOrderLine[] | null => {
   try {
     const raw = localStorage.getItem(lastOrderKey(userId))
-    return raw ? JSON.parse(raw) : null
+    return raw ? (JSON.parse(raw) as StoredOrderLine[]) : null
   } catch {
     return null
   }
 }
 
-const hasLastOrder = computed(() => {
+const hasLastOrder = computed<boolean>(() => {
   if (!selectedUser.value) return false
   const order = lastOrderByUser(selectedUser.value.id)
   return order !== null && order.length > 0
 })
 
-const repeatLastOrder = async () => {
+const repeatLastOrder = async (): Promise<void> => {
   if (processing.value || !selectedUser.value) return
   const stored = lastOrderByUser(selectedUser.value.id)
   if (!stored || stored.length === 0) return
 
   await drinksStore.fetchDrinks({ inStock: true })
 
-  const available = new Map(drinksStore.availableDrinks.map(drink => [drink.id, drink]))
-  const rebuilt = []
+  const available = new Map<number, Drink>(drinksStore.availableDrinks.map(drink => [drink.id, drink]))
+  const rebuilt: CartItem[] = []
   let blockedCount = 0
   let skippedCount = 0
 
@@ -611,9 +643,9 @@ const repeatLastOrder = async () => {
   showConfirmModal.value = true
 }
 
-const rememberSale = (user, items) => {
+const rememberSale = (user: User, items: CartItem[]): void => {
   try {
-    const entry = { id: user.id, username: user.username, userType: user.userType }
+    const entry: RecentCustomer = { id: user.id, username: user.username, userType: user.userType }
     recentCustomers.value = [entry, ...recentCustomers.value.filter(c => c.id !== user.id)].slice(0, 5)
     localStorage.setItem(RECENT_CUSTOMERS_KEY, JSON.stringify(recentCustomers.value))
     localStorage.setItem(lastOrderKey(user.id), JSON.stringify(items.map(item => ({
@@ -625,9 +657,9 @@ const rememberSale = (user, items) => {
   }
 }
 
-const saveTerminalState = () => {
+const saveTerminalState = (): void => {
   try {
-    const state = {
+    const state: StoredTerminalState = {
       cart: cart.value.map(item => ({ drinkId: item.drink.id, quantity: item.quantity })),
       user: selectedUser.value
         ? { id: selectedUser.value.id, username: selectedUser.value.username }
@@ -639,30 +671,32 @@ const saveTerminalState = () => {
   }
 }
 
-const restoreTerminalState = async () => {
-  let state = null
+const restoreTerminalState = async (): Promise<void> => {
+  let state: StoredTerminalState | null = null
   try {
     const raw = sessionStorage.getItem(CART_STATE_KEY)
-    state = raw ? JSON.parse(raw) : null
+    state = raw ? (JSON.parse(raw) as StoredTerminalState) : null
   } catch {
     state = null
   }
   if (!state || (!state.cart?.length && !state.user)) return
 
-  if (state.user) {
-    const result = await usersStore.fetchUsers({ search: state.user.username, isActive: true })
+  const storedUser = state.user
+  if (storedUser) {
+    const result = await usersStore.fetchUsers({ search: storedUser.username, isActive: true })
     if (result.success) {
-      const user = usersStore.users.find(u => u.id === state.user.id)
+      const user = usersStore.users.find(u => u.id === storedUser.id)
       if (user) {
         selectedUser.value = user
       }
     }
   }
 
-  if (state.cart?.length > 0) {
-    const available = new Map(drinksStore.availableDrinks.map(drink => [drink.id, drink]))
-    const restored = []
-    for (const line of state.cart) {
+  const storedCart = state.cart
+  if (storedCart && storedCart.length > 0) {
+    const available = new Map<number, Drink>(drinksStore.availableDrinks.map(drink => [drink.id, drink]))
+    const restored: CartItem[] = []
+    for (const line of storedCart) {
       const drink = available.get(line.drinkId)
       if (!drink) continue
       const existing = restored.find(item => item.drink.id === drink.id)
@@ -678,20 +712,20 @@ const restoreTerminalState = async () => {
 
 watch([cart, selectedUser], saveTerminalState, { deep: true })
 
-const openUndoModal = (sale) => {
+const openUndoModal = (sale: TransactionHistoryItem): void => {
   if (undoLoading.value) return
   undoTarget.value = sale
   showUndoModal.value = true
 }
 
-const closeUndoModal = () => {
+const closeUndoModal = (): void => {
   if (!undoLoading.value) {
     showUndoModal.value = false
     undoTarget.value = null
   }
 }
 
-const confirmUndo = async () => {
+const confirmUndo = async (): Promise<void> => {
   if (!undoTarget.value || undoLoading.value) return
   undoLoading.value = true
   const target = undoTarget.value
@@ -712,17 +746,18 @@ const confirmUndo = async () => {
     } else {
       showError(result.error || 'Failed to undo sale')
     }
-  } catch (error) {
-    showError('Failed to undo sale')
+  } catch (error: unknown) {
+    showError(getErrorMessage(error, 'Failed to undo sale'))
   } finally {
     undoLoading.value = false
   }
 }
 
-const addToCart = (drink) => {
+const addToCart = (drink: Drink): void => {
   if (processing.value) return
   if (isAlcoholBlocked(drink)) {
-    showError(alcoholRefusalReason(drink))
+    const reason = alcoholRefusalReason(drink)
+    if (reason) showError(reason)
     return
   }
   const existingItem = cart.value.find(item => item.drink.id === drink.id)
@@ -735,21 +770,21 @@ const addToCart = (drink) => {
   }
 }
 
-const increaseQuantity = (item) => {
+const increaseQuantity = (item: CartItem): void => {
   if (processing.value) return
   if (item.quantity < item.drink.stock) {
     item.quantity++
   }
 }
 
-const decreaseQuantity = (item) => {
+const decreaseQuantity = (item: CartItem): void => {
   if (processing.value) return
   if (item.quantity > 1) {
     item.quantity--
   }
 }
 
-const removeFromCart = (item) => {
+const removeFromCart = (item: CartItem): void => {
   if (processing.value) return
   const index = cart.value.findIndex(cartItem => cartItem.drink.id === item.drink.id)
   if (index > -1) {
@@ -757,12 +792,12 @@ const removeFromCart = (item) => {
   }
 }
 
-const clearCart = () => {
+const clearCart = (): void => {
   if (processing.value) return
   cart.value = []
 }
 
-const openConfirmModal = () => {
+const openConfirmModal = (): void => {
   if (processing.value || !selectedUser.value || cart.value.length === 0) return
   if (cartHasBlockedAlcohol.value) {
     showError('The cart contains alcohol (18+) and this customer cannot be served — remove it before charging')
@@ -771,13 +806,13 @@ const openConfirmModal = () => {
   showConfirmModal.value = true
 }
 
-const closeConfirmModal = () => {
+const closeConfirmModal = (): void => {
   if (!processing.value) {
     showConfirmModal.value = false
   }
 }
 
-const confirmSale = async () => {
+const confirmSale = async (): Promise<void> => {
   if (!selectedUser.value || cart.value.length === 0 || processing.value) return
 
   processing.value = true
@@ -806,9 +841,9 @@ const confirmSale = async () => {
       // All-or-nothing: nothing was charged, keep the cart so it can be retried.
       showError(result.error || 'Failed to process sale')
     }
-  } catch (error) {
+  } catch (error: unknown) {
     // Network-level failure: nothing was charged, keep the cart and customer so the sale can be retried
-    showError('Failed to process sale — nothing was charged, please retry')
+    showError(getErrorMessage(error, 'Failed to process sale — nothing was charged, please retry'))
   } finally {
     processing.value = false
   }
@@ -830,26 +865,26 @@ const confirmSale = async () => {
   }
 }
 
-const openAddCreditsModal = () => {
+const openAddCreditsModal = (): void => {
   showCreditsModal.value = true
 }
 
-const handleCreditsSuccess = () => {
+const handleCreditsSuccess = (): void => {
   closeCreditsModal()
 }
 
-const closeCreditsModal = () => {
+const closeCreditsModal = (): void => {
   showCreditsModal.value = false
 }
 
-const formatTime = (date) => {
+const formatTime = (date: string): string => {
   return new Date(date).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit'
   })
 }
 
-onMounted(async () => {
+onMounted(async (): Promise<void> => {
   loadRecentCustomers()
   await Promise.all([
     drinksStore.fetchDrinks({ inStock: true }),

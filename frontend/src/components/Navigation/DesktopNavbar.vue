@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
@@ -7,11 +7,11 @@ import BottleMark from './BottleMark.vue'
 const authStore = useAuthStore()
 
 // The brand bottle pours its glow when reached for (hover or keyboard focus)
-const brandLit = ref(false)
+const brandLit = ref<boolean>(false)
 
-const emit = defineEmits(['logout'])
+const emit = defineEmits<{ logout: [] }>()
 
-const handleLogout = () => {
+const handleLogout = (): void => {
   emit('logout')
 }
 </script>

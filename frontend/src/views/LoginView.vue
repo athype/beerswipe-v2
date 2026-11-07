@@ -68,36 +68,38 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import type { CreateBootstrapAdminRequest, LoginRequest } from '@beerswipe/types'
 import { useAuthStore } from '@/stores/auth'
 import { usePasskeyStore } from '@/stores/passkey'
 import { useNotifications } from '@/composables/useNotifications'
+import { getErrorMessage } from '@/utils/errors'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const passkeyStore = usePasskeyStore()
 const { showSuccess, showError } = useNotifications()
 
-const credentials = reactive({
+const credentials = reactive<LoginRequest>({
   username: '',
   password: ''
 })
 
-const adminData = reactive({
+const adminData = reactive<CreateBootstrapAdminRequest>({
   username: '',
   password: ''
 })
 
-const showCreateAdmin = ref(false)
-const passkeySupported = ref(false)
+const showCreateAdmin = ref<boolean>(false)
+const passkeySupported = ref<boolean>(false)
 
-onMounted(async () => {
+onMounted(async (): Promise<void> => {
   passkeySupported.value = await passkeyStore.checkSupport()
 })
 
-const handleLogin = async () => {
+const handleLogin = async (): Promise<void> => {
   try {
     const result = await authStore.login(credentials)
     if (result.success) {
@@ -106,12 +108,12 @@ const handleLogin = async () => {
     } else {
       showError(result.error || 'Login failed')
     }
-  } catch (error) {
-    showError(error.message || 'Login failed')
+  } catch (error: unknown) {
+    showError(getErrorMessage(error, 'Login failed'))
   }
 }
 
-const handlePasskeyLogin = async () => {
+const handlePasskeyLogin = async (): Promise<void> => {
   try {
     const result = await passkeyStore.authenticateWithPasskey()
     if (result.success) {
@@ -121,12 +123,12 @@ const handlePasskeyLogin = async () => {
     } else {
       showError(result.error || 'Passkey authentication failed')
     }
-  } catch (error) {
-    showError(error.message || 'Passkey authentication failed')
+  } catch (error: unknown) {
+    showError(getErrorMessage(error, 'Passkey authentication failed'))
   }
 }
 
-const handleCreateAdmin = async () => {
+const handleCreateAdmin = async (): Promise<void> => {
   try {
     const result = await authStore.createAdmin(adminData)
     if (result.success) {
@@ -137,8 +139,8 @@ const handleCreateAdmin = async () => {
     } else {
       showError(result.error || 'Failed to create admin account')
     }
-  } catch (error) {
-    showError(error.message || 'Failed to create admin account')
+  } catch (error: unknown) {
+    showError(getErrorMessage(error, 'Failed to create admin account'))
   }
 }
 </script>
