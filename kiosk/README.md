@@ -120,6 +120,34 @@ Serial" or other configuration barcode — configuring the scanner for serial
 without the driver in place can leave it unable to scan configuration
 barcodes. The HID path needs no driver.
 
+### Junk-scan handling (#192)
+
+Arbitrary QR payloads are rejected locally, before they can change the flow
+or call the API:
+
+- The window reader frames a scan by a 200 ms quiet period, not by a
+  terminator — a QR payload can contain newlines, and an embedded newline is
+  indistinguishable from the scanner's suffix Enter when it arrives. One
+  physical scan produces at most one callback; a multi-line QR is dropped as
+  one invalid frame.
+- A payload must be ASCII alphanumeric and at most 48 characters
+  (`src/scan/codes.py`); URLs, punctuation, non-ASCII text and over-long
+  streams are dropped with one debug record (never the payload itself) and
+  no truncated tail is ever sent.
+- `FlowController.scan()` accepts only a 32-hex member code (any casing),
+  ignores a second scan within 500 ms and the same code within 3 s, and never
+  lets a junk scan clear an active user, basket or screen. A 32-hex code
+  that is not in the database still reaches the API and shows the normal
+  error screen.
+
+On the Xenon itself: enable CodeGate (suppresses a re-read while the same
+symbol stays in the field of view), keep Presentation / Streaming
+Presentation off unless a stand makes hands-free scanning necessary (if it
+is on, the 3 s duplicate window absorbs the re-reads), and until #191
+ships, disable non-QR symbologies (EAN/UPC, Code128) so product packaging
+does not type junk into the kiosk — that reduces noise, the software gate
+above is what stops random QR codes.
+
 ## Quality gates
 
     uv run mypy -p src.models -p src.client -p src.scan -p src.flow --strict

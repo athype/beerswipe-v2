@@ -11,6 +11,7 @@ same thread (``AsyncRunner`` marshals through ``Clock.schedule_once``).
 """
 
 import logging
+import time
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from enum import Enum
@@ -20,6 +21,7 @@ from ..models.common import KioskResult
 from ..models.drinks import Drink, DrinkListResponse
 from ..models.sales import SellItem, SellRequest, SellResponse
 from ..models.users import ScanCodeLookupResponse, UserInfo
+from ..scan.codes import ScanKind, classify_scan, normalize_scan_code
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,12 @@ RESULT_TIMEOUT_SECONDS = 5.0
 
 ERROR_TIMEOUT_SECONDS = 5.0
 """How long an error message stays up before the kiosk returns to idle."""
+
+MIN_SCAN_INTERVAL_SECONDS = 0.5
+"""A second scan arriving within this window of the last accepted one is ignored."""
+
+DUPLICATE_SCAN_WINDOW_SECONDS = 3.0
+"""Re-scanning the same code within this window is ignored (scanner re-reads)."""
 
 
 class FlowState(Enum):
@@ -221,10 +229,12 @@ class FlowController:
         executor: Executor,
         scheduler: Scheduler,
         on_change: Callable[[FlowView], None],
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._executor = executor
         self._scheduler = scheduler
         self._on_change = on_change
+        self._clock = clock
 
         self._state = FlowState.IDLE
         self._user: UserInfo | None = None
@@ -234,6 +244,12 @@ class FlowController:
         self._focused_id: int | None = None
         self._remaining_credits: int | None = None
         self._error: str | None = None
+
+        # Burst guard: when the last accepted scan landed, and which code it
+        # was. An ignored scan does not move these, so the windows are
+        # measured from the last accepted scan.
+        self._last_accepted_at: float | None = None
+        self._last_accepted_code: str | None = None
 
         self._timer: TimerHandle | None = None
         # Bumped whenever in-flight work stops being relevant (new scan,
@@ -275,6 +291,7 @@ class FlowController:
         """Abandon the run and go back to idle.
 
         Called by the per-state timeout, and safe to call from shutdown.
+        A reset is a new session, so the burst guard starts fresh too.
         """
         self._token += 1
         self._user = None
@@ -282,16 +299,41 @@ class FlowController:
         self._clear_basket()
         self._remaining_credits = None
         self._error = None
+        self._last_accepted_at = None
+        self._last_accepted_code = None
         self._transition(FlowState.IDLE)
 
     def scan(self, code: str) -> None:
-        """A code was scanned: resolve it and start choosing a drink.
+        """A scan arrived: resolve a member code and start choosing a drink.
 
-        A scan in any state except SELLING restarts the flow; during
-        SELLING it is ignored so a stray scan cannot interrupt a sale.
+        Only a plausible member code — 32 hex characters, any casing — gets
+        past the gate; anything else is dropped before it can touch the
+        flow, publish a screen or reach the API, so an active SELECTING
+        session survives a junk scan untouched.  A scan in any state except
+        SELLING restarts the flow; during SELLING it is ignored so a stray
+        scan cannot interrupt a sale.  Bursts are rate-limited: a second
+        scan within MIN_SCAN_INTERVAL_SECONDS, or the same code within
+        DUPLICATE_SCAN_WINDOW_SECONDS, is ignored.
         """
         if self._state is FlowState.SELLING:
             return
+
+        if classify_scan(code) is not ScanKind.USER:
+            # Junk must not touch the flow: no transition, no API, no reset.
+            return
+
+        normalized = normalize_scan_code(code)
+        now = self._clock()
+        if self._last_accepted_at is not None:
+            if now - self._last_accepted_at < MIN_SCAN_INTERVAL_SECONDS:
+                return
+            if (
+                normalized == self._last_accepted_code
+                and now - self._last_accepted_at < DUPLICATE_SCAN_WINDOW_SECONDS
+            ):
+                return
+        self._last_accepted_at = now
+        self._last_accepted_code = normalized
 
         self._user = None
         self._drinks = ()
@@ -303,7 +345,7 @@ class FlowController:
         self._transition(FlowState.RESOLVING)
 
         self._executor.submit(
-            self._resolve_scan(code),
+            self._resolve_scan(normalized),
             lambda outcome: self._on_resolved(token, outcome),
             lambda exc: self._on_async_error(token, exc),
         )

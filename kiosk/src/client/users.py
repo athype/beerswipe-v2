@@ -5,6 +5,8 @@ Resolves a scanned code to the member it belongs to.  The backend route
 calls it with its seller-scoped API key.
 """
 
+from urllib.parse import quote
+
 from ..models.common import KioskResult
 from ..models.users import ScanCodeLookupResponse
 from .http import BeerswipeClient
@@ -23,9 +25,9 @@ class UsersClient:
 
             { user: { id, username, credits } }
 
-        The code is accepted in any casing.
+        The code is URL-encoded as a path segment and accepted in any casing.
         """
         return await self._client.get_model(
-            f"/scan/lookup/{code}",
+            f"/scan/lookup/{quote(code, safe='')}",
             ScanCodeLookupResponse,
         )

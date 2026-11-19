@@ -1,23 +1,32 @@
 """Window-key scan reader — the HID scanner path for the Raspberry Pi.
 
 The Honeywell Xenon XP 1950g is configured as a USB HID keyboard wedge:
-every scan arrives as the 32-character code followed by Enter ("Add CR
-Suffix" is scanned on the unit).  Behind a fullscreen Kivy window those
-keystrokes go to the window — never to stdin, which is what
+every scan arrives as keystrokes in the Kivy window.  Behind a fullscreen
+window those keystrokes go to the window — never to stdin, which is what
 ``KeyboardScanReader`` reads (under systemd stdin is ``/dev/null``) — so
 this reader listens to the window's keyboard events instead.
 
-Kivy is imported inside ``start``/``stop`` so the module imports without a
-display; the parsing lives in the kivy-free ``_feed``/``_flush`` pair so
-tests can drive it directly.
+A QR payload can contain CR/LF, and an embedded newline is
+indistinguishable from the scanner's suffix Enter at the moment it
+arrives, so a scan is framed by a quiet period, not by a terminator:
+every character re-arms a short timer, and the frame commits when the
+scanner goes quiet.  One physical scan therefore produces at most one
+callback, whatever the payload looks like.  At commit the payload must
+be ASCII alphanumeric and at most ``MAX_SCAN_LENGTH`` characters (see
+``codes.py``); anything else — URLs, multi-line QRs, over-long streams —
+is dropped locally with one debug record and never reaches the flow.
+
+Kivy is imported inside ``start`` so the module imports without a
+display; the parsing lives in the kivy-free ``_feed``/``_commit_frame``
+pair so tests can drive it directly with a fake clock and scheduler.
 """
 
 import logging
 import time
-from collections import deque
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol
 
+from .codes import MAX_SCAN_LENGTH, is_scannable_payload
 from .protocol import OnScanCode, ScanReader
 
 logger = logging.getLogger(__name__)
@@ -25,35 +34,71 @@ logger = logging.getLogger(__name__)
 #: Kivy (SDL2) keycodes for the two Enter keys: main Return and keypad Enter.
 ENTER_KEYCODES = frozenset({13, 271})
 
-#: A code is 32 hex characters; two codes' worth of input bounds the buffer
-#: when stray keystrokes arrive.
-BUFFER_LIMIT = 64
+#: A frame commits after this much silence.  The scanner types
+#: continuously, so the quiet period is the only reliable scan boundary.
+FRAME_QUIET_SECONDS = 0.20
 
-#: Stray input older than this is dropped before the next character lands.
-IDLE_RESET_SECONDS = 1.0
+#: A frame open longer than this (continuous input) is dropped and a new
+#: one starts, so a stuck or hostile stream cannot hold the buffer forever.
+MAX_FRAME_SECONDS = 2.0
+
+#: Raw frame cap: the payload bound plus room for the CR/LF suffix Enter
+#: (which can arrive twice, once as a key and once as text).  The payload
+#: itself is still held to MAX_SCAN_LENGTH at commit.
+FRAME_CHAR_LIMIT = MAX_SCAN_LENGTH + 2
+
+
+class TimerHandle(Protocol):
+    """A scheduled callback that can still be called off."""
+
+    def cancel(self) -> None: ...
+
+
+class Scheduler(Protocol):
+    """Delegate for timers — Kivy's Clock in the app, a fake in tests."""
+
+    def schedule(self, delay: float, callback: Callable[[], None]) -> TimerHandle: ...
+
+
+class _ClockScheduler:
+    """Scheduler seam backed by Kivy's Clock (``ClockEvent`` cancels)."""
+
+    def __init__(self, clock: Any) -> None:
+        self._clock = clock
+
+    def schedule(self, delay: float, callback: Callable[[], None]) -> TimerHandle:
+        event: TimerHandle = self._clock.schedule_once(lambda _dt: callback(), delay)
+        return event
 
 
 class WindowScanReader(ScanReader):
-    """Reads scan codes from the Kivy window's keyboard events.
+    """Reads scan payloads from the Kivy window's keyboard events.
 
-    ``start`` binds ``on_textinput`` (the scanner's characters) and
-    ``on_key_down`` (the Enter that ends a scan, plus the characters
-    themselves) on the window.  Handled keys are consumed, so scan input
-    never reaches a focused widget — otherwise the Enter could activate
-    whatever was tapped just before the scan.
+    ``start`` binds ``on_textinput`` (the scanner's characters, including
+    the CR/LF suffix) and ``on_key_down`` (Enter, fed as ``\\r`` like any
+    other character) on the window.  Handled keys are consumed, so scan
+    input never reaches a focused widget — otherwise the Enter could
+    activate whatever was tapped just before the scan.
 
-    Callbacks fire on the Kivy thread, during event dispatch.
+    Callbacks fire through the injected scheduler, which in the app is
+    Kivy's Clock: on the Kivy thread, never during event dispatch.
     """
 
     def __init__(
-        self, *, clock: Callable[[], float] = time.monotonic
+        self,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        scheduler: Scheduler | None = None,
     ) -> None:
         self._clock = clock
-        self._buffer: deque[str] = deque(maxlen=BUFFER_LIMIT)
+        self._scheduler = scheduler
+        self._frame: list[str] = []
+        self._overflowed = False
+        self._frame_invalid = False
+        self._frame_opened_at = 0.0
+        self._commit_handle: TimerHandle | None = None
         self._on_scan: OnScanCode | None = None
         self._window: Any = None
-        self._last_input_at = 0.0
-        self._overflow_logged = False
         self._started = False
 
     def start(self, *, on_scan: OnScanCode) -> None:
@@ -64,9 +109,14 @@ class WindowScanReader(ScanReader):
         # the headless tests) works without a display.
         from kivy.core.window import Window
 
+        if self._scheduler is None:
+            from kivy.clock import Clock
+
+            self._scheduler = _ClockScheduler(Clock)
+
         self._on_scan = on_scan
         self._window = Window
-        self._buffer.clear()
+        self._clear_frame()
         Window.bind(
             on_textinput=self._on_textinput,
             on_key_down=self._on_key_down,
@@ -77,13 +127,16 @@ class WindowScanReader(ScanReader):
         if not self._started:
             return
 
+        if self._commit_handle is not None:
+            self._commit_handle.cancel()
+            self._commit_handle = None
         self._window.unbind(
             on_textinput=self._on_textinput,
             on_key_down=self._on_key_down,
         )
         self._window = None
         self._on_scan = None
-        self._buffer.clear()
+        self._clear_frame()
         self._started = False
 
     # ------------------------------------------------------------------
@@ -102,16 +155,16 @@ class WindowScanReader(ScanReader):
         codepoint: str | None = None,
         *_args: Any,
     ) -> bool:
-        """Flush on Enter, and consume every key a scan can produce.
+        """Feed Enter, and consume every key a scan can produce.
 
         Kivy stops dispatching an event as soon as a handler returns True,
         so consuming is what keeps a scan's characters and its trailing
         Enter away from a focused widget.
         """
         if key in ENTER_KEYCODES:
-            self._flush()
+            self._feed("\r")
             return True
-        # The characters also arrive as text input, where _feed accumulates
+        # The characters also arrive as text input, where _feed buffers
         # them; the key press itself is consumed here.
         if codepoint and codepoint.isprintable():
             return True
@@ -122,32 +175,69 @@ class WindowScanReader(ScanReader):
     # ------------------------------------------------------------------
 
     def _feed(self, text: str) -> None:
-        """Buffer printable *text*; a ``\\r``/``\\n`` in it ends a scan."""
-        now = self._clock()
-        if self._buffer and now - self._last_input_at > IDLE_RESET_SECONDS:
-            # Stray keystrokes: drop them rather than prefixing the next code.
-            self._buffer.clear()
-        self._last_input_at = now
+        """Buffer *text* and re-arm the quiet-period commit per character.
 
+        CR/LF are buffered like any other character — an embedded newline
+        looks exactly like the suffix Enter when it arrives — so the frame
+        boundary is the quiet period, not the terminator.
+        """
         for char in text:
-            if char in "\r\n":
-                self._flush()
-            elif char.isprintable():
-                if len(self._buffer) == BUFFER_LIMIT and not self._overflow_logged:
-                    # One breadcrumb per scan: something is typing without
-                    # ever sending Enter, and the oldest input is going.
-                    logger.warning(
-                        "Scan buffer full (%d chars); dropping the oldest input",
-                        BUFFER_LIMIT,
-                    )
-                    self._overflow_logged = True
-                self._buffer.append(char)
+            now = self._clock()
+            if self._frame and now - self._frame_opened_at > MAX_FRAME_SECONDS:
+                # Continuous input (a stuck or hostile stream): drop the open
+                # frame and start a new one with this character.
+                logger.debug(
+                    "Dropped scan frame: %d chars, reason=overflow",
+                    len(self._frame),
+                )
+                self._clear_frame()
+                self._frame_opened_at = now
+            elif not self._frame and not self._overflowed:
+                self._frame_opened_at = now
 
-    def _flush(self) -> None:
-        """Fire the callback with the buffered code and clear the buffer."""
-        # Same normalization as KeyboardScanReader: strip and lowercase.
-        code = "".join(self._buffer).strip().lower()
-        self._buffer.clear()
-        self._overflow_logged = False
-        if code and self._on_scan is not None:
-            self._on_scan(code)
+            if char in "\r\n" or char.isprintable():
+                if len(self._frame) < FRAME_CHAR_LIMIT:
+                    self._frame.append(char)
+                else:
+                    self._overflowed = True
+            else:
+                # A control character can never be part of a code.
+                self._frame_invalid = True
+            self._arm_commit()
+
+    def _arm_commit(self) -> None:
+        """(Re)start the quiet-period timer that commits the frame."""
+        if self._commit_handle is not None:
+            self._commit_handle.cancel()
+        scheduler = self._scheduler
+        if scheduler is not None:
+            self._commit_handle = scheduler.schedule(FRAME_QUIET_SECONDS, self._commit_frame)
+
+    def _commit_frame(self) -> None:
+        """Commit the buffered frame: validate it, fire the callback once."""
+        self._commit_handle = None
+        raw = "".join(self._frame)
+        payload = raw.rstrip("\r\n").strip()
+
+        reason: str | None = None
+        if self._overflowed:
+            reason = "overflow"
+        elif self._frame_invalid:
+            reason = "charset"
+        elif "\r" in payload or "\n" in payload:
+            reason = "multiline"
+        elif not is_scannable_payload(payload):
+            reason = "charset" if payload else "empty"
+
+        if reason is not None:
+            # One record per dropped frame; never log the payload itself, it
+            # can hold a member code or arbitrary user data.
+            logger.debug("Dropped scan frame: %d chars, reason=%s", len(raw), reason)
+        elif self._on_scan is not None:
+            self._on_scan(payload)
+        self._clear_frame()
+
+    def _clear_frame(self) -> None:
+        self._frame.clear()
+        self._overflowed = False
+        self._frame_invalid = False

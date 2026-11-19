@@ -18,13 +18,27 @@ Usage::
     reader.stop()
 """
 
+from .codes import (
+    MAX_SCAN_LENGTH,
+    USER_CODE_LENGTH,
+    ScanKind,
+    classify_scan,
+    is_scannable_payload,
+    normalize_scan_code,
+)
 from .keyboard import KeyboardScanReader
 from .protocol import OnScanCode, ScanReader
 from .window import WindowScanReader
 
 __all__ = [
     "KeyboardScanReader",
+    "MAX_SCAN_LENGTH",
     "OnScanCode",
+    "ScanKind",
     "ScanReader",
+    "USER_CODE_LENGTH",
     "WindowScanReader",
+    "classify_scan",
+    "is_scannable_payload",
+    "normalize_scan_code",
 ]

@@ -13,8 +13,10 @@ from typing import Any
 import pytest
 
 from src.flow import (
+    DUPLICATE_SCAN_WINDOW_SECONDS,
     ERROR_TIMEOUT_SECONDS,
     INTERACTIVE_TIMEOUT_SECONDS,
+    MIN_SCAN_INTERVAL_SECONDS,
     RESULT_TIMEOUT_SECONDS,
     FlowController,
     FlowState,
@@ -24,8 +26,12 @@ from src.models.common import KioskResult
 from src.models.drinks import Drink, DrinkListResponse, Pagination
 from src.models.sales import SellRequest, SellResponse
 from src.models.users import ScanCodeLookupResponse, UserInfo
+from src.scan import WindowScanReader
+from src.scan.window import FRAME_QUIET_SECONDS
 
 SCAN_CODE = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+OTHER_CODE = "0f1e2d3c4b5a69788796a5b4c3d2e1f0"  # a second valid 32-hex code
+UNKNOWN_CODE = "deadbeefdeadbeefdeadbeefdeadbeef"  # valid format, not in the DB
 
 PILSNER = "Pilsner"
 IPA = "IPA"
@@ -169,6 +175,19 @@ class FakeExecutor:
         self._pending.clear()
 
 
+class FakeClock:
+    """A monotonic clock the tests step by hand."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
 class FakeTimer:
     def __init__(self) -> None:
         self.cancelled = False
@@ -227,6 +246,7 @@ class Harness:
     api: FakeApi
     executor: FakeExecutor
     scheduler: FakeScheduler
+    clock: FakeClock
     controller: FlowController
     views: list[FlowView] = field(default_factory=list)
 
@@ -261,17 +281,20 @@ def h() -> Iterator[Harness]:
     api = FakeApi()
     executor = FakeExecutor(api)
     scheduler = FakeScheduler()
+    clock = FakeClock()
     views: list[FlowView] = []
     controller = FlowController(
         executor=executor,
         scheduler=scheduler,
         on_change=views.append,
+        clock=clock,
     )
     controller.start()
     harness = Harness(
         api=api,
         executor=executor,
         scheduler=scheduler,
+        clock=clock,
         controller=controller,
         views=views,
     )
@@ -349,7 +372,7 @@ def test_every_state_change_is_published(h: Harness) -> None:
 def test_unknown_code_errors_then_idles(h: Harness) -> None:
     h.api.users.result = KioskResult(error="Scan code not found")
 
-    h.scan("deadbeef")
+    h.scan(UNKNOWN_CODE)
     assert h.state is FlowState.ERROR
     assert h.view.error == "Scan code not found"
     assert h.api.drinks.calls == 0  # a bad code never reaches the drinks list
@@ -477,7 +500,8 @@ def test_scan_during_selling_is_ignored(h: Harness) -> None:
     h.buy(complete=False)
     assert h.state is FlowState.SELLING
 
-    h.controller.scan("another-code")
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)  # past the cooldown
+    h.controller.scan(OTHER_CODE)
     assert h.state is FlowState.SELLING
     assert h.api.users.codes == [SCAN_CODE]  # no second lookup
 
@@ -486,8 +510,9 @@ def test_scan_during_selling_is_ignored(h: Harness) -> None:
 
 
 def test_scan_while_resolving_supersedes_the_first_lookup(h: Harness) -> None:
-    h.controller.scan("first")
-    h.controller.scan("second")
+    h.controller.scan(SCAN_CODE)
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.controller.scan(OTHER_CODE)
     assert h.state is FlowState.RESOLVING
     assert h.executor.pending == 2
 
@@ -496,19 +521,20 @@ def test_scan_while_resolving_supersedes_the_first_lookup(h: Harness) -> None:
 
     h.executor.run_next()
     assert h.state is FlowState.SELECTING
-    assert h.api.users.codes == ["first", "second"]
+    assert h.api.users.codes == [SCAN_CODE, OTHER_CODE]
 
 
 def test_scan_after_choosing_a_drink_starts_over(h: Harness) -> None:
     h.scan()
     h.pick(1, quantity=3)
 
-    h.scan("again")
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.scan(OTHER_CODE)
     assert h.state is FlowState.SELECTING
     assert h.view.items == ()
     assert h.view.focused_drink_id is None
     assert h.view.total == 0.0
-    assert h.api.users.codes == [SCAN_CODE, "again"]
+    assert h.api.users.codes == [SCAN_CODE, OTHER_CODE]
 
 
 def test_select_drink_ignores_unknown_ids(h: Harness) -> None:
@@ -633,4 +659,120 @@ def test_intents_are_ignored_while_idle(h: Harness) -> None:
     h.controller.back()
     assert h.view.items == ()
     assert h.state is FlowState.IDLE
+    assert h.executor.pending == 0
+
+
+# ---------------------------------------------------------------------------
+# Scan input gate (#192)
+# ---------------------------------------------------------------------------
+
+JUNK_PAYLOADS = [
+    "https://beerswipe.example/scan?x=1&y=2",  # a URL
+    "hello",
+    "0" * 31,  # 31 hex chars
+    "0" * 33,  # 33 hex chars
+    "g" * 32,  # 32 chars, but not hex
+    "snake!",
+    "a" * 49,  # over the 48-char payload bound
+    "",
+]
+
+
+@pytest.mark.parametrize("payload", JUNK_PAYLOADS)
+def test_junk_scan_is_dropped_locally(h: Harness, payload: str) -> None:
+    """Junk never changes the flow, rebuilds a screen or calls the API."""
+    views_before = len(h.views)
+
+    h.controller.scan(payload)
+
+    assert h.state is FlowState.IDLE
+    assert len(h.views) == views_before  # no publish, no screen rebuild
+    assert h.executor.pending == 0  # no /scan/lookup submission
+    assert h.api.users.codes == []
+
+
+def test_junk_scan_during_selecting_keeps_the_flow(h: Harness) -> None:
+    h.scan()
+    h.pick(1, quantity=2)
+    views_before = len(h.views)
+
+    h.controller.scan("https://beerswipe.example/not-a-code")
+
+    assert h.state is FlowState.SELECTING
+    assert h.view.user is not None and h.view.user.username == "ada"
+    assert [(line.drink.name, line.quantity) for line in h.view.items] == [(PILSNER, 2)]
+    assert h.view.focused_drink_id == 1
+    assert len(h.views) == views_before  # the current screen is untouched
+    assert h.executor.pending == 0
+    assert h.api.users.codes == [SCAN_CODE]
+
+
+def test_uppercase_code_is_accepted_and_normalized(h: Harness) -> None:
+    h.scan(SCAN_CODE.upper())
+    assert h.api.users.codes == [SCAN_CODE]  # the submission carries the normalized code
+    assert h.state is FlowState.SELECTING
+    assert h.view.user is not None and h.view.user.username == "ada"
+
+
+def test_second_scan_within_the_cooldown_is_ignored(h: Harness) -> None:
+    h.scan()
+    views_before = len(h.views)
+
+    h.controller.scan(OTHER_CODE)  # 0 s later: inside the 500 ms window
+
+    assert h.api.users.codes == [SCAN_CODE]
+    assert len(h.views) == views_before
+    assert h.executor.pending == 0
+    assert h.state is FlowState.SELECTING
+
+
+def test_different_code_after_the_cooldown_restarts(h: Harness) -> None:
+    h.scan()
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.scan(OTHER_CODE)
+    assert h.api.users.codes == [SCAN_CODE, OTHER_CODE]
+    assert h.state is FlowState.SELECTING
+
+
+def test_same_code_within_the_duplicate_window_is_ignored(h: Harness) -> None:
+    h.scan()
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)  # past the cooldown...
+    h.controller.scan(SCAN_CODE)  # ...but inside the 3 s duplicate window
+    assert h.api.users.codes == [SCAN_CODE]
+    assert h.executor.pending == 0
+    assert h.state is FlowState.SELECTING
+
+
+def test_same_code_after_the_duplicate_window_is_accepted(h: Harness) -> None:
+    h.scan()
+    h.clock.advance(DUPLICATE_SCAN_WINDOW_SECONDS + 0.1)
+    h.scan(SCAN_CODE)
+    assert h.api.users.codes == [SCAN_CODE, SCAN_CODE]
+    assert h.state is FlowState.SELECTING
+
+
+def test_reset_clears_the_burst_guard(h: Harness) -> None:
+    h.scan()
+    h.scheduler.advance(INTERACTIVE_TIMEOUT_SECONDS)  # timeout -> reset
+    assert h.state is FlowState.IDLE
+
+    h.scan(SCAN_CODE)  # same code, same instant: a new session accepts it
+    assert h.api.users.codes == [SCAN_CODE, SCAN_CODE]
+
+
+def test_multiline_qr_from_the_reader_changes_nothing(h: Harness) -> None:
+    """The measured freeze case end to end: window reader -> controller."""
+    reader_scheduler = FakeScheduler()
+    reader = WindowScanReader(clock=h.clock, scheduler=reader_scheduler)
+    reader._on_scan = h.controller.scan
+
+    payload = "\n".join(f"https://beerswipe.example/line/{i}" for i in range(80)) + "\n"
+    for line in payload.splitlines(keepends=True):
+        reader._feed(line)
+        h.clock.advance(0.01)
+    reader_scheduler.advance(FRAME_QUIET_SECONDS)  # the quiet period commits
+
+    assert h.state is FlowState.IDLE
+    assert [view.state for view in h.views] == [FlowState.IDLE]  # zero transitions
+    assert h.api.users.codes == []  # zero /scan/lookup requests
     assert h.executor.pending == 0
