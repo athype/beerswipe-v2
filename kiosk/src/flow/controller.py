@@ -245,11 +245,12 @@ class FlowController:
         self._remaining_credits: int | None = None
         self._error: str | None = None
 
-        # Burst guard: when the last accepted scan landed, and which code it
-        # was. An ignored scan does not move these, so the windows are
-        # measured from the last accepted scan.
+        # Burst guard: when the last accepted scan landed (the cooldown is
+        # measured from it) and when each normalized code was last accepted
+        # (the duplicate window is per code, so interleaved repeats count
+        # too). An ignored scan moves neither.
         self._last_accepted_at: float | None = None
-        self._last_accepted_code: str | None = None
+        self._recent_scan_times: dict[str, float] = {}
 
         self._timer: TimerHandle | None = None
         # Bumped whenever in-flight work stops being relevant (new scan,
@@ -300,7 +301,7 @@ class FlowController:
         self._remaining_credits = None
         self._error = None
         self._last_accepted_at = None
-        self._last_accepted_code = None
+        self._recent_scan_times.clear()
         self._transition(FlowState.IDLE)
 
     def scan(self, code: str) -> None:
@@ -313,7 +314,8 @@ class FlowController:
         SELLING restarts the flow; during SELLING it is ignored so a stray
         scan cannot interrupt a sale.  Bursts are rate-limited: a second
         scan within MIN_SCAN_INTERVAL_SECONDS, or the same code within
-        DUPLICATE_SCAN_WINDOW_SECONDS, is ignored.
+        DUPLICATE_SCAN_WINDOW_SECONDS (even interleaved with other codes),
+        is ignored.
         """
         if self._state is FlowState.SELLING:
             return
@@ -324,16 +326,23 @@ class FlowController:
 
         normalized = normalize_scan_code(code)
         now = self._clock()
-        if self._last_accepted_at is not None:
-            if now - self._last_accepted_at < MIN_SCAN_INTERVAL_SECONDS:
-                return
-            if (
-                normalized == self._last_accepted_code
-                and now - self._last_accepted_at < DUPLICATE_SCAN_WINDOW_SECONDS
-            ):
-                return
+        if (
+            self._last_accepted_at is not None
+            and now - self._last_accepted_at < MIN_SCAN_INTERVAL_SECONDS
+        ):
+            return
+        last_accepted = self._recent_scan_times.get(normalized)
+        if last_accepted is not None and now - last_accepted < DUPLICATE_SCAN_WINDOW_SECONDS:
+            return
         self._last_accepted_at = now
-        self._last_accepted_code = normalized
+        # Expire codes whose duplicate window has passed, so the map stays
+        # bounded no matter how many distinct codes are scanned.
+        self._recent_scan_times = {
+            scanned: at
+            for scanned, at in self._recent_scan_times.items()
+            if now - at < DUPLICATE_SCAN_WINDOW_SECONDS
+        }
+        self._recent_scan_times[normalized] = now
 
         self._user = None
         self._drinks = ()

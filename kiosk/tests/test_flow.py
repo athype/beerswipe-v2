@@ -751,6 +751,20 @@ def test_same_code_after_the_duplicate_window_is_accepted(h: Harness) -> None:
     assert h.state is FlowState.SELECTING
 
 
+def test_interleaved_rescan_of_an_earlier_code_is_ignored(h: Harness) -> None:
+    """A at 0 s, B at 0.6 s, A again at 1.2 s: the second A is a duplicate."""
+    h.controller.scan(SCAN_CODE)
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.controller.scan(OTHER_CODE)
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.controller.scan(SCAN_CODE)  # within 3 s of the first A
+
+    assert h.executor.pending == 2  # the repeated A submitted nothing
+    h.executor.run_all()
+    assert h.api.users.codes == [SCAN_CODE, OTHER_CODE]
+    assert h.state is FlowState.SELECTING
+
+
 def test_reset_clears_the_burst_guard(h: Harness) -> None:
     h.scan()
     h.scheduler.advance(INTERACTIVE_TIMEOUT_SECONDS)  # timeout -> reset

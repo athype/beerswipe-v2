@@ -38,14 +38,16 @@ ENTER_KEYCODES = frozenset({13, 271})
 #: continuously, so the quiet period is the only reliable scan boundary.
 FRAME_QUIET_SECONDS = 0.20
 
-#: A frame open longer than this (continuous input) is dropped and a new
-#: one starts, so a stuck or hostile stream cannot hold the buffer forever.
+#: A frame open longer than this (continuous input) is rejected for the
+#: rest of the burst: the remaining characters are consumed into the
+#: rejected frame and committed as dropped at the quiet period, so a stuck
+#: or hostile stream can neither grow the buffer nor emit a valid tail.
 MAX_FRAME_SECONDS = 2.0
 
-#: Raw frame cap: the payload bound plus room for the CR/LF suffix Enter
-#: (which can arrive twice, once as a key and once as text).  The payload
-#: itself is still held to MAX_SCAN_LENGTH at commit.
-FRAME_CHAR_LIMIT = MAX_SCAN_LENGTH + 2
+#: Raw frame cap: the payload bound plus room for the CR/LF suffix Enter,
+#: which can arrive on both channels (key-down "\r" and text-input "\r\n").
+#: The payload itself is still held to MAX_SCAN_LENGTH at commit.
+FRAME_CHAR_LIMIT = MAX_SCAN_LENGTH + 4
 
 
 class TimerHandle(Protocol):
@@ -184,13 +186,16 @@ class WindowScanReader(ScanReader):
         for char in text:
             now = self._clock()
             if self._frame and now - self._frame_opened_at > MAX_FRAME_SECONDS:
-                # Continuous input (a stuck or hostile stream): drop the open
-                # frame and start a new one with this character.
+                # Continuous input (a stuck or hostile stream): reject the
+                # open frame for good.  The rest of the burst is consumed
+                # into the rejected frame, so a trailing code is never
+                # committed as a new scan when the scanner goes quiet.
                 logger.debug(
                     "Dropped scan frame: %d chars, reason=overflow",
                     len(self._frame),
                 )
-                self._clear_frame()
+                self._frame.clear()
+                self._overflowed = True
                 self._frame_opened_at = now
             elif not self._frame and not self._overflowed:
                 self._frame_opened_at = now

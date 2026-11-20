@@ -255,6 +255,16 @@ def test_48_alphanumeric_chars_are_delivered() -> None:
     assert h.codes == [payload]
 
 
+def test_48_char_payload_survives_a_suffix_on_both_channels() -> None:
+    """Enter can arrive as key-down "\r" and text-input "\r\n": 48 + 3 chars."""
+    h = make_reader()
+    payload = "a" * MAX_SCAN_LENGTH
+    h.reader._feed(payload + "\r\n")  # text-input CR LF
+    h.reader._on_key_down(None, 13)  # key-down CR
+    commit(h)
+    assert h.codes == [payload]
+
+
 def test_non_ascii_payload_is_dropped(caplog: pytest.LogCaptureFixture) -> None:
     h = make_reader()
     with caplog.at_level(logging.DEBUG):
@@ -285,18 +295,35 @@ def test_drop_log_never_contains_the_payload(caplog: pytest.LogCaptureFixture) -
         assert SCAN_CODE not in record.getMessage()
 
 
-def test_continuous_input_drops_the_frame_after_max_frame_seconds(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """A stream that never goes quiet is dropped in bounded chunks."""
+def test_continuous_input_never_emits_a_tail(caplog: pytest.LogCaptureFixture) -> None:
+    """A stream that runs past MAX_FRAME_SECONDS stays rejected until quiet.
+
+    The remaining characters must not start a new frame: an oversized QR
+    ending in a valid-looking code must not emit that tail as a scan.
+    """
     h = make_reader()
     with caplog.at_level(logging.DEBUG):
         h.reader._feed("x" * 10)
         h.clock.advance(MAX_FRAME_SECONDS + 0.5)  # the frame stays open too long
-        h.reader._feed("y\r")  # drops the old frame, starts a new one
+        h.reader._feed(SCAN_CODE + "\r")  # a valid-looking tail after the drop
         commit(h)
-    assert h.codes == ["y"]
+    assert h.codes == []  # the tail is not committed as a new scan
     assert "reason=overflow" in dropped_frames(caplog)[0]
+
+
+def test_reader_recovers_after_a_rejected_continuous_stream() -> None:
+    h = make_reader()
+    h.reader._feed("x" * 10)
+    h.clock.advance(MAX_FRAME_SECONDS + 0.5)
+    h.reader._feed("junk\r")
+    commit(h)
+    assert h.codes == []
+
+    # The next physical scan after the quiet period works normally again.
+    h.clock.advance(FRAME_QUIET_SECONDS)
+    h.reader._feed(f"{SCAN_CODE}\r")
+    commit(h)
+    assert h.codes == [SCAN_CODE]
 
 
 # ---------------------------------------------------------------------------
