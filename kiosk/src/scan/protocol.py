@@ -8,9 +8,11 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 OnScanCode = Callable[[str], None]
-"""Callback signature: receives the scan code as a string.
+"""Callback signature: receives the scanned payload as a string.
 
-The code is a 32-char hex string, e.g. ``"a1b2c3d4e5f60718293a4b5c6d7e8f90"``.
+A plausible scan payload — ASCII alphanumeric, at most ``MAX_SCAN_LENGTH``
+characters (see ``codes.py``) — not necessarily a 32-char member code; the
+flow classifies it with ``classify_scan``.
 """
 
 
@@ -18,8 +20,9 @@ class ScanReader(ABC):
     """Abstract interface for reading scan codes.
 
     Implementations run a background listener and invoke *on_scan* each
-    time a code is scanned.  The callback runs on the reader's internal
-    thread — Kivy apps should forward it to the main thread via
+    time a scan is detected.  ``KeyboardScanReader`` calls from its own
+    thread; ``WindowScanReader`` calls on the Kivy thread through its
+    scheduler — Kivy apps should still forward it to the main thread via
     ``Clock.schedule_once``.
 
     Usage::

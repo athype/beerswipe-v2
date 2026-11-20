@@ -18,8 +18,10 @@ Usage::
 """
 
 from .controller import (
+    DUPLICATE_SCAN_WINDOW_SECONDS,
     ERROR_TIMEOUT_SECONDS,
     INTERACTIVE_TIMEOUT_SECONDS,
+    MIN_SCAN_INTERVAL_SECONDS,
     RESULT_TIMEOUT_SECONDS,
     STATE_TIMEOUTS,
     DrinksApi,
@@ -36,8 +38,10 @@ from .controller import (
 from .runner import AsyncRunner
 
 __all__ = [
+    "DUPLICATE_SCAN_WINDOW_SECONDS",
     "ERROR_TIMEOUT_SECONDS",
     "INTERACTIVE_TIMEOUT_SECONDS",
+    "MIN_SCAN_INTERVAL_SECONDS",
     "RESULT_TIMEOUT_SECONDS",
     "STATE_TIMEOUTS",
     "AsyncRunner",
