@@ -237,6 +237,61 @@ const MIGRATIONS: Migration[] = [
       return true;
     },
   },
+  {
+    name: "2026-11-27/drinks-barcode",
+    up: async (queryInterface) => {
+      let table;
+      try {
+        table = await queryInterface.describeTable("Drinks");
+      }
+      catch {
+        // Table does not exist yet — sync() creates it with the column from the model.
+        return false;
+      }
+
+      let applied = false;
+      if (!table.barcode) {
+        await queryInterface.addColumn("Drinks", "barcode", {
+          type: DataTypes.STRING(48),
+          allowNull: true,
+        });
+        applied = true;
+      }
+
+      const indexes = await queryInterface.showIndex("Drinks") as Array<{
+        name?: string;
+        unique?: boolean;
+        fields?: Array<{ attribute?: string }>;
+      }>;
+      const hasBarcodeUniqueIndex = indexes.some(
+        index =>
+          index.name === "drinks_barcode_unique"
+          || (
+            Boolean(index.unique)
+            && Array.isArray(index.fields)
+            && index.fields.length === 1
+            && index.fields[0]?.attribute === "barcode"
+          ),
+      );
+      if (!hasBarcodeUniqueIndex) {
+        try {
+          await queryInterface.addIndex("Drinks", ["barcode"], {
+            unique: true,
+            name: "drinks_barcode_unique",
+          });
+          applied = true;
+        }
+        catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!/already exists|duplicate/i.test(message)) {
+            throw error;
+          }
+        }
+      }
+
+      return applied;
+    },
+  },
 ];
 
 export async function runMigrations(): Promise<void> {

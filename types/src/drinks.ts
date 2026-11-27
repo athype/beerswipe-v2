@@ -23,6 +23,7 @@ export interface CreateDrinkRequest {
   stock?: number;
   category?: string;
   isAlcohol?: boolean;
+  barcode?: string | null;
 }
 
 export interface CreateDrinkResponse {
@@ -38,6 +39,7 @@ export interface UpdateDrinkRequest {
   category?: string;
   isActive?: boolean;
   isAlcohol?: boolean;
+  barcode?: string | null;
 }
 
 export interface UpdateDrinkResponse {

@@ -43,6 +43,7 @@ export interface Drink {
   isActive: boolean;
   isAlcohol: boolean;
   category: string;
+  barcode?: string | null;
   lastRestockedAt?: ISODateString | null;
   createdAt?: ISODateString;
   updatedAt?: ISODateString;

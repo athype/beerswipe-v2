@@ -11,17 +11,19 @@ export interface DrinkAttributes {
   isActive: boolean;
   isAlcohol: boolean;
   category: string | null;
+  barcode: string | null;
   lastRestockedAt: Date | null;
 }
 
 export interface DrinkCreationAttributes
-  extends Omit<DrinkAttributes, "id" | "description" | "stock" | "isActive" | "isAlcohol" | "category" | "lastRestockedAt"> {
+  extends Omit<DrinkAttributes, "id" | "description" | "stock" | "isActive" | "isAlcohol" | "category" | "barcode" | "lastRestockedAt"> {
   id?: number;
   description?: string | null;
   stock?: number;
   isActive?: boolean;
   isAlcohol?: boolean;
   category?: string | null;
+  barcode?: string | null;
   lastRestockedAt?: Date | null;
 }
 
@@ -79,6 +81,11 @@ const Drink = sequelize.define<DrinkInstance, DrinkAttributes>("Drink", {
     type: DataTypes.STRING,
     allowNull: true,
     defaultValue: "beverage",
+  },
+  barcode: {
+    type: DataTypes.STRING(48),
+    allowNull: true,
+    unique: true,
   },
   // When stock last went up through a restock write path (add-stock, edit,
   // import, create). Null until the first one; deducts and the stock raises

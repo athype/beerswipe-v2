@@ -1,3 +1,5 @@
+import type { Drink } from "./domain.js";
+
 // Per-user scan code (QR/barcode) resolved by the kiosk at the scan step.
 // Stored in plaintext on the backend by design: it stays re-displayable for
 // the operator QR pull-up and the ADA member page. Regenerating rotates it in
@@ -15,4 +17,10 @@ export interface ScanCodeUser {
 
 export interface ScanCodeLookupResponse {
   user: ScanCodeUser;
+}
+
+export type ScannedDrink = Pick<Drink, "id" | "name" | "price" | "stock" | "isAlcohol" | "category">;
+
+export interface ScanDrinkLookupResponse {
+  drink: ScannedDrink;
 }
