@@ -29,3 +29,9 @@ class DrinkListResponse(BaseModel):
 
     drinks: list[Drink]
     pagination: Pagination
+
+
+class BarcodeLookupResponse(BaseModel):
+    """Response from GET /api/v1/scan/drink/:barcode."""
+
+    drink: Drink

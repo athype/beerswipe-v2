@@ -5,13 +5,14 @@ runtime validation for every API response the kiosk consumes.
 """
 
 from .common import ApiError, KioskResult
-from .drinks import Drink, DrinkListResponse, Pagination
+from .drinks import BarcodeLookupResponse, Drink, DrinkListResponse, Pagination
 from .leaderboard import LeaderboardEntry, LeaderboardPeriod, LeaderboardResponse
 from .sales import SellItem, SellRequest, SellResponse
 from .users import ScanCodeLookupResponse, UserInfo
 
 __all__ = [
     "ApiError",
+    "BarcodeLookupResponse",
     "Drink",
     "DrinkListResponse",
     "KioskResult",

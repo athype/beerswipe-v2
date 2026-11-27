@@ -5,16 +5,21 @@ Kivy touch kiosk for the Beerswipe bar. Targets a Raspberry Pi with a 7"
 
 ## Status
 
-- Working scan-to-buy flow: scan a code, build a basket of drinks, confirm,
-  and the whole order is posted as one atomic sale — the result screen shows
-  the member's remaining credits and every screen times back to idle. The
-  state machine, timeouts and error handling live in `src/flow`, which is
-  kivy-free so the flow is covered headless by `tests/test_flow.py`.
-- Basket picking: **tap a drink to add one** (tap again to add more — the row
-  shows a `×N` badge). The bottom stepper edits the **last-tapped** line:
-  `-` at one removes that line (focus moves to a neighbouring line), `+` is
-  capped at the drink's stock. `Continue` opens the itemised summary; `Back`
-  returns to the basket with it intact. Re-scanning or idling for 60 s clears
+- Working scan-to-buy flow: **scan your code, then scan drinks** (or tap them
+  on screen) to build a basket, confirm, and the whole order is posted as one
+  atomic sale — the result screen shows the member's remaining credits and
+  every screen times back to idle. Unknown product barcodes and sold-out drinks
+  show the error screen before returning to idle. The state machine, timeouts
+  and error handling live in `src/flow`, which is kivy-free so the flow is
+  covered headless by `tests/test_flow.py`.
+- Basket picking: **scan a drink's barcode or tap a drink to add one** (scan or
+  tap again to add more — the row shows a `×N` badge). Product barcodes are
+  resolved via `GET /api/v1/scan/drink/:barcode` only while selecting; they are
+  ignored in other states and never clear the current user or basket. The
+  bottom stepper edits the **last-tapped/scanned** line: `-` at one removes
+  that line (focus moves to a neighbouring line), `+` is capped at the drink's
+  stock. `Continue` opens the itemised summary; `Back` returns to the basket
+  with it intact. Re-scanning a member code or idling for 60 s clears
   everything.
 - Multi-drink orders post `POST /api/v1/sales/sell` once with `items[]`; the
   backend charges credits and every drink's stock in one transaction and undo
@@ -95,10 +100,12 @@ message.
 ## Scanner hardware
 
 Honeywell Xenon XP 1950g, configured as a **HID keyboard wedge** with "Add
-CR Suffix" scanned on the unit, so every scan arrives as the 32-character
-code followed by Enter. HID is the interface for both development and the
-Pi — decided 2026-10-06; the "USB serial" alternative is dropped, so there
-is no `pyserial` dependency and no serial reader.
+CR Suffix" scanned on the unit, so every scan arrives as the payload followed
+by Enter — the same CR-suffix setup reads both 32-character member QR codes and
+1D product barcodes (EAN/UPC, Code128) with no scanner configuration change
+needed. HID is the interface for both development and the Pi — decided
+2026-10-06; the "USB serial" alternative is dropped, so there is no `pyserial`
+dependency and no serial reader.
 
 The Pi **must** run the kiosk with `KIOSK_SCAN_READER=window`, which takes the
 scanner's keystrokes from the Kivy window (`src/scan/window.py`): behind a
@@ -134,19 +141,21 @@ or call the API:
   (`src/scan/codes.py`); URLs, punctuation, non-ASCII text and over-long
   streams are dropped with one debug record (never the payload itself) and
   no truncated tail is ever sent.
-- `FlowController.scan()` accepts only a 32-hex member code (any casing),
-  ignores a second scan within 500 ms and the same code within 3 s, and never
-  lets a junk scan clear an active user, basket or screen. A 32-hex code
-  that is not in the database still reaches the API and shows the normal
-  error screen.
+- `FlowController.scan()` classifies trimmed 32-hex payloads (any casing) as
+  member codes and any other 1..48 ASCII alphanumeric payload as a product
+  barcode (`src/scan/codes.py`). Product scans are accepted only in SELECTING
+  (never clearing the user or basket) and dropped in every other state; member
+  codes still restart the flow outside SELLING. Accepted scans share the burst
+  guard (500 ms interval, 3 s per-code duplicate window), and junk payloads
+  never clear an active user, basket or screen. An unknown member code, unknown
+  product barcode, or sold-out product shows the normal error screen.
 
 On the Xenon itself: enable CodeGate (suppresses a re-read while the same
-symbol stays in the field of view), keep Presentation / Streaming
-Presentation off unless a stand makes hands-free scanning necessary (if it
-is on, the 3 s duplicate window absorbs the re-reads), and until #191
-ships, disable non-QR symbologies (EAN/UPC, Code128) so product packaging
-does not type junk into the kiosk — that reduces noise, the software gate
-above is what stops random QR codes.
+symbol stays in the field of view) and keep Presentation / Streaming
+Presentation off unless a stand makes hands-free scanning necessary (if it is
+on, the 3 s duplicate window absorbs the re-reads). EAN/UPC and Code128
+symbologies are enabled by default and work with the same CR-suffix setup — no
+scanner reconfiguration is needed for product barcode scanning (#191).
 
 ## Quality gates
 
