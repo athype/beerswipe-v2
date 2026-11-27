@@ -24,6 +24,7 @@ from .codes import (
     ScanKind,
     classify_scan,
     is_scannable_payload,
+    normalize_product_code,
     normalize_scan_code,
 )
 from .keyboard import KeyboardScanReader
@@ -40,5 +41,6 @@ __all__ = [
     "WindowScanReader",
     "classify_scan",
     "is_scannable_payload",
+    "normalize_product_code",
     "normalize_scan_code",
 ]

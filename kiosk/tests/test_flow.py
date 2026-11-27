@@ -23,7 +23,7 @@ from src.flow import (
     FlowView,
 )
 from src.models.common import KioskResult
-from src.models.drinks import Drink, DrinkListResponse, Pagination
+from src.models.drinks import BarcodeLookupResponse, Drink, DrinkListResponse, Pagination
 from src.models.sales import SellRequest, SellResponse
 from src.models.users import ScanCodeLookupResponse, UserInfo
 from src.scan import WindowScanReader
@@ -103,10 +103,18 @@ class FakeDrinksApi:
                 pagination=Pagination(total=2, page=1, pages=1, limit=200),
             ),
         )
+        self.barcodes: list[str] = []
+        self.lookup_result: KioskResult[Any] = KioskResult(
+            data=BarcodeLookupResponse(drink=make_drink(1, PILSNER, 4, 10)),
+        )
 
     async def list_active(self) -> KioskResult[Any]:
         self.calls += 1
         return self.result
+
+    async def lookup_barcode(self, barcode: str) -> KioskResult[Any]:
+        self.barcodes.append(barcode)
+        return self.lookup_result
 
 
 class FakeSalesApi:
@@ -790,3 +798,146 @@ def test_multiline_qr_from_the_reader_changes_nothing(h: Harness) -> None:
     assert [view.state for view in h.views] == [FlowState.IDLE]  # zero transitions
     assert h.api.users.codes == []  # zero /scan/lookup requests
     assert h.executor.pending == 0
+
+
+# ---------------------------------------------------------------------------
+# Product barcode scanning (#191)
+# ---------------------------------------------------------------------------
+
+EAN_PILSNER = "8710400000001"
+CODE128_IPA = "AbC123Ipa"
+
+
+def test_user_scan_then_product_scan_adds_drink_and_focuses_it(h: Harness) -> None:
+    h.scan()
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+
+    h.scan(f"  {EAN_PILSNER}  ")
+
+    assert h.api.drinks.barcodes == [EAN_PILSNER]
+    assert h.state is FlowState.SELECTING
+    assert [(line.drink.name, line.quantity) for line in h.view.items] == [(PILSNER, 1)]
+    assert h.view.focused_drink_id == 1
+
+
+def test_scanning_same_product_after_duplicate_window_increments_and_clamps_to_stock(
+    h: Harness,
+) -> None:
+    h.api.drinks.lookup_result = KioskResult(
+        data=BarcodeLookupResponse(drink=make_drink(2, IPA, 6, 2)),
+    )
+    h.scan()
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+
+    h.scan(CODE128_IPA)
+    assert h.api.drinks.barcodes == [CODE128_IPA]  # case preserved
+    assert [(line.drink.id, line.quantity) for line in h.view.items] == [(2, 1)]
+
+    # Inside the duplicate window: ignored.
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.scan(CODE128_IPA)
+    assert h.api.drinks.barcodes == [CODE128_IPA]
+    assert [(line.drink.id, line.quantity) for line in h.view.items] == [(2, 1)]
+
+    # After the duplicate window: increments to 2.
+    h.clock.advance(DUPLICATE_SCAN_WINDOW_SECONDS + 0.1)
+    h.scan(CODE128_IPA)
+    assert h.api.drinks.barcodes == [CODE128_IPA, CODE128_IPA]
+    assert [(line.drink.id, line.quantity) for line in h.view.items] == [(2, 2)]
+
+    # A third scan is clamped at stock (2).
+    h.clock.advance(DUPLICATE_SCAN_WINDOW_SECONDS + 0.1)
+    h.scan(CODE128_IPA)
+    assert [(line.drink.id, line.quantity) for line in h.view.items] == [(2, 2)]
+
+
+def test_product_scan_is_ignored_in_confirming_and_selling(h: Harness) -> None:
+    h.scan()
+    h.pick(1)
+    h.controller.confirm()
+    assert h.state is FlowState.CONFIRMING
+
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.controller.scan(EAN_PILSNER)
+    assert h.state is FlowState.CONFIRMING
+    assert h.executor.pending == 0
+    assert h.api.drinks.barcodes == []
+
+    h.controller.confirm()
+    assert h.state is FlowState.SELLING
+
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+    h.controller.scan(EAN_PILSNER)
+    assert h.state is FlowState.SELLING
+    assert h.executor.pending == 1  # only the sale
+    assert h.api.drinks.barcodes == []
+
+    h.executor.run_all()
+    assert h.state is FlowState.RESULT
+
+
+def test_unknown_product_barcode_errors_then_idles(h: Harness) -> None:
+    h.api.drinks.lookup_result = KioskResult(error="Drink not found")
+    h.scan()
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+
+    h.scan(EAN_PILSNER)
+    assert h.state is FlowState.ERROR
+    assert h.view.error == "Drink not found"
+
+    h.scheduler.advance(ERROR_TIMEOUT_SECONDS)
+    assert h.state is FlowState.IDLE
+    assert h.view.error is None
+
+
+def test_sold_out_product_barcode_errors(h: Harness) -> None:
+    h.api.drinks.lookup_result = KioskResult(
+        data=BarcodeLookupResponse(drink=make_drink(1, PILSNER, 4, 0)),
+    )
+    h.scan()
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+
+    h.scan(EAN_PILSNER)
+    assert h.state is FlowState.ERROR
+    assert h.view.error is not None and "sold out" in h.view.error.lower()
+
+    h.scheduler.advance(ERROR_TIMEOUT_SECONDS)
+    assert h.state is FlowState.IDLE
+
+
+def test_product_scan_preserves_user_and_existing_basket(h: Harness) -> None:
+    h.scan()
+    h.pick(2, quantity=2)  # 2 x IPA
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+
+    # Also test a drink not yet in the cached drinks list: appended without reordering.
+    cola = make_drink(3, "Cola", 3, 5)
+    h.api.drinks.lookup_result = KioskResult(data=BarcodeLookupResponse(drink=cola))
+
+    h.scan(EAN_PILSNER)
+    assert h.state is FlowState.SELECTING
+    assert h.view.user is not None and h.view.user.username == "ada"
+    assert [d.id for d in h.view.drinks] == [1, 2, 3]
+    assert [(line.drink.name, line.quantity) for line in h.view.items] == [
+        (IPA, 2),
+        ("Cola", 1),
+    ]
+    assert h.view.focused_drink_id == 3
+
+
+def test_late_product_result_after_confirm_is_dropped(h: Harness) -> None:
+    h.scan()
+    h.pick(2)  # 1 x IPA
+    h.clock.advance(MIN_SCAN_INTERVAL_SECONDS + 0.1)
+
+    h.controller.scan(EAN_PILSNER)  # queued, not yet resolved
+    assert h.executor.pending == 1
+    assert h.state is FlowState.SELECTING
+
+    h.controller.confirm()
+    assert h.state is FlowState.CONFIRMING
+
+    # The late barcode lookup completes after the member moved to CONFIRMING.
+    h.executor.run_all()
+    assert h.state is FlowState.CONFIRMING
+    assert [(line.drink.name, line.quantity) for line in h.view.items] == [(IPA, 1)]

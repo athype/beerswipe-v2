@@ -76,6 +76,7 @@ const EXPECTED_OPERATIONS = [
   ["/api-keys/{id}", "delete"],
   // scan codes
   ["/scan/lookup/{code}", "get"],
+  ["/scan/drink/{barcode}", "get"],
   ["/users/{id}/scan-code", "get"],
   ["/users/{id}/scan-code/regenerate", "post"],
 ];

@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import app from "../src/app.ts";
 import { generateToken } from "../src/middleware/auth.ts";
-import { ApiKey, ScanCode, User } from "../src/models/index.ts";
+import { ApiKey, Drink, ScanCode, User } from "../src/models/index.ts";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "../src/utils/apiKeyCrypto.ts";
 import { generateScanCode } from "../src/utils/scanCodeCrypto.ts";
 import { scanCodeParamSchema } from "../src/validation/contracts.ts";
@@ -15,7 +15,7 @@ function uniqueSuffix() {
   return `${Date.now()}-${suffix}`;
 }
 
-const created: { users: number[]; keys: number[] } = { users: [], keys: [] };
+const created: { users: number[]; keys: number[]; drinks: number[] } = { users: [], keys: [], drinks: [] };
 
 type TestUser = {
   id: number;
@@ -70,6 +70,7 @@ afterAll(async () => {
   await ScanCode.destroy({ where: { userId: created.users } });
   await ApiKey.destroy({ where: { id: created.keys } });
   await User.destroy({ where: { id: created.users } });
+  await Drink.destroy({ where: { id: created.drinks } });
 });
 
 describe("scanCodeParamSchema", () => {
@@ -320,5 +321,141 @@ describe("GET /api/v1/scan/lookup/:code", () => {
       .get(`/api/v1/scan/lookup/${code}`)
       .set("Cookie", cookieFor(member));
     expect(denied.status).toBe(403);
+  });
+});
+
+describe("GET /api/v1/scan/drink/:barcode", () => {
+  async function createDrink(
+    extra: {
+      barcode?: string | null;
+      stock?: number;
+      isActive?: boolean;
+      isAlcohol?: boolean;
+      category?: string;
+      price?: number;
+    } = {},
+  ) {
+    const drink = await Drink.create({
+      name: `scan-drink-${uniqueSuffix()}`,
+      price: extra.price ?? 4,
+      stock: extra.stock ?? 10,
+      isActive: extra.isActive ?? true,
+      isAlcohol: extra.isAlcohol ?? false,
+      category: extra.category ?? "beer",
+      barcode: extra.barcode ?? `8710${Date.now()}${suffix += 1}`,
+    });
+    created.drinks.push(drink.id);
+    return drink;
+  }
+
+  it("resolves an active drink by barcode with the exact kiosk shape", async () => {
+    const admin = await createUser("admin");
+    const drink = await createDrink({
+      barcode: `AbC${Date.now()}${suffix += 1}`,
+      price: 5,
+      stock: 12,
+      isAlcohol: true,
+      category: "beer",
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/scan/drink/${drink.barcode}`)
+      .set("Cookie", cookieFor(admin));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      drink: {
+        id: drink.id,
+        name: drink.name,
+        price: 5,
+        stock: 12,
+        isAlcohol: true,
+        category: "beer",
+      },
+    });
+  });
+
+  it("returns 200 with stock 0 for an out-of-stock active drink", async () => {
+    const admin = await createUser("admin");
+    const drink = await createDrink({ stock: 0, category: "soda" });
+
+    const res = await request(app)
+      .get(`/api/v1/scan/drink/${drink.barcode}`)
+      .set("Cookie", cookieFor(admin));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      drink: {
+        id: drink.id,
+        name: drink.name,
+        price: drink.price,
+        stock: 0,
+        isAlcohol: false,
+        category: "soda",
+      },
+    });
+  });
+
+  it("404s for an unknown barcode and for an inactive drink", async () => {
+    const admin = await createUser("admin");
+    const cookie = cookieFor(admin);
+    const inactive = await createDrink({ isActive: false });
+
+    const unknownRes = await request(app)
+      .get("/api/v1/scan/drink/9999999999999")
+      .set("Cookie", cookie);
+    expect(unknownRes.status).toBe(404);
+    expect(unknownRes.body).toEqual({ error: "Drink not found" });
+
+    const inactiveRes = await request(app)
+      .get(`/api/v1/scan/drink/${inactive.barcode}`)
+      .set("Cookie", cookie);
+    expect(inactiveRes.status).toBe(404);
+    expect(inactiveRes.body).toEqual({ error: "Drink not found" });
+  });
+
+  it("400s for malformed barcodes", async () => {
+    const admin = await createUser("admin");
+    const cookie = cookieFor(admin);
+
+    for (const bad of ["bad-code!", "a".repeat(49), "123_456"]) {
+      const res = await request(app)
+        .get(`/api/v1/scan/drink/${bad}`)
+        .set("Cookie", cookie);
+      expect(res.status, `barcode=${bad}`).toBe(400);
+      expect(res.body).toEqual({ error: "Invalid barcode" });
+    }
+  });
+
+  it("requires authentication and an admin-or-seller caller", async () => {
+    const member = await createUser("member");
+    const drink = await createDrink();
+
+    const anonymous = await request(app).get(`/api/v1/scan/drink/${drink.barcode}`);
+    expect(anonymous.status).toBe(401);
+
+    const denied = await request(app)
+      .get(`/api/v1/scan/drink/${drink.barcode}`)
+      .set("Cookie", cookieFor(member));
+    expect(denied.status).toBe(403);
+  });
+
+  it("succeeds with a seller cookie and with a seller-scoped API key", async () => {
+    const admin = await createUser("admin");
+    const seller = await createUser("seller");
+    const key = await seedKey(admin, "seller");
+    const drink = await createDrink({ price: 4, stock: 7, category: "beer" });
+
+    const viaSeller = await request(app)
+      .get(`/api/v1/scan/drink/${drink.barcode}`)
+      .set("Cookie", cookieFor(seller));
+    expect(viaSeller.status).toBe(200);
+    expect(viaSeller.body.drink.id).toBe(drink.id);
+
+    const viaKey = await request(app)
+      .get(`/api/v1/scan/drink/${drink.barcode}`)
+      .set("X-API-Key", key);
+    expect(viaKey.status).toBe(200);
+    expect(viaKey.body.drink.id).toBe(drink.id);
   });
 });

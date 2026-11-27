@@ -62,6 +62,7 @@
 
         <div class="drink-info">
           <p class="description">{{ drink.description || 'No description' }}</p>
+          <p v-if="drink.barcode" class="barcode">Barcode: {{ drink.barcode }}</p>
           <div class="drink-details">
             <div class="detail">
               <span class="label">Price:</span>
@@ -185,6 +186,7 @@ interface DrinkForm {
   price: number
   stock: number
   category: string
+  barcode: string
   isActive: boolean
   isAlcohol: boolean
 }
@@ -216,6 +218,7 @@ const drinkForm = reactive<DrinkForm>({
   price: 1,
   stock: 0,
   category: 'beverage',
+  barcode: '',
   isActive: true,
   isAlcohol: false
 })
@@ -268,6 +271,7 @@ const openEditModal = (drink: Drink): void => {
     price: drink.price,
     stock: drink.stock,
     category: drink.category,
+    barcode: drink.barcode ?? '',
     isActive: drink.isActive,
     isAlcohol: drink.isAlcohol
   })
@@ -323,6 +327,7 @@ const closeModals = (): void => {
     price: 1,
     stock: 0,
     category: 'beverage',
+    barcode: '',
     isActive: true,
     isAlcohol: false
   })
@@ -545,6 +550,14 @@ onMounted((): void => {
   color: var(--color-white);
   margin-bottom: 1rem;
   font-style: italic;
+}
+
+.barcode {
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-grey);
+  opacity: 0.8;
 }
 
 .drink-details {

@@ -18,10 +18,15 @@ from enum import Enum
 from typing import Any, Protocol, TypeVar
 
 from ..models.common import KioskResult
-from ..models.drinks import Drink, DrinkListResponse
+from ..models.drinks import BarcodeLookupResponse, Drink, DrinkListResponse
 from ..models.sales import SellItem, SellRequest, SellResponse
 from ..models.users import ScanCodeLookupResponse, UserInfo
-from ..scan.codes import ScanKind, classify_scan, normalize_scan_code
+from ..scan.codes import (
+    ScanKind,
+    classify_scan,
+    normalize_product_code,
+    normalize_scan_code,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +145,10 @@ class DrinksApi(Protocol):
     """The slice of the drinks client the flow uses."""
 
     def list_active(self) -> Coroutine[Any, Any, KioskResult[DrinkListResponse]]: ...
+
+    def lookup_barcode(
+        self, barcode: str
+    ) -> Coroutine[Any, Any, KioskResult[BarcodeLookupResponse]]: ...
 
 
 class SalesApi(Protocol):
@@ -305,26 +314,34 @@ class FlowController:
         self._transition(FlowState.IDLE)
 
     def scan(self, code: str) -> None:
-        """A scan arrived: resolve a member code and start choosing a drink.
+        """A scan arrived: resolve a member code or add a scanned product.
 
-        Only a plausible member code — 32 hex characters, any casing — gets
-        past the gate; anything else is dropped before it can touch the
-        flow, publish a screen or reach the API, so an active SELECTING
-        session survives a junk scan untouched.  A scan in any state except
-        SELLING restarts the flow; during SELLING it is ignored so a stray
-        scan cannot interrupt a sale.  Bursts are rate-limited: a second
-        scan within MIN_SCAN_INTERVAL_SECONDS, or the same code within
-        DUPLICATE_SCAN_WINDOW_SECONDS (even interleaved with other codes),
-        is ignored.
+        A 32-hex member code restarts the flow in any state except SELLING.
+        A product barcode (any other 1..48 ASCII alphanumeric payload) is
+        accepted only in SELECTING, where it looks up the drink and adds one
+        to the basket without clearing the member or existing lines; in every
+        other state it is dropped before touching the burst guard or the API.
+        Invalid payloads are always dropped.  Accepted scans share the burst
+        guard: a second scan within MIN_SCAN_INTERVAL_SECONDS, or the same
+        code within DUPLICATE_SCAN_WINDOW_SECONDS (even interleaved with
+        other codes), is ignored.
         """
         if self._state is FlowState.SELLING:
             return
 
-        if classify_scan(code) is not ScanKind.USER:
+        kind = classify_scan(code)
+        if kind is ScanKind.INVALID:
             # Junk must not touch the flow: no transition, no API, no reset.
             return
 
-        normalized = normalize_scan_code(code)
+        if kind is ScanKind.PRODUCT and self._state is not FlowState.SELECTING:
+            return
+
+        normalized = (
+            normalize_scan_code(code)
+            if kind is ScanKind.USER
+            else normalize_product_code(code)
+        )
         now = self._clock()
         if (
             self._last_accepted_at is not None
@@ -343,6 +360,16 @@ class FlowController:
             if now - at < DUPLICATE_SCAN_WINDOW_SECONDS
         }
         self._recent_scan_times[normalized] = now
+
+        if kind is ScanKind.PRODUCT:
+            self._token += 1
+            token = self._token
+            self._executor.submit(
+                self._lookup_product(normalized),
+                lambda outcome: self._on_product(token, outcome),
+                lambda exc: self._on_async_error(token, exc),
+            )
+            return
 
         self._user = None
         self._drinks = ()
@@ -410,6 +437,7 @@ class FlowController:
         so a double tap cannot ring up two sales.
         """
         if self._state is FlowState.SELECTING and self._items:
+            self._token += 1
             self._transition(FlowState.CONFIRMING)
         elif self._state is FlowState.CONFIRMING:
             self._start_sale()
@@ -439,6 +467,15 @@ class FlowController:
             drinks=tuple(drinks.data.drinks),
         )
 
+    async def _lookup_product(self, barcode: str) -> Drink | _Failure:
+        """Resolve a product barcode to its drink."""
+        result = await self._executor.api.drinks.lookup_barcode(barcode)
+        if result.error is not None:
+            return _Failure(result.error)
+        if result.data is None:
+            return _Failure("Unexpected response from the server")
+        return result.data.drink
+
     async def _submit_sale(self, request: SellRequest) -> _SaleDone | _Failure:
         """Submit the sale and report the member's remaining credits."""
         result = await self._executor.api.sales.submit(request)
@@ -464,6 +501,31 @@ class FlowController:
         self._user = outcome.user
         self._drinks = outcome.drinks
         self._transition(FlowState.SELECTING)
+
+    def _on_product(self, token: int, outcome: Drink | _Failure) -> None:
+        if token != self._token or self._state is not FlowState.SELECTING:
+            return
+
+        if isinstance(outcome, _Failure):
+            self._fail(outcome.message)
+            return
+
+        if outcome.stock <= 0:
+            self._fail(f"{outcome.name} is sold out")
+            return
+
+        replaced = False
+        updated: list[Drink] = []
+        for existing in self._drinks:
+            if existing.id == outcome.id:
+                updated.append(outcome)
+                replaced = True
+            else:
+                updated.append(existing)
+        if not replaced:
+            updated.append(outcome)
+        self._drinks = tuple(updated)
+        self.select_drink(outcome.id)
 
     def _on_sold(self, token: int, outcome: _SaleDone | _Failure) -> None:
         if token != self._token:

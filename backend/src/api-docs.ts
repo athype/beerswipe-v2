@@ -54,6 +54,13 @@ const drinkSchema = {
     isActive: { type: "boolean", description: "false = soft-deleted" },
     isAlcohol: { type: "boolean", description: "true = alcohol; buyer must be 18+, enforced at sale time" },
     category: { type: "string", nullable: true },
+    barcode: {
+      type: "string",
+      maxLength: 48,
+      pattern: "^[A-Za-z0-9]{1,48}$",
+      nullable: true,
+      description: "Optional product barcode (EAN/UPC/Code128)",
+    },
     lastRestockedAt: {
       type: "string",
       format: "date-time",
@@ -84,6 +91,7 @@ const createDrinkRequestSchema = {
     stock: { type: "integer", minimum: 0, default: 0 },
     category: { type: "string", default: "beverage" },
     isAlcohol: { type: "boolean", default: false, description: "true = alcohol; buyers must be 18+" },
+    barcode: { type: "string", maxLength: 48, pattern: "^[A-Za-z0-9]{1,48}$", nullable: true },
   },
   required: ["name", "price"],
 };
@@ -99,6 +107,7 @@ const updateDrinkRequestSchema = {
     category: { type: "string" },
     isActive: { type: "boolean" },
     isAlcohol: { type: "boolean", description: "true = alcohol; buyers must be 18+" },
+    barcode: { type: "string", maxLength: 48, pattern: "^[A-Za-z0-9]{1,48}$", nullable: true },
   },
 };
 
@@ -328,6 +337,26 @@ const scanLookupResponseSchema = {
   required: ["user"],
 };
 
+const scanDrinkLookupResponseSchema = {
+  type: "object",
+  description: "Kiosk resolution result: the drink a product barcode belongs to",
+  properties: {
+    drink: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        name: { type: "string" },
+        price: { type: "integer", minimum: 1 },
+        stock: { type: "integer", minimum: 0 },
+        isAlcohol: { type: "boolean" },
+        category: { type: "string" },
+      },
+      required: ["id", "name", "price", "stock", "isAlcohol", "category"],
+    },
+  },
+  required: ["drink"],
+};
+
 const schemas = {
   Error: errorSchema,
   ServerError: serverErrorSchema,
@@ -352,6 +381,7 @@ const schemas = {
   CreateApiKeyRequest: createApiKeyRequestSchema,
   ScanCode: scanCodeSchema,
   ScanLookupResponse: scanLookupResponseSchema,
+  ScanDrinkLookupResponse: scanDrinkLookupResponseSchema,
 };
 
 const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string };

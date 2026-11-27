@@ -61,6 +61,20 @@
       </div>
 
       <div class="form-group">
+        <label for="drink-barcode">Barcode (optional)</label>
+        <input
+          id="drink-barcode"
+          v-model="form.barcode"
+          type="text"
+          maxlength="48"
+          pattern="[A-Za-z0-9]{1,48}"
+          autocomplete="off"
+          placeholder="EAN/UPC, optional"
+          class="form-input"
+        />
+      </div>
+
+      <div class="form-group">
         <label class="checkbox-label">
           <input
             v-model="form.isAlcohol"
@@ -99,6 +113,7 @@ interface DrinkForm {
   price: number
   stock: number
   category: string
+  barcode: string
   isActive: boolean
   isAlcohol: boolean
 }

@@ -11,11 +11,17 @@ _USER_CODE_RE = re.compile(r"[0-9a-f]{32}")
 
 class ScanKind(Enum):
     USER = "user"
+    PRODUCT = "product"
     INVALID = "invalid"
 
 
 def normalize_scan_code(code: str) -> str:
     return code.strip().lower()
+
+
+def normalize_product_code(code: str) -> str:
+    """Trim surrounding whitespace without lowercasing (Code128 is case-sensitive)."""
+    return code.strip()
 
 
 def is_scannable_payload(text: str) -> bool:
@@ -28,5 +34,9 @@ def is_scannable_payload(text: str) -> bool:
 
 
 def classify_scan(code: str) -> ScanKind:
-    normalized = normalize_scan_code(code)
-    return ScanKind.USER if _USER_CODE_RE.fullmatch(normalized) else ScanKind.INVALID
+    stripped = code.strip()
+    if _USER_CODE_RE.fullmatch(stripped.lower()):
+        return ScanKind.USER
+    if is_scannable_payload(stripped):
+        return ScanKind.PRODUCT
+    return ScanKind.INVALID

@@ -4,10 +4,25 @@ import { Readable } from "node:stream";
 import csv from "csv-parser";
 import express from "express";
 import multer from "multer";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import { sequelize } from "../config/database.ts";
 import { authenticateRequest, requireAdmin } from "../middleware/auth.ts";
 import { Drink, Transaction } from "../models/index.ts";
+import { InvalidBarcodeError, normalizeBarcode } from "../utils/barcode.ts";
+
+function isBarcodeUniqueConstraintError(error: unknown): boolean {
+  if (!(error instanceof UniqueConstraintError)) {
+    return false;
+  }
+  if (error.errors.some(err => err.path === "barcode")) {
+    return true;
+  }
+  if (typeof error.fields === "object" && error.fields !== null && "barcode" in error.fields) {
+    return true;
+  }
+  const parent = error.parent as { constraint?: unknown } | undefined;
+  return typeof parent?.constraint === "string" && /barcode/i.test(parent.constraint);
+}
 
 type DrinksQuery = {
   search?: string;
@@ -37,7 +52,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     summary: Export the drink catalog to CSV
  *     description: >
  *       Downloads all drinks (optionally filtered) as
- *       `name,description,price,stock,category,isActive,isAlcohol` with quoted fields.
+ *       `name,description,price,stock,category,isActive,isAlcohol,barcode` with quoted fields.
  *     tags: [Drinks]
  *     security:
  *       - authToken: []
@@ -60,7 +75,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         content:
  *           text/csv:
  *             schema: { type: string }
- *             example: "\"Grolsch\",\"0.0% pilsener\",60,120,beer,true,true"
+ *             example: "\"Grolsch\",\"0.0% pilsener\",60,120,\"beer\",true,true,\"8710400000001\""
  *       401:
  *         description: Missing or invalid authToken cookie
  *         content:
@@ -90,16 +105,17 @@ router.get("/export-csv", authenticateRequest, requireAdmin, async (req, res) =>
     const drinks = await Drink.findAll({
       where: whereClause,
       order: [["name", "ASC"]],
-      attributes: ["name", "description", "price", "stock", "category", "isActive", "isAlcohol"],
+      attributes: ["name", "description", "price", "stock", "category", "isActive", "isAlcohol", "barcode"],
     });
 
     const csvRows = drinks.map((drink) => {
       const escapedName = (drink.name || "").replace(/"/g, "\"\"");
       const escapedDescription = (drink.description || "").replace(/"/g, "\"\"");
-      return `"${escapedName}","${escapedDescription}",${drink.price},${drink.stock},"${drink.category}",${drink.isActive},${drink.isAlcohol}`;
+      const escapedBarcode = (drink.barcode || "").replace(/"/g, "\"\"");
+      return `"${escapedName}","${escapedDescription}",${drink.price},${drink.stock},"${drink.category}",${drink.isActive},${drink.isAlcohol},"${escapedBarcode}"`;
     });
 
-    const header = "name,description,price,stock,category,isActive,isAlcohol";
+    const header = "name,description,price,stock,category,isActive,isAlcohol,barcode";
     const csvContent = [header, ...csvRows].join("\n");
 
     res.setHeader("Content-Type", "text/csv");
@@ -281,7 +297,7 @@ router.get("/:id", async (req, res) => {
  */
 router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const { name, description, price, stock = 0, category = "beverage", isAlcohol = false } = req.body;
+    const { name, description, price, stock = 0, category = "beverage", isAlcohol = false, barcode } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ error: "Name and price are required" });
@@ -291,9 +307,27 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Price must be greater than 0" });
     }
 
+    let normalizedBarcode: string | null;
+    try {
+      normalizedBarcode = normalizeBarcode(barcode);
+    }
+    catch (error) {
+      if (error instanceof InvalidBarcodeError) {
+        return res.status(400).json({ error: error.message });
+      }
+      throw error;
+    }
+
     const existingDrink = await Drink.findOne({ where: { name } });
     if (existingDrink) {
       return res.status(400).json({ error: "Drink with this name already exists" });
+    }
+
+    if (normalizedBarcode !== null) {
+      const existingBarcode = await Drink.findOne({ where: { barcode: normalizedBarcode } });
+      if (existingBarcode) {
+        return res.status(400).json({ error: "Barcode already in use" });
+      }
     }
 
     const parsedStock = Number.parseInt(stock);
@@ -305,6 +339,7 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
       stock: parsedStock,
       category,
       isAlcohol: isAlcohol === true || isAlcohol === "true",
+      barcode: normalizedBarcode,
       // Created with stock in it, so it was restocked just now.
       lastRestockedAt: parsedStock > 0 ? new Date() : null,
     });
@@ -315,6 +350,9 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
     });
   }
   catch (error) {
+    if (isBarcodeUniqueConstraintError(error)) {
+      return res.status(400).json({ error: "Barcode already in use" });
+    }
     console.error("Create drink error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -376,11 +414,33 @@ router.post("/", authenticateRequest, requireAdmin, async (req, res) => {
  */
 router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
   try {
-    const { name, description, price, stock, category, isActive, isAlcohol } = req.body;
+    const { name, description, price, stock, category, isActive, isAlcohol, barcode } = req.body;
 
     const drink = await Drink.findByPk(req.params.id as string);
     if (!drink) {
       return res.status(404).json({ error: "Drink not found" });
+    }
+
+    let nextBarcode = drink.barcode;
+    if (barcode !== undefined) {
+      try {
+        nextBarcode = normalizeBarcode(barcode);
+      }
+      catch (error) {
+        if (error instanceof InvalidBarcodeError) {
+          return res.status(400).json({ error: error.message });
+        }
+        throw error;
+      }
+
+      if (nextBarcode !== null) {
+        const existingBarcode = await Drink.findOne({
+          where: { barcode: nextBarcode, id: { [Op.ne]: drink.id } },
+        });
+        if (existingBarcode) {
+          return res.status(400).json({ error: "Barcode already in use" });
+        }
+      }
     }
 
     const previousStock = drink.stock;
@@ -394,6 +454,7 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
       category: category || drink.category,
       isActive: isActive !== undefined ? isActive : drink.isActive,
       isAlcohol: isAlcohol !== undefined ? isAlcohol === true || isAlcohol === "true" : drink.isAlcohol,
+      barcode: nextBarcode,
       // Raising stock here is a restock; writes that leave it equal or lower
       // keep the previous stamp.
       lastRestockedAt: nextStock > previousStock ? new Date() : drink.lastRestockedAt,
@@ -405,6 +466,9 @@ router.put("/:id", authenticateRequest, requireAdmin, async (req, res) => {
     });
   }
   catch (error) {
+    if (isBarcodeUniqueConstraintError(error)) {
+      return res.status(400).json({ error: "Barcode already in use" });
+    }
     console.error("Update drink error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -511,9 +575,9 @@ router.post("/:id/add-stock", authenticateRequest, requireAdmin, async (req, res
  *   post:
  *     summary: Import drinks from a CSV file
  *     description: >
- *       Columns: `name,description,price,stock,category,isActive,isAlcohol` (no
- *       header row). Existing drink names are updated (stock, price, ...), new
- *       names are created.
+ *       Columns: `name,description,price,stock,category,isActive,isAlcohol[,barcode]`
+ *       (no header row; 8th `barcode` column is optional). Existing drink names
+ *       are updated (stock, price, ...), new names are created.
  *     tags: [Drinks]
  *     security:
  *       - authToken: []
@@ -586,17 +650,30 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
     for await (const data of Readable.from(req.file.buffer).pipe(csv({ headers: false })) as AsyncIterable<CsvDrinkRow>) {
       lineNumber++;
       try {
-        const [name, description, price, stock, category, isActive, isAlcohol] = Object.values(data);
+        const [name, description, price, stock, category, isActive, isAlcohol, barcode] = Object.values(data);
 
         if (!name) {
           errors.push(`Line ${lineNumber}: Name is required`);
           continue;
         }
 
+        const rawBarcode = barcode?.trim() ?? "";
+        const normalizedBarcode = rawBarcode !== "" ? normalizeBarcode(rawBarcode) : null;
+
         // Check if drink exists
         let drink = await Drink.findOne({ where: { name: name.trim() } });
 
         if (drink) {
+          if (normalizedBarcode !== null) {
+            const existingBarcode = await Drink.findOne({
+              where: { barcode: normalizedBarcode, id: { [Op.ne]: drink.id } },
+            });
+            if (existingBarcode) {
+              errors.push(`Line ${lineNumber}: Barcode already in use`);
+              continue;
+            }
+          }
+
           // Update existing drink's stock
           const previousStock = drink.stock;
           const parsedStock = Number.parseInt(stock ?? "") || 0;
@@ -611,6 +688,7 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
             category: category?.trim() || drink.category,
             isActive: parsedIsActive,
             isAlcohol: hasIsAlcohol ? isAlcohol === "true" : drink.isAlcohol,
+            barcode: normalizedBarcode !== null ? normalizedBarcode : drink.barcode,
             // Only a line that raises stock counts as a restock.
             lastRestockedAt: parsedStock > previousStock ? new Date() : drink.lastRestockedAt,
           });
@@ -628,6 +706,14 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
             continue;
           }
 
+          if (normalizedBarcode !== null) {
+            const existingBarcode = await Drink.findOne({ where: { barcode: normalizedBarcode } });
+            if (existingBarcode) {
+              errors.push(`Line ${lineNumber}: Barcode already in use`);
+              continue;
+            }
+          }
+
           const createdStock = Number.parseInt(stock ?? "") || 0;
 
           drink = await Drink.create({
@@ -638,6 +724,7 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
             category: category?.trim() || "beverage",
             isActive: isActive === "true",
             isAlcohol: isAlcohol === "true",
+            barcode: normalizedBarcode,
             // Same as POST /drinks: arriving with stock means stocked now.
             lastRestockedAt: createdStock > 0 ? new Date() : null,
           });
@@ -650,7 +737,12 @@ router.post("/import-csv", authenticateRequest, requireAdmin, upload.single("csv
         }
       }
       catch (error) {
-        errors.push(`Line ${lineNumber}: ${error instanceof Error ? error.message : String(error)}`);
+        if (isBarcodeUniqueConstraintError(error)) {
+          errors.push(`Line ${lineNumber}: Barcode already in use`);
+        }
+        else {
+          errors.push(`Line ${lineNumber}: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
     }
   }
