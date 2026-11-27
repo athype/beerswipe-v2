@@ -122,6 +122,9 @@ importers:
       axios:
         specifier: ^1.15.2
         version: 1.16.1
+      barcode-detector:
+        specifier: ^3.2.5
+        version: 3.2.5(@types/emscripten@1.41.6)
       ogl:
         specifier: ^1.0.11
         version: 1.0.11
@@ -137,6 +140,9 @@ importers:
       vue-router:
         specifier: ^4.6.4
         version: 4.6.4(vue@3.5.34(typescript@5.9.3))
+      zxing-wasm:
+        specifier: ^3.1.8
+        version: 3.1.8(@types/emscripten@1.41.6)
     devDependencies:
       '@types/node':
         specifier: ^25.9.1
@@ -1062,6 +1068,9 @@ packages:
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
+  '@types/emscripten@1.41.6':
+    resolution: {integrity: sha512-uN+9i8bFT5CUcZfyIEYDrSueACEyKGbUs5kC/72DGlZZoinh84sJfVV0i8UOJD1asdzkvLPBRrKs41kZ8MdEXg==}
+
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
 
@@ -1489,6 +1498,9 @@ packages:
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
+
+  barcode-detector@3.2.5:
+    resolution: {integrity: sha512-TuJdsjU5U+b8+O5G1/ZgR8VeLHd1T/5GpjPDJLoafNZYuf438vVP6jriuvR1S9PWVbR2ZoOKleKEzG5ltdaM5g==}
 
   baseline-browser-mapping@2.10.30:
     resolution: {integrity: sha512-xjOFN16Ha1+Rz4nFYKqHU/LSB+gx/Vi3yQLX7r7sAW+Wa+8hhF2h4pvqTrTMc8+WcDBEunnUurr46Jvv0jk3Vg==}
@@ -3878,6 +3890,11 @@ packages:
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
+  zxing-wasm@3.1.8:
+    resolution: {integrity: sha512-FpxLK7/lfZrlnmqoRUZd+4qpVlYabsuPx6tRxzN7V/E9IwijQ1dOJSlJGHoA2Yc62hkdvzDD8+qjRPGUx+5j+g==}
+    peerDependencies:
+      '@types/emscripten': '>=1.39.6'
+
 snapshots:
 
   '@antfu/eslint-config@4.19.0(@typescript-eslint/rule-tester@8.59.3(eslint@9.39.4)(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.59.3(typescript@5.9.3))(@typescript-eslint/utils@8.59.3(eslint@9.39.4)(typescript@5.9.3))(@vue/compiler-sfc@3.5.34)(eslint-plugin-format@1.5.0(eslint@9.39.4))(eslint@9.39.4)(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@26.1.0)(yaml@2.9.0))':
@@ -4726,6 +4743,8 @@ snapshots:
 
   '@types/deep-eql@4.0.2': {}
 
+  '@types/emscripten@1.41.6': {}
+
   '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.8': {}
@@ -5272,6 +5291,12 @@ snapshots:
   balanced-match@1.0.2: {}
 
   balanced-match@4.0.4: {}
+
+  barcode-detector@3.2.5(@types/emscripten@1.41.6):
+    dependencies:
+      zxing-wasm: 3.1.8(@types/emscripten@1.41.6)
+    transitivePeerDependencies:
+      - '@types/emscripten'
 
   baseline-browser-mapping@2.10.30: {}
 
@@ -7877,3 +7902,7 @@ snapshots:
   zod@4.4.3: {}
 
   zwitch@2.0.4: {}
+
+  zxing-wasm@3.1.8(@types/emscripten@1.41.6):
+    dependencies:
+      '@types/emscripten': 1.41.6

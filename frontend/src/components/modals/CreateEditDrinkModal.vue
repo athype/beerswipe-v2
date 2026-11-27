@@ -62,16 +62,31 @@
 
       <div class="form-group">
         <label for="drink-barcode">Barcode (optional)</label>
-        <input
-          id="drink-barcode"
-          v-model="form.barcode"
-          type="text"
-          maxlength="48"
-          pattern="[A-Za-z0-9]{1,48}"
-          autocomplete="off"
-          placeholder="EAN/UPC, optional"
-          class="form-input"
-        />
+        <div class="barcode-input-row">
+          <input
+            id="drink-barcode"
+            ref="barcodeInput"
+            v-model="form.barcode"
+            type="text"
+            maxlength="48"
+            pattern="[A-Za-z0-9]{1,48}"
+            autocomplete="off"
+            placeholder="EAN/UPC, optional"
+            class="form-input"
+            @input="lastScanned = null"
+          />
+          <button
+            type="button"
+            class="btn btn-secondary barcode-scan-btn"
+            aria-label="Scan barcode with camera"
+            @click="showScanner = true"
+          >
+            Scan
+          </button>
+        </div>
+        <p v-if="lastScanned" class="barcode-scanned-hint">
+          Scanned {{ lastScanned }}
+        </p>
       </div>
 
       <div class="form-group">
@@ -102,10 +117,18 @@
       </div>
     </form>
   </Modal>
+
+  <BarcodeScannerModal
+    v-if="showScanner"
+    @close="showScanner = false"
+    @detected="onBarcodeDetected"
+  />
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
 import Modal from '../Modal.vue'
+import BarcodeScannerModal from './BarcodeScannerModal.vue'
 
 interface DrinkForm {
   name: string
@@ -118,7 +141,7 @@ interface DrinkForm {
   isAlcohol: boolean
 }
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   show?: boolean
   isEdit?: boolean
   form: DrinkForm
@@ -129,6 +152,10 @@ withDefaults(defineProps<{
 
 const emit = defineEmits<{ close: []; submit: [] }>()
 
+const barcodeInput = ref<HTMLInputElement | null>(null)
+const showScanner = ref(false)
+const lastScanned = ref<string | null>(null)
+
 const close = (): void => {
   emit('close')
 }
@@ -136,6 +163,24 @@ const close = (): void => {
 const submit = (): void => {
   emit('submit')
 }
+
+const onBarcodeDetected = async (code: string): Promise<void> => {
+  props.form.barcode = code
+  lastScanned.value = code
+  showScanner.value = false
+  await nextTick()
+  barcodeInput.value?.focus()
+}
+
+watch(
+  () => props.show,
+  (isOpen) => {
+    if (!isOpen) {
+      showScanner.value = false
+      lastScanned.value = null
+    }
+  }
+)
 </script>
 
 <style scoped>
@@ -157,6 +202,28 @@ const submit = (): void => {
   border-radius: 6px;
   font-size: 1rem;
   font-family: inherit;
+}
+
+.barcode-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.barcode-input-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.barcode-scan-btn {
+  flex-shrink: 0;
+}
+
+.barcode-scanned-hint {
+  margin-top: 0.375rem;
+  margin-bottom: 0;
+  font-size: var(--font-size-sm);
+  color: var(--green-11);
 }
 
 .checkbox-label {
